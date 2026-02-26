@@ -4,13 +4,14 @@ from pydantic import model_validator
 
 from .common import (
     ContactRoleAssignment,
-    CustomFieldValue,
     EmailAddress,
     PaginationQuery,
     PhoneNumber,
     StreetAddress,
     WealthboxModel,
 )
+
+from .custom_fields import CustomFieldValue
 
 from .enums import (
     RecordTypeOptions,

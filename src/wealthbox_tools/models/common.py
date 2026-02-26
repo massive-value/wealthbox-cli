@@ -60,10 +60,7 @@ class StreetAddress(WealthboxModel):
     destroy: bool | None = None
 
 
-class CustomFieldValue(WealthboxModel):
-    id: int | None = None
-    name: str | None = None
-    value: Any | None = None
+
 
 
 class ContactRoleAssignment(WealthboxModel):

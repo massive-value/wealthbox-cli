@@ -15,7 +15,6 @@ from .enums import (
 )
 from .common import (
     ContactRoleAssignment,
-    CustomFieldValue,
     EmailAddress,
     LinkedToRef,
     PhoneNumber,
@@ -24,7 +23,7 @@ from .common import (
 from .contacts import ContactCreateInput, ContactListQuery, ContactUpdateInput
 from .events import EventCreateInput, EventListQuery, EventUpdateInput
 from .households import HouseholdMemberInput
-from .custom_fields import CustomFieldsListQuery
+from .custom_fields import CustomFieldsListQuery, CustomFieldValue
 from .notes import NoteCreateInput, NoteListQuery, NoteUpdateInput
 from .tasks import TaskCreateInput, TaskListQuery, TaskUpdateInput
 
