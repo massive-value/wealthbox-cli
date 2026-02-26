@@ -10,6 +10,7 @@ MaritalStatusOptions = Literal["Married", "Single", "Divorced", "Widowed", "Life
 TaskFrameOptions = Literal[ "today", "tomorrow", "this_week", "next_week", "future", "specific" ]
 DocumentTypeOptions = Literal[ "Contact", "Opportunity", "Project", "Task", "Event", "ManualInvestmentAccount", "DataFile" ]
 HouseholdTitleOptions = Literal[ "Head", "Spouse", "Parent", "Other Dependent", "Child", "Sibling", "Partner", "Grandchild", "Grandparent" ]
+ActivityTypeOptions = Literal [ "Contact", "StatusUpdate", "DropboxEmail", "PhoneCall", "Task", "Event", "Workflow", "WorkflowStep", "Opportunity", "DataFile", "MailMerge", "Project", "User", "Meeting", "CustomObject" ]
 
 
 ContactsOrderOptions = Literal[ "asc", "desc", "recent", "created", "updated" ]
