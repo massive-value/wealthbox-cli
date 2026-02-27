@@ -2,11 +2,11 @@ from __future__ import annotations
 
 import asyncio
 import json
-from typing import Optional
+from typing import Any, Dict
 
 import typer
 
-from wealthbox_tools.models import TaskCreateInput, TaskListQuery, TaskUpdateInput, TaskResourseTypeOptions, TaskTypeOptions
+from wealthbox_tools.models import TaskCreateInput, TaskListQuery, TaskUpdateInput, TaskResourceType, TaskType, TaskFrame
 
 from ._util import get_client, handle_errors, make_category_command, output_result
 
@@ -17,18 +17,18 @@ app.command("categories", help="List task category options.")(make_category_comm
 @app.command("list")
 @handle_errors
 def list_tasks(
-    resource_id: Optional[int] = typer.Option(None, "--resource-id", help="Filter by resource id. Must specify resource resource_type"),
-    resource_type: TaskResourseTypeOptions = typer.Option(None, "--resource-type", help="Supported Types: Contact, Project, Opportunity"),
-    assigned_to: Optional[int] = typer.Option(None, "--assigned-to"),
-    assigned_to_team: Optional[int] = typer.Option(None, "--assigned-to-team"),
-    created_by: Optional[int] = typer.Option(None, "--created-by", help="user id"),
-    completed: Optional[bool] = typer.Option(None, help="Filter by completion status"),
-    task_type: TaskTypeOptions = typer.Option(None, "--type", help="all, parents, subtasks"),
-    updated_since: Optional[str] = typer.Option(None, "--updated-since"),
-    updated_before: Optional[str] = typer.Option(None, "--updated-before"),
-    page: Optional[int] = typer.Option(None),
-    per_page: Optional[int] = typer.Option(None, "--per-page"),
-    token: Optional[str] = typer.Option(None, envvar="WEALTHBOX_TOKEN", hidden=True),
+    resource_id: int | None = typer.Option(None, "--resource-id", help="Filter by resource id. Must specify resource resource_type"),
+    resource_type: TaskResourceType | None = typer.Option(None, "--resource-type", help="Supported Types: Contact, Project, Opportunity"),
+    assigned_to: int | None = typer.Option(None, "--assigned-to"),
+    assigned_to_team: int | None = typer.Option(None, "--assigned-to-team"),
+    created_by: int | None = typer.Option(None, "--created-by", help="user id"),
+    completed: bool | None = typer.Option(None, help="Filter by completion status"),
+    task_type: TaskType | None = typer.Option(None, "--type", help="all, parents, subtasks"),
+    updated_since: str | None = typer.Option(None, "--updated-since"),
+    updated_before: str | None = typer.Option(None, "--updated-before"),
+    page: int | None = typer.Option(None),
+    per_page: int | None = typer.Option(None, "--per-page"),
+    token: str | None = typer.Option(None, envvar="WEALTHBOX_TOKEN", hidden=True),
     fmt: str = typer.Option("json", "--format", help="Output format: json or table"),
 ) -> None:
     """List tasks with optional filters."""
@@ -57,7 +57,7 @@ def list_tasks(
 @handle_errors
 def get_task(
     task_id: int = typer.Argument(..., help="Task ID"),
-    token: Optional[str] = typer.Option(None, envvar="WEALTHBOX_TOKEN", hidden=True),
+    token: str | None = typer.Option(None, envvar="WEALTHBOX_TOKEN", hidden=True),
     fmt: str = typer.Option("json", "--format"),
 ) -> None:
     """Get a single task by ID."""
@@ -71,12 +71,39 @@ def get_task(
 @app.command("create")
 @handle_errors
 def create_task(
-    data: str = typer.Argument(..., help="JSON object with title and due_date required"),
-    token: Optional[str] = typer.Option(None, envvar="WEALTHBOX_TOKEN", hidden=True),
+    name: str = typer.Argument(..., help="Task title/name"),
+    due_date: str | None = typer.Option(None, "--due-date", help="Example: '2025-05-24 10:00 AM -0700' (must match Wealthbox format)"),
+    frame: TaskFrame | None = typer.Option(None, "--frame", help="friendly due timeframe"),
+    more_fields: str | None = typer.Option(None, "--more_fields", help='JSON: {"assigned_to": 123456, "linked_to": [{"id": 987654, "type": "Contact"}]}'),
+    token: str | None = typer.Option(None, envvar="WEALTHBOX_TOKEN", hidden=True),
     fmt: str = typer.Option("json", "--format"),
 ) -> None:
-    """Create a new task. Required fields: title, due_date."""
-    input_model = TaskCreateInput(**json.loads(data))
+    """Create a new task. Required: name, and either due_date or frame."""
+    # Friendly CLI-level guardrail (still keep model validation too)
+    if due_date is None and frame is None:
+        raise typer.BadParameter("Provide either --due-date or --frame.")
+
+    payload: Dict[str, Any] = {"name": name, "due_date": due_date, "frame": frame}
+
+    if more_fields:
+        try:
+            extra = json.loads(more_fields)
+        except json.JSONDecodeError as e:
+            raise typer.BadParameter(f"--more-fields must be valid JSON: {e.msg}") from e
+
+        if not isinstance(extra, dict):
+            raise typer.BadParameter("--more-fields must be a JSON object (e.g. {...}), not a list or string.")
+
+        # Prevent “shadowing” explicit args
+        reserved = {"name", "due_date", "frame"}
+        collision = reserved.intersection(extra.keys())
+        if collision:
+            raise typer.BadParameter(f"--more-fields cannot include {sorted(collision)}; use explicit CLI args instead.")
+
+        payload.update(extra)
+
+    # Let Pydantic do the real validation + coercion
+    input_model = TaskCreateInput(**payload)
 
     async def _run() -> dict:
         async with get_client(token) as client:
@@ -90,7 +117,7 @@ def create_task(
 def update_task(
     task_id: int = typer.Argument(..., help="Task ID"),
     data: str = typer.Argument(..., help="JSON object of fields to update"),
-    token: Optional[str] = typer.Option(None, envvar="WEALTHBOX_TOKEN", hidden=True),
+    token: str | None = typer.Option(None, envvar="WEALTHBOX_TOKEN", hidden=True),
     fmt: str = typer.Option("json", "--format"),
 ) -> None:
     """Update an existing task."""
@@ -107,7 +134,7 @@ def update_task(
 @handle_errors
 def delete_task(
     task_id: int = typer.Argument(..., help="Task ID"),
-    token: Optional[str] = typer.Option(None, envvar="WEALTHBOX_TOKEN", hidden=True),
+    token: str | None = typer.Option(None, envvar="WEALTHBOX_TOKEN", hidden=True),
 ) -> None:
     """Delete a task by ID."""
     async def _run() -> None:

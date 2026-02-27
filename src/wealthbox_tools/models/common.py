@@ -1,9 +1,6 @@
 from __future__ import annotations
 
-from typing import Any
-
 from pydantic import BaseModel, ConfigDict, Field, model_validator
-
 
 
 class WealthboxModel(BaseModel):
@@ -53,9 +50,6 @@ class StreetAddress(WealthboxModel):
     zip_code: str | None = None
     country: str | None = None
     destroy: bool | None = None
-
-
-
 
 
 class ContactRoleAssignment(WealthboxModel):
