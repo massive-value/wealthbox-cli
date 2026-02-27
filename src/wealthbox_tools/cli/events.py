@@ -18,14 +18,14 @@ app.command("categories", help="List event category options.")(make_category_com
 @handle_errors
 def list_events(
     resource_id: Optional[int] = typer.Option(None, "--resource-id", help="Filter by resource ID"),
-    resource_type: Optional[str] = typer.Option(None, "--resource-type"),
-    start_date_min: Optional[str] = typer.Option(None, "--start-date-min", help="ISO datetime"),
-    start_date_max: Optional[str] = typer.Option(None, "--start-date-max", help="ISO datetime"),
+    resource_type: Optional[str] = typer.Option(None, "--resource-type", help="Supports: Contact, Project, Opportunity"),
+    start_date_min: Optional[str] = typer.Option(None, "--start-date-min", help="Format example: '2015-05-24 10:00 AM -0400'"),
+    start_date_max: Optional[str] = typer.Option(None, "--start-date-max", help="Format example: '2015-05-24 10:00 AM -0400'"),
     order: Optional[EventsOrderOptions] = typer.Option(None, "--order", help="asc, desc, recent, created"),
+    updated_since: Optional[str] = typer.Option(None, "--updated-since", help="Format example: '2015-05-24 10:00 AM -0400'"),
+    updated_before: Optional[str] = typer.Option(None, "--updated-before", help="Format example: '2015-05-24 10:00 AM -0400'"),
     page: Optional[int] = typer.Option(None),
     per_page: Optional[int] = typer.Option(None, "--per-page"),
-    updated_since: Optional[str] = typer.Option(None, "--updated-since"),
-    updated_before: Optional[str] = typer.Option(None, "--updated-before"),
     token: Optional[str] = typer.Option(None, envvar="WEALTHBOX_TOKEN", hidden=True),
     fmt: str = typer.Option("json", "--format"),
 ) -> None:
@@ -36,10 +36,10 @@ def list_events(
         start_date_min=start_date_min,
         start_date_max=start_date_max,
         order=order,
-        page=page,
-        per_page=per_page,
         updated_since=updated_since,
         updated_before=updated_before,
+        page=page,
+        per_page=per_page,
     )
 
     async def _run() -> dict:

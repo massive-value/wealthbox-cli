@@ -2,8 +2,13 @@ from __future__ import annotations
 
 from pydantic import Field
 
-from .common import PaginationQuery, RequireAnyFieldModel, WealthboxModel
-from .enums import EventsOrderOptions
+from .common import PaginationQuery, RequireAnyFieldModel, WealthboxModel, LinkedToRef
+from .enums import EventsOrderOptions, EventsStateOptions, EmailInviteeTypeOptions
+
+
+class EmailInvitees(WealthboxModel):
+    id: int | None = None
+    type: EmailInviteeTypeOptions | None = None
 
 
 class EventListQuery(PaginationQuery):
@@ -18,17 +23,33 @@ class EventListQuery(PaginationQuery):
 
 class EventCreateInput(WealthboxModel):
     title: str = Field(min_length=1)
-    description: str | None = None
-    starts_at: str = Field(min_length=1)
+    starts_at: str | None = None
     ends_at: str | None = None
+    repeats: bool | None = None
+    event_category: int | None = None
+    all_day: bool | None = None
     location: str | None = None
-    category_id: int | None = None
+    description: str | None = None
+    state: EventsStateOptions | None = None
+    # visible_to: str | None = None
+    email_invitees: bool | None = None
+    linked_to: list[LinkedToRef] | None = None
+    invitees: list[EmailInvitees] | None = None
+    # custom_fields: str | None = None
 
 
 class EventUpdateInput(RequireAnyFieldModel):
-    title: str | None = Field(default=None, min_length=1)
-    description: str | None = None
-    starts_at: str | None = Field(default=None, min_length=1)
+    title: str | None = None
+    starts_at: str | None = None
     ends_at: str | None = None
+    repeats: bool | None = None
+    event_category: int | None = None
+    all_day: bool | None = None
     location: str | None = None
-    category_id: int | None = None
+    description: str | None = None
+    state: EventsStateOptions | None = None
+    # visible_to: str | None = None
+    email_invitees: bool | None = None
+    linked_to: LinkedToRef | None = None
+    invitees: list[EmailInvitees] | None = None
+    # custom_fields: str | None = None

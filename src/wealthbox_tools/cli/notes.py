@@ -7,6 +7,7 @@ from typing import Optional
 import typer
 
 from wealthbox_tools.models import NoteCreateInput, NoteListQuery, NoteUpdateInput
+from wealthbox_tools.models import NotesOrderOptions
 
 from ._util import get_client, handle_errors, output_result
 
@@ -18,11 +19,11 @@ app = typer.Typer(help="Manage Wealthbox notes.", no_args_is_help=True)
 def list_notes(
     resource_id: Optional[int] = typer.Option(None),
     resource_type: Optional[str] = typer.Option(None),
-    order: Optional[str] = typer.Option("updated"),
-    page: Optional[int] = typer.Option(None),
-    per_page: Optional[int] = typer.Option(None, "--per-page"),
+    order: NotesOrderOptions = typer.Option("updated"),
     updated_since: Optional[str] = typer.Option(None, "--updated-since"),
     updated_before: Optional[str] = typer.Option(None, "--updated-before"),
+    page: Optional[int] = typer.Option(None),
+    per_page: Optional[int] = typer.Option(None, "--per-page"),
     token: Optional[str] = typer.Option(None, envvar="WEALTHBOX_TOKEN", hidden=True),
     fmt: str = typer.Option("json", "--format"),
 ) -> None:
@@ -31,10 +32,10 @@ def list_notes(
         resource_id=resource_id,
         resource_type=resource_type,
         order=order,
-        page=page,
-        per_page=per_page,
         updated_since=updated_since,
         updated_before=updated_before,
+        page=page,
+        per_page=per_page,
     )
 
     async def _run() -> dict:

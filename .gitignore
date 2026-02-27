@@ -210,5 +210,6 @@ __marimo__/
 
 # Custom
 test.json
+testing.py
 .claude/
 **/.claude/

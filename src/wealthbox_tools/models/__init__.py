@@ -11,6 +11,9 @@ from .enums import (
     ContactsOrderOptions,
     ActivityTypeOptions,
     CategoryTypeOptions,
+    TaskResourseTypeOptions,
+    TaskTypeOptions,
+    NotesOrderOptions,
 )
 from .common import (
     ContactRoleAssignment,
@@ -38,6 +41,9 @@ __all__ = [
     "ContactsOrderOptions",
     "ActivityTypeOptions",
     "CategoryTypeOptions",
+    "TaskResourseTypeOptions",
+    "TaskTypeOptions",
+    "NotesOrderOptions",
 
     # Activity
     "ActivityListQuery",

@@ -60,9 +60,9 @@ class StreetAddress(WealthboxModel):
 
 class ContactRoleAssignment(WealthboxModel):
     id: int | None = None
-    name: str | None = None
+    type: str | None = None
 
 
 class LinkedToRef(WealthboxModel):
     id: int
-    type: str = Field(description="Wealthbox object type, e.g. Contact, Opportunity")
+    type: str = Field(description="Wealthbox object type, allowed types: Contact, Project, Opportunity")
