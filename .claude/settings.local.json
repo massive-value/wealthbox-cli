@@ -5,7 +5,10 @@
       "Bash(cd:*)",
       "Bash(pip install:*)",
       "Bash(wbox:*)",
-      "Bash(pytest:*)"
+      "Bash(pytest:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)"
     ]
   }
 }
