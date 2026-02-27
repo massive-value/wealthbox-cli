@@ -8,9 +8,10 @@ import typer
 
 from wealthbox_tools.models import EventCreateInput, EventListQuery, EventUpdateInput, EventsOrderOptions
 
-from ._util import get_client, handle_errors, output_result
+from ._util import get_client, handle_errors, make_category_command, output_result
 
 app = typer.Typer(help="Manage Wealthbox events.", no_args_is_help=True)
+app.command("categories", help="List event category options.")(make_category_command("event_categories"))
 
 
 @app.command("list")

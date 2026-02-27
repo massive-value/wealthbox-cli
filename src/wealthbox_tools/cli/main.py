@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import typer
 
+from .categories import app as categories_app
 from .contacts import app as contacts_app
 from .events import app as events_app
 from .notes import app as notes_app
@@ -20,8 +21,9 @@ app.add_typer(households_app, name="households")
 app.add_typer(tasks_app, name="tasks")
 app.add_typer(events_app, name="events")
 app.add_typer(notes_app, name="notes")
+app.add_typer(categories_app, name="categories")
 
-# Read-only top-level commands: wbox me, wbox users, wbox activity, wbox custom-fields
+# Read-only top-level commands: wbox me, wbox users, wbox activity
 app.add_typer(readonly_app, name="readonly", hidden=True)
 
 # Register read-only commands directly on root for ergonomic access

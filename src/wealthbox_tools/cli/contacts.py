@@ -10,9 +10,20 @@ from wealthbox_tools.models import ContactCreateInput, ContactListQuery, Contact
 
 from wealthbox_tools.models import HouseholdTitleOptions, ContactsOrderOptions, RecordTypeOptions
 
-from ._util import get_client, handle_errors, output_result
+from ._util import get_client, handle_errors, make_category_command, output_result
 
 app = typer.Typer(help="Manage Wealthbox contacts.", no_args_is_help=True)
+
+# -- categories sub-app -------------------------------------------------------
+categories_app = typer.Typer(help="List available category values for contact fields.", no_args_is_help=True)
+categories_app.command("contact-types", help="List contact type options.")(make_category_command("contact_types"))
+categories_app.command("contact-sources", help="List contact source options.")(make_category_command("contact_sources"))
+categories_app.command("email-types", help="List email type options.")(make_category_command("email_types"))
+categories_app.command("phone-types", help="List phone type options.")(make_category_command("phone_types"))
+categories_app.command("address-types", help="List address type options.")(make_category_command("address_types"))
+categories_app.command("website-types", help="List website type options.")(make_category_command("website_types"))
+categories_app.command("contact-roles", help="List contact role options.")(make_category_command("contact_roles"))
+app.add_typer(categories_app, name="categories")
 
 
 @app.command("list")

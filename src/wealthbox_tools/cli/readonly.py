@@ -5,7 +5,7 @@ from typing import Optional
 
 import typer
 
-from wealthbox_tools.models import ActivityListQuery, ActivityTypeOptions, CategoryTypeOptions, DocumentTypeOptions
+from wealthbox_tools.models import ActivityListQuery, ActivityTypeOptions
 from wealthbox_tools.models.common import PaginationQuery
 
 from ._util import get_client, handle_errors, output_result
@@ -70,21 +70,5 @@ def list_activity(
     async def _run() -> dict:
         async with get_client(token) as client:
             return await client.list_activity(query)
-
-    output_result(asyncio.run(_run()), fmt)
-
-
-@app.command("custom-categories")
-@handle_errors
-def list_custom_categories(
-    type_: CategoryTypeOptions = typer.Option(..., "--type", help="Custom Category Type Options"),
-    document_type: Optional[DocumentTypeOptions] = typer.Option(None, "--document-type", help="Filter custom_fields by document type"),
-    token: Optional[str] = typer.Option(None, envvar="WEALTHBOX_TOKEN", hidden=True),
-    fmt: str = typer.Option("json", "--format"),
-) -> None:
-    """List custom categories"""
-    async def _run() -> dict:
-        async with get_client(token) as client:
-            return await client.list_custom_categories(type_, document_type=document_type)
 
     output_result(asyncio.run(_run()), fmt)

@@ -1,9 +1,10 @@
 from __future__ import annotations
 
+import asyncio
 import functools
 import json
 import sys
-from typing import Any
+from typing import Any, Optional
 
 import typer
 
@@ -45,3 +46,17 @@ def handle_errors(func):  # type: ignore[no-untyped-def]
             typer.echo(f"Error: {e}", err=True)
             raise typer.Exit(code=1)
     return wrapper
+
+
+def make_category_command(category_type: str):  # type: ignore[no-untyped-def]
+    """Factory that returns a Typer command function for listing a category type."""
+    @handle_errors
+    def cmd(
+        token: Optional[str] = typer.Option(None, envvar="WEALTHBOX_TOKEN", hidden=True),
+        fmt: str = typer.Option("json", "--format"),
+    ) -> None:
+        async def _run() -> dict:
+            async with get_client(token) as client:
+                return await client.list_custom_categories(category_type)
+        output_result(asyncio.run(_run()), fmt)
+    return cmd
