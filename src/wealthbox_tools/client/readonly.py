@@ -4,7 +4,7 @@ from typing import Any
 
 from wealthbox_tools.models import (
     ActivityListQuery,
-    CustomFieldsListQuery,
+    CustomCategoryTypeOptions,
 )
 
 
@@ -28,8 +28,8 @@ class ReadOnlyMixin:
         params = query.model_dump(exclude_none=True) if query else None
         resp = await self._request("GET", "/activity", params=params)  # type: ignore[attr-defined]
         return resp.json()
-
-    async def list_custom_fields(self, query: CustomFieldsListQuery | None = None) -> dict[str, Any]:
-        params = query.model_dump(exclude_none=True) if query else None
-        resp = await self._request("GET", "/categories/custom_fields", params=params)  # type: ignore[attr-defined]
+    
+    async def list_custom_categories(self, category: CustomCategoryTypeOptions | None = None) -> dict[str, Any]:
+        print(f"/categories/{category}")
+        resp = await self._request("GET", f"/categories/{category}")  # type: ignore[attr-defined]
         return resp.json()

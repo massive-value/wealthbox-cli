@@ -12,6 +12,7 @@ from .enums import (
     DocumentTypeOptions,
     ContactsOrderOptions,
     ActivityTypeOptions,
+    CustomCategoryTypeOptions,
 )
 from .common import (
     ContactRoleAssignment,
@@ -27,6 +28,7 @@ from .custom_fields import CustomFieldsListQuery, CustomFieldValue
 from .notes import NoteCreateInput, NoteListQuery, NoteUpdateInput
 from .tasks import TaskCreateInput, TaskListQuery, TaskUpdateInput
 
+
 __all__ = [
     # Enums
     "ContactTypeOptions",
@@ -39,6 +41,7 @@ __all__ = [
     "DocumentTypeOptions",
     "ContactsOrderOptions",
     "ActivityTypeOptions",
+    "CustomCategoryTypeOptions",
 
     # Activity
     "ActivityListQuery",

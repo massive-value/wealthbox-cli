@@ -5,7 +5,7 @@ from typing import Optional
 
 import typer
 
-from wealthbox_tools.models import ActivityListQuery, CustomFieldsListQuery
+from wealthbox_tools.models import ActivityListQuery, CustomFieldsListQuery, ActivityTypeOptions, CustomCategoryTypeOptions
 
 from ._util import get_client, handle_errors, output_result
 
@@ -46,12 +46,11 @@ def list_users(
 @handle_errors
 def list_activity(
     contact: Optional[int] = typer.Option(None, help="Filter by contact ID"),
-    type_: Optional[str] = typer.Option(None, "--type", help="Activity type filter"),
-    cursor: Optional[str] = typer.Option(None, help="Pagination cursor"),
-    page: Optional[int] = typer.Option(None),
-    per_page: Optional[int] = typer.Option(None, "--per-page"),
+    type_: Optional[ActivityTypeOptions] = typer.Option(None, "--type", help="Activity type filter"),
     updated_since: Optional[str] = typer.Option(None, "--updated-since"),
     updated_before: Optional[str] = typer.Option(None, "--updated-before"),
+    page: Optional[int] = typer.Option(None),
+    per_page: Optional[int] = typer.Option(None, "--per-page"),
     token: Optional[str] = typer.Option(None, envvar="WEALTHBOX_TOKEN", hidden=True),
     fmt: str = typer.Option("json", "--format"),
 ) -> None:
@@ -59,11 +58,10 @@ def list_activity(
     query = ActivityListQuery(
         contact=contact,
         type=type_,
-        cursor=cursor,
-        page=page,
-        per_page=per_page,
         updated_since=updated_since,
         updated_before=updated_before,
+        page=page,
+        per_page=per_page,
     )
 
     async def _run() -> dict:
@@ -73,22 +71,37 @@ def list_activity(
     output_result(asyncio.run(_run()), fmt)
 
 
-@app.command("custom-fields")
+@app.command("custom-categories")
 @handle_errors
-def list_custom_fields(
-    document_type: Optional[str] = typer.Option(
-        None,
-        "--document-type",
-        help="Contact, Opportunity, Project, Task, Event, ManualInvestmentAccount, DataFile",
-    ),
+def list_custom_categories(
+    type_: Optional[CustomCategoryTypeOptions] = typer.Option(None, "--type", help="Custom Category Type Options"),
     token: Optional[str] = typer.Option(None, envvar="WEALTHBOX_TOKEN", hidden=True),
     fmt: str = typer.Option("json", "--format"),
 ) -> None:
-    """List custom field definitions."""
-    query = CustomFieldsListQuery(document_type=document_type)  # type: ignore[arg-type]
-
+    """List custom categories"""
+    endpoint = type_
     async def _run() -> dict:
         async with get_client(token) as client:
-            return await client.list_custom_fields(query)
+            return await client.list_custom_categories(endpoint)
 
     output_result(asyncio.run(_run()), fmt)
+
+# @app.command("custom-fields")
+# @handle_errors
+# def list_custom_fields(
+#     document_type: Optional[str] = typer.Option(
+#         None,
+#         "--document-type",
+#         help="Contact, Opportunity, Project, Task, Event, ManualInvestmentAccount, DataFile",
+#     ),
+#     token: Optional[str] = typer.Option(None, envvar="WEALTHBOX_TOKEN", hidden=True),
+#     fmt: str = typer.Option("json", "--format"),
+# ) -> None:
+#     """List custom field definitions."""
+#     query = CustomFieldsListQuery(document_type=document_type)  # type: ignore[arg-type]
+
+#     async def _run() -> dict:
+#         async with get_client(token) as client:
+#             return await client.list_custom_fields(query)
+
+#     output_result(asyncio.run(_run()), fmt)
