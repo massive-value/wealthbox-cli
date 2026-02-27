@@ -4,7 +4,7 @@ from typing import Any
 
 from wealthbox_tools.models import (
     ActivityListQuery,
-    CustomCategoryTypeOptions,
+    CategoryTypeOptions,
 )
 from wealthbox_tools.models.common import PaginationQuery
 
@@ -26,7 +26,7 @@ class ReadOnlyMixin:
         resp = await self._request("GET", "/activity", params=params)  # type: ignore[attr-defined]
         return resp.json()
     
-    async def list_custom_categories(self, category: CustomCategoryTypeOptions, *, document_type: str | None = None) -> dict[str, Any]:
+    async def list_custom_categories(self, category: CategoryTypeOptions, *, document_type: str | None = None) -> dict[str, Any]:
         params = {"document_type": document_type} if document_type else None
         resp = await self._request("GET", f"/categories/{category}", params=params)  # type: ignore[attr-defined]
         return resp.json()

@@ -10,7 +10,7 @@ from .enums import (
     DocumentTypeOptions,
     ContactsOrderOptions,
     ActivityTypeOptions,
-    CustomCategoryTypeOptions,
+    CategoryTypeOptions,
 )
 from .common import (
     ContactRoleAssignment,
@@ -37,7 +37,7 @@ __all__ = [
     "DocumentTypeOptions",
     "ContactsOrderOptions",
     "ActivityTypeOptions",
-    "CustomCategoryTypeOptions",
+    "CategoryTypeOptions",
 
     # Activity
     "ActivityListQuery",
