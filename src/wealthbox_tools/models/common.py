@@ -4,11 +4,6 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-from .enums import (
-    PhoneKindOptions,
-    EmailKindOptions,
-    AddressKindOptions,
-)
 
 
 class WealthboxModel(BaseModel):
@@ -33,7 +28,7 @@ class PaginationQuery(WealthboxModel):
 class EmailAddress(WealthboxModel):
     id: int | None = None
     address: str | None = None
-    kind: EmailKindOptions | None = None
+    kind: str | None = None
     principal: bool | None = None
     destroy: bool | None = None
 
@@ -41,7 +36,7 @@ class EmailAddress(WealthboxModel):
 class PhoneNumber(WealthboxModel):
     id: int | None = None
     address: str | None = None
-    kind: PhoneKindOptions | None = None
+    kind: str | None = None
     principal: bool | None = None
     extension: str | None = None
     destroy: bool | None = None
@@ -49,7 +44,7 @@ class PhoneNumber(WealthboxModel):
 
 class StreetAddress(WealthboxModel):
     id: int | None = None
-    kind: AddressKindOptions | None = None
+    kind: str | None = None
     principal: bool | None = None
     street_line_1: str | None = None
     street_line_2: str | None = None

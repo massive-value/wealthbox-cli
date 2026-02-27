@@ -15,8 +15,6 @@ from .custom_fields import CustomFieldValue
 
 from .enums import (
     RecordTypeOptions,
-    ContactSourceOptions,
-    ContactTypeOptions,
     GenderOptions,
     MaritalStatusOptions,
     HouseholdTitleOptions,
@@ -26,7 +24,7 @@ from .enums import (
 
 class ContactListQuery(PaginationQuery):
     id: int | None = None
-    contact_type: ContactTypeOptions | None = None
+    contact_type: str | None = None
     name: str | None = None
     email: str | None = None
     phone: str | None = None
@@ -64,8 +62,8 @@ class ContactCreateInput(WealthboxModel):
     client_since: str | None = None
     date_of_death: str | None = None
     
-    contact_type: ContactTypeOptions | None = None
-    contact_source: ContactSourceOptions | None = None
+    contact_type: str | None = None
+    contact_source: str | None = None
     status: str | None = None
     assigned_to: int | None = None
     visible_to: str | None = None

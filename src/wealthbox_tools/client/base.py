@@ -12,7 +12,7 @@ BASE_URL = "https://api.crmworkspace.com/v1"
 class WealthboxAPIError(Exception):
     """Raised when the Wealthbox API returns an error response."""
 
-    def __init__(self, status_code: int, detail: str, response: httpx.Response):
+    def __init__(self, status_code: int, detail: str, response: httpx.Response | httpx.Request):
         self.status_code = status_code
         self.detail = detail
         self.response = response

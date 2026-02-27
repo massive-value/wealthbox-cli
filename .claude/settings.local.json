@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(wc:*)",
+      "Bash(cd:*)",
+      "Bash(pip install:*)",
+      "Bash(wbox:*)",
+      "Bash(pytest:*)"
+    ]
+  }
+}

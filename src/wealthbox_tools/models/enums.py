@@ -16,11 +16,3 @@ CustomCategoryTypeOptions = Literal [ "tags", "custom_fields", "opportunity_stag
 
 ContactsOrderOptions = Literal[ "asc", "desc", "recent", "created", "updated" ]
 EventsOrderOptions = Literal[ "asc", "desc", "recent", "created" ]
-
-
-## SWA Specific
-ContactTypeOptions = Literal[ "401(k) Participant", "Center of Influence", "Client", "External (Non-Client)", "Flourish Only", "Lead", "Prospect"]
-ContactSourceOptions = Literal["Call In", "Client Referral", "COI Referral", "Conference", "Events/Seminars", "Friend/Family of Advisor", "Lead Gen Service", "Merger/Acquisition", "Other Digital Media", "Person or Spouse is an Employee", "Squire Referral", "Website"]
-EmailKindOptions = Literal[ "No Longer Used", "Other", "Personal", "Work" ]
-PhoneKindOptions = Literal[ "Fax", "Home", "Mobile", "Other", "Work" ]
-AddressKindOptions = Literal[ "Home", "Other", "Place of Business", "PO Box", "Second Home" ]

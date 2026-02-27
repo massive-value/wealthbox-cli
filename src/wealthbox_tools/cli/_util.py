@@ -22,11 +22,7 @@ def get_client(token: str | None = None) -> WealthboxClient:
 
 def output_result(data: Any, fmt: str = "json") -> None:
     """Print result to stdout in the requested format."""
-    ## Add other formats later
-    if fmt == "json":
-        typer.echo(json.dumps(data, indent=2, default=str))
-    else:
-        typer.echo(json.dumps(data, indent=2, default=str))
+    typer.echo(json.dumps(data, indent=2, default=str))
 
 
 

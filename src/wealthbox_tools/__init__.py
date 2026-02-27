@@ -2,14 +2,12 @@
 
 from wealthbox_tools.client import WealthboxAPIError, WealthboxClient
 from wealthbox_tools.models import (
-    
+
     # Enums
-    ContactTypeOptions,
     GenderOptions,
     MaritalStatusOptions,
-    ContactSourceOptions,
     RecordTypeOptions,
-    
+
     ActivityListQuery,
     ContactCreateInput,
     ContactListQuery,
@@ -31,10 +29,8 @@ from wealthbox_tools.models import (
 __all__ = [
 
     # Enums
-    "ContactTypeOptions",
     "GenderOptions",
     "MaritalStatusOptions",
-    "ContactSourceOptions",
     "RecordTypeOptions",
 
 

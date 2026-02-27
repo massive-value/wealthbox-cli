@@ -8,7 +8,7 @@ import typer
 
 from wealthbox_tools.models import ContactCreateInput, ContactListQuery, ContactUpdateInput
 
-from wealthbox_tools.models import HouseholdTitleOptions, ContactsOrderOptions, ContactTypeOptions, RecordTypeOptions
+from wealthbox_tools.models import HouseholdTitleOptions, ContactsOrderOptions, RecordTypeOptions
 
 from ._util import get_client, handle_errors, output_result
 
@@ -18,7 +18,7 @@ app = typer.Typer(help="Manage Wealthbox contacts.", no_args_is_help=True)
 @app.command("list")
 @handle_errors
 def list_contacts(
-    contact_type: Optional[ContactTypeOptions] = typer.Option(None, "--contact-type", help="Client, Prospect, Vendor, etc."),
+    contact_type: Optional[str] = typer.Option(None, "--contact-type", help="Client, Prospect, Vendor, etc."),
     name: Optional[str] = typer.Option(None, help="Filter by name - Contains"),
     email: Optional[str] = typer.Option(None, help="Filter by email - Full Match"),
     phone: Optional[str] = typer.Option(None, help="Filter by phone - Full Match - Parsing handled by Wealthbox"),

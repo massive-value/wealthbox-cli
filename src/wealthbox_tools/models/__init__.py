@@ -2,8 +2,6 @@
 
 from .activity import ActivityListQuery
 from .enums import (
-    ContactTypeOptions,
-    ContactSourceOptions,
     RecordTypeOptions,
     GenderOptions,
     MaritalStatusOptions,
@@ -31,8 +29,6 @@ from .tasks import TaskCreateInput, TaskListQuery, TaskUpdateInput
 
 __all__ = [
     # Enums
-    "ContactTypeOptions",
-    "ContactSourceOptions",
     "RecordTypeOptions",
     "GenderOptions",
     "MaritalStatusOptions",
