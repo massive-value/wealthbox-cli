@@ -1,11 +1,10 @@
 from __future__ import annotations
 
 import asyncio
-from typing import Optional
 
 import typer
 
-from wealthbox_tools.models import HouseholdMemberInput, HouseholdTitleOptions
+from wealthbox_tools.models import HouseholdMemberInput, HouseholdTitle
 
 from ._util import get_client, handle_errors, output_result
 
@@ -17,8 +16,8 @@ app = typer.Typer(help="Manage household members.", no_args_is_help=True)
 def add_member(
     household_id: int = typer.Argument(..., help="Household contact ID"),
     member_id: int = typer.Option(..., "--member-id", help="Member contact ID to add"),
-    title: HouseholdTitleOptions = typer.Option(..., help="Household title for member (e.g. Spouse, Head)"),
-    token: Optional[str] = typer.Option(None, envvar="WEALTHBOX_TOKEN", hidden=True),
+    title: HouseholdTitle = typer.Option(..., help="Household title for member (e.g. Spouse, Head)"),
+    token: str | None = typer.Option(None, envvar="WEALTHBOX_TOKEN", hidden=True),
     fmt: str = typer.Option("json", "--format", help="Output format: json or table"),
 ) -> None:
     """Add a member to a household."""
@@ -36,7 +35,7 @@ def add_member(
 def remove_member(
     household_id: int = typer.Argument(..., help="Household contact ID"),
     member_id: int = typer.Argument(..., help="Member contact ID to remove"),
-    token: Optional[str] = typer.Option(None, envvar="WEALTHBOX_TOKEN", hidden=True),
+    token: str | None = typer.Option(None, envvar="WEALTHBOX_TOKEN", hidden=True),
     fmt: str = typer.Option("json", "--format", help="Output format: json or table"),
 ) -> None:
     """Remove a member from a household."""

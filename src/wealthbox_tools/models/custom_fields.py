@@ -5,7 +5,7 @@ from pydantic import BaseModel
 from typing import Any
 
 from .common import WealthboxModel
-from .enums import DocumentTypeOptions
+from .enums import DocumentType
 
 
 class CustomFieldValue(WealthboxModel):
@@ -15,4 +15,4 @@ class CustomFieldValue(WealthboxModel):
 
 
 class CustomFieldsListQuery(BaseModel):
-    document_type: DocumentTypeOptions | None = None
+    document_type: DocumentType | None = None

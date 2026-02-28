@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from pydantic import model_validator
 
+from .custom_fields import CustomFieldValue
+
 from .common import (
     ContactRoleAssignment,
     EmailAddress,
@@ -11,14 +13,12 @@ from .common import (
     WealthboxModel,
 )
 
-from .custom_fields import CustomFieldValue
-
 from .enums import (
-    RecordTypeOptions,
-    GenderOptions,
-    MaritalStatusOptions,
-    HouseholdTitleOptions,
-    ContactsOrderOptions,
+    RecordType,
+    Gender,
+    MaritalStatus,
+    HouseholdTitle,
+    ContactsOrder,
 )
 
 
@@ -33,9 +33,9 @@ class ContactListQuery(PaginationQuery):
     tags: list[str] | None = None
     deleted: bool | None = None
     deleted_since: str | None = None
-    household_title: HouseholdTitleOptions | None = None
-    type: RecordTypeOptions | None = None
-    order: ContactsOrderOptions | None = None
+    household_title: HouseholdTitle | None = None
+    type: RecordType | None = None
+    order: ContactsOrder | None = None
     updated_since: str | None = None
     updated_before: str | None = None
     
@@ -43,7 +43,7 @@ class ContactListQuery(PaginationQuery):
 
 class ContactCreateInput(WealthboxModel):
     # Core identity
-    type: RecordTypeOptions | None = None
+    type: RecordType | None = None
     prefix: str | None = None
     first_name: str | None = None
     middle_name: str | None = None
@@ -55,8 +55,8 @@ class ContactCreateInput(WealthboxModel):
     # Person/company attributes
     job_title: str | None = None
     company_name: str | None = None
-    marital_status: MaritalStatusOptions | None = None
-    gender: GenderOptions | None = None
+    marital_status: MaritalStatus | None = None
+    gender: Gender | None = None
     birth_date: str | None = None
     anniversary: str | None = None
     client_since: str | None = None

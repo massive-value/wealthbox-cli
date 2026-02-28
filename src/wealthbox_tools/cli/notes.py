@@ -2,12 +2,11 @@ from __future__ import annotations
 
 import asyncio
 import json
-from typing import Optional
 
 import typer
 
 from wealthbox_tools.models import NoteCreateInput, NoteListQuery, NoteUpdateInput
-from wealthbox_tools.models import NotesOrderOptions
+from wealthbox_tools.models import NotesOrder
 
 from ._util import get_client, handle_errors, output_result
 
@@ -17,14 +16,14 @@ app = typer.Typer(help="Manage Wealthbox notes.", no_args_is_help=True)
 @app.command("list")
 @handle_errors
 def list_notes(
-    resource_id: Optional[int] = typer.Option(None),
-    resource_type: Optional[str] = typer.Option(None),
-    order: NotesOrderOptions = typer.Option("updated"),
-    updated_since: Optional[str] = typer.Option(None, "--updated-since"),
-    updated_before: Optional[str] = typer.Option(None, "--updated-before"),
-    page: Optional[int] = typer.Option(None),
-    per_page: Optional[int] = typer.Option(None, "--per-page"),
-    token: Optional[str] = typer.Option(None, envvar="WEALTHBOX_TOKEN", hidden=True),
+    resource_id: int | None = typer.Option(None),
+    resource_type: str | None = typer.Option(None),
+    order: NotesOrder | None = typer.Option("updated"),
+    updated_since: str | None = typer.Option(None, "--updated-since"),
+    updated_before: str | None = typer.Option(None, "--updated-before"),
+    page: int | None = typer.Option(None),
+    per_page: int | None = typer.Option(None, "--per-page"),
+    token: str | None = typer.Option(None, envvar="WEALTHBOX_TOKEN", hidden=True),
     fmt: str = typer.Option("json", "--format"),
 ) -> None:
     """List notes."""
@@ -49,7 +48,7 @@ def list_notes(
 @handle_errors
 def get_note(
     note_id: int = typer.Argument(..., help="Note ID"),
-    token: Optional[str] = typer.Option(None, envvar="WEALTHBOX_TOKEN", hidden=True),
+    token: str | None = typer.Option(None, envvar="WEALTHBOX_TOKEN", hidden=True),
     fmt: str = typer.Option("json", "--format"),
 ) -> None:
     """Get a single note by ID."""
@@ -64,7 +63,7 @@ def get_note(
 @handle_errors
 def create_note(
     data: str = typer.Argument(..., help="JSON object with content required. Optionally linked_to: [{id, type}]."),
-    token: Optional[str] = typer.Option(None, envvar="WEALTHBOX_TOKEN", hidden=True),
+    token: str | None = typer.Option(None, envvar="WEALTHBOX_TOKEN", hidden=True),
     fmt: str = typer.Option("json", "--format"),
 ) -> None:
     """Create a new note. Required: content."""
@@ -82,7 +81,7 @@ def create_note(
 def update_note(
     note_id: int = typer.Argument(..., help="Note ID"),
     data: str = typer.Argument(..., help="JSON object of fields to update"),
-    token: Optional[str] = typer.Option(None, envvar="WEALTHBOX_TOKEN", hidden=True),
+    token: str | None = typer.Option(None, envvar="WEALTHBOX_TOKEN", hidden=True),
     fmt: str = typer.Option("json", "--format"),
 ) -> None:
     """Update an existing note. Note: the API does not support deleting notes."""

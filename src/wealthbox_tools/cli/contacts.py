@@ -2,13 +2,12 @@ from __future__ import annotations
 
 import asyncio
 import json
-from typing import Optional
 
 import typer
 
 from wealthbox_tools.models import ContactCreateInput, ContactListQuery, ContactUpdateInput
 
-from wealthbox_tools.models import HouseholdTitleOptions, ContactsOrderOptions, RecordTypeOptions
+from wealthbox_tools.models import HouseholdTitle, ContactsOrder, RecordType
 
 from ._util import get_client, handle_errors, make_category_command, output_result
 
@@ -29,22 +28,22 @@ app.add_typer(categories_app, name="categories")
 @app.command("list")
 @handle_errors
 def list_contacts(
-    contact_type: Optional[str] = typer.Option(None, "--contact-type", help="Client, Prospect, Vendor, etc."),
-    name: Optional[str] = typer.Option(None, help="Filter by name - Contains"),
-    email: Optional[str] = typer.Option(None, help="Filter by email - Full Match"),
-    phone: Optional[str] = typer.Option(None, help="Filter by phone - Full Match - Parsing handled by Wealthbox"),
-    active: Optional[bool] = typer.Option(None, help="Filter by active status"),
-    tags: Optional[str] = typer.Option(None, help="Comma-separated tags"),
-    deleted: Optional[bool] = typer.Option(None, help="Only returns contacts whose active flag match the specified value"),
-    deleted_since: Optional[str] = typer.Option(None, help="Only returns deleted contacts that were deleted on or after this timestamp"),
-    household_title: Optional[HouseholdTitleOptions] = typer.Option(None, help="The household title you wish to filter the household title"),
-    type_: Optional[RecordTypeOptions] = typer.Option(None, "--type", help="Record Type - Person, Household, Organization, or Trust"),
-    order: Optional[ContactsOrderOptions] = typer.Option(None, help="The order that the contacts should be returned in"),
-    updated_since: Optional[str] = typer.Option(None, "--updated-since", help="Format of 'YYYY-MM-DD 07:00 AM -0700'"),
-    updated_before: Optional[str] = typer.Option(None, "--updated-before", help="Format of 'YYYY-MM-DD 07:00 AM -0700'"),
-    page: Optional[int] = typer.Option(None, help="Page number"),
-    per_page: Optional[int] = typer.Option(None, "--per-page", help="Results per page"),
-    token: Optional[str] = typer.Option(None, envvar="WEALTHBOX_TOKEN", hidden=True),
+    contact_type: str | None = typer.Option(None, "--contact-type", help="Client, Prospect, Vendor, etc."),
+    name: str | None = typer.Option(None, help="Filter by name - Contains"),
+    email: str | None = typer.Option(None, help="Filter by email - Full Match"),
+    phone: str | None = typer.Option(None, help="Filter by phone - Full Match - Parsing handled by Wealthbox"),
+    active: bool | None = typer.Option(None, help="Filter by active status"),
+    tags: str | None = typer.Option(None, help="Comma-separated tags"),
+    deleted: bool | None = typer.Option(None, help="Only returns contacts whose active flag match the specified value"),
+    deleted_since: str | None = typer.Option(None, help="Only returns deleted contacts that were deleted on or after this timestamp"),
+    household_title: HouseholdTitle | None = typer.Option(None, help="The household title you wish to filter the household title"),
+    type_: RecordType | None = typer.Option(None, "--type", help="Record Type - Person, Household, Organization, or Trust"),
+    order: ContactsOrder | None = typer.Option(None, help="The order that the contacts should be returned in"),
+    updated_since: str | None = typer.Option(None, "--updated-since", help="Format of 'YYYY-MM-DD 07:00 AM -0700'"),
+    updated_before: str | None = typer.Option(None, "--updated-before", help="Format of 'YYYY-MM-DD 07:00 AM -0700'"),
+    page: int | None = typer.Option(None, help="Page number"),
+    per_page: int | None = typer.Option(None, "--per-page", help="Results per page"),
+    token: str | None = typer.Option(None, envvar="WEALTHBOX_TOKEN", hidden=True),
     fmt: str = typer.Option("json", "--format", help="Output format: json or table"),
 ) -> None:
     """List contacts with optional filters."""
@@ -78,7 +77,7 @@ def list_contacts(
 @handle_errors
 def get_contact(
     contact_id: int = typer.Argument(..., help="Contact ID"),
-    token: Optional[str] = typer.Option(None, envvar="WEALTHBOX_TOKEN", hidden=True),
+    token: str | None = typer.Option(None, envvar="WEALTHBOX_TOKEN", hidden=True),
     fmt: str = typer.Option("json", "--format", help="Output format: json or table"),
 ) -> None:
     """Get a single contact by ID."""
@@ -93,7 +92,7 @@ def get_contact(
 @handle_errors
 def create_contact(
     data: str = typer.Argument(..., help="JSON object of contact fields"),
-    token: Optional[str] = typer.Option(None, envvar="WEALTHBOX_TOKEN", hidden=True),
+    token: str | None = typer.Option(None, envvar="WEALTHBOX_TOKEN", hidden=True),
     fmt: str = typer.Option("json", "--format", help="Output format: json or table"),
 ) -> None:
     """Create a new contact. Pass fields as a JSON string."""
@@ -111,7 +110,7 @@ def create_contact(
 def update_contact(
     contact_id: int = typer.Argument(..., help="Contact ID"),
     data: str = typer.Argument(..., help="JSON object of fields to update"),
-    token: Optional[str] = typer.Option(None, envvar="WEALTHBOX_TOKEN", hidden=True),
+    token: str | None = typer.Option(None, envvar="WEALTHBOX_TOKEN", hidden=True),
     fmt: str = typer.Option("json", "--format", help="Output format: json or table"),
 ) -> None:
     """Update an existing contact. Pass changed fields as a JSON string."""
@@ -128,7 +127,7 @@ def update_contact(
 @handle_errors
 def delete_contact(
     contact_id: int = typer.Argument(..., help="Contact ID"),
-    token: Optional[str] = typer.Option(None, envvar="WEALTHBOX_TOKEN", hidden=True),
+    token: str | None = typer.Option(None, envvar="WEALTHBOX_TOKEN", hidden=True),
 ) -> None:
     """Delete a contact by ID."""
     async def _run() -> None:

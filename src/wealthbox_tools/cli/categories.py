@@ -1,11 +1,10 @@
 from __future__ import annotations
 
 import asyncio
-from typing import Optional
 
 import typer
 
-from wealthbox_tools.models import DocumentTypeOptions
+from wealthbox_tools.models import DocumentType
 
 from ._util import get_client, handle_errors, make_category_command, output_result
 
@@ -22,8 +21,8 @@ app.command("financial-account-types", help="List financial account type options
 @app.command("custom-fields")
 @handle_errors
 def custom_fields(
-    document_type: Optional[DocumentTypeOptions] = typer.Option(None, "--document-type", help="Filter by document type"),
-    token: Optional[str] = typer.Option(None, envvar="WEALTHBOX_TOKEN", hidden=True),
+    document_type: DocumentType | None = typer.Option(None, "--document-type", help="Filter by document type"),
+    token: str | None = typer.Option(None, envvar="WEALTHBOX_TOKEN", hidden=True),
     fmt: str = typer.Option("json", "--format"),
 ) -> None:
     """List custom field categories."""

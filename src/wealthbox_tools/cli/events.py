@@ -2,11 +2,10 @@ from __future__ import annotations
 
 import asyncio
 import json
-from typing import Optional
 
 import typer
 
-from wealthbox_tools.models import EventCreateInput, EventListQuery, EventUpdateInput, EventsOrderOptions
+from wealthbox_tools.models import EventCreateInput, EventListQuery, EventUpdateInput, EventsOrder
 
 from ._util import get_client, handle_errors, make_category_command, output_result
 
@@ -17,16 +16,16 @@ app.command("categories", help="List event category options.")(make_category_com
 @app.command("list")
 @handle_errors
 def list_events(
-    resource_id: Optional[int] = typer.Option(None, "--resource-id", help="Filter by resource ID"),
-    resource_type: Optional[str] = typer.Option(None, "--resource-type", help="Supports: Contact, Project, Opportunity"),
-    start_date_min: Optional[str] = typer.Option(None, "--start-date-min", help="Format example: '2015-05-24 10:00 AM -0400'"),
-    start_date_max: Optional[str] = typer.Option(None, "--start-date-max", help="Format example: '2015-05-24 10:00 AM -0400'"),
-    order: Optional[EventsOrderOptions] = typer.Option(None, "--order", help="asc, desc, recent, created"),
-    updated_since: Optional[str] = typer.Option(None, "--updated-since", help="Format example: '2015-05-24 10:00 AM -0400'"),
-    updated_before: Optional[str] = typer.Option(None, "--updated-before", help="Format example: '2015-05-24 10:00 AM -0400'"),
-    page: Optional[int] = typer.Option(None),
-    per_page: Optional[int] = typer.Option(None, "--per-page"),
-    token: Optional[str] = typer.Option(None, envvar="WEALTHBOX_TOKEN", hidden=True),
+    resource_id: int | None = typer.Option(None, "--resource-id", help="Filter by resource ID"),
+    resource_type: str | None = typer.Option(None, "--resource-type", help="Supports: Contact, Project, Opportunity"),
+    start_date_min: str | None = typer.Option(None, "--start-date-min", help="Format example: '2015-05-24 10:00 AM -0400'"),
+    start_date_max: str | None = typer.Option(None, "--start-date-max", help="Format example: '2015-05-24 10:00 AM -0400'"),
+    order: EventsOrder | None = typer.Option(None, "--order", help="asc, desc, recent, created"),
+    updated_since: str | None = typer.Option(None, "--updated-since", help="Format example: '2015-05-24 10:00 AM -0400'"),
+    updated_before: str | None = typer.Option(None, "--updated-before", help="Format example: '2015-05-24 10:00 AM -0400'"),
+    page: int | None = typer.Option(None),
+    per_page: int | None = typer.Option(None, "--per-page"),
+    token: str | None = typer.Option(None, envvar="WEALTHBOX_TOKEN", hidden=True),
     fmt: str = typer.Option("json", "--format"),
 ) -> None:
     """List events with optional filters."""
@@ -53,7 +52,7 @@ def list_events(
 @handle_errors
 def get_event(
     event_id: int = typer.Argument(..., help="Event ID"),
-    token: Optional[str] = typer.Option(None, envvar="WEALTHBOX_TOKEN", hidden=True),
+    token: str | None = typer.Option(None, envvar="WEALTHBOX_TOKEN", hidden=True),
     fmt: str = typer.Option("json", "--format"),
 ) -> None:
     """Get a single event by ID."""
@@ -68,7 +67,7 @@ def get_event(
 @handle_errors
 def create_event(
     data: str = typer.Argument(..., help="JSON object with title and starts_at required"),
-    token: Optional[str] = typer.Option(None, envvar="WEALTHBOX_TOKEN", hidden=True),
+    token: str | None = typer.Option(None, envvar="WEALTHBOX_TOKEN", hidden=True),
     fmt: str = typer.Option("json", "--format"),
 ) -> None:
     """Create a new event. Required fields: title, starts_at."""
@@ -86,7 +85,7 @@ def create_event(
 def update_event(
     event_id: int = typer.Argument(..., help="Event ID"),
     data: str = typer.Argument(..., help="JSON object of fields to update"),
-    token: Optional[str] = typer.Option(None, envvar="WEALTHBOX_TOKEN", hidden=True),
+    token: str | None = typer.Option(None, envvar="WEALTHBOX_TOKEN", hidden=True),
     fmt: str = typer.Option("json", "--format"),
 ) -> None:
     """Update an existing event."""
@@ -103,7 +102,7 @@ def update_event(
 @handle_errors
 def delete_event(
     event_id: int = typer.Argument(..., help="Event ID"),
-    token: Optional[str] = typer.Option(None, envvar="WEALTHBOX_TOKEN", hidden=True),
+    token: str | None = typer.Option(None, envvar="WEALTHBOX_TOKEN", hidden=True),
 ) -> None:
     """Delete an event by ID."""
     async def _run() -> None:

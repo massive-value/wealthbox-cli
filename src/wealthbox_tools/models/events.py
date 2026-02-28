@@ -3,12 +3,12 @@ from __future__ import annotations
 from pydantic import Field
 
 from .common import PaginationQuery, RequireAnyFieldModel, WealthboxModel, LinkedToRef
-from .enums import EventsOrderOptions, EventsStateOptions, EmailInviteeTypeOptions
+from .enums import EventsOrder, EventsState, EmailInviteeType
 
 
 class EmailInvitees(WealthboxModel):
     id: int | None = None
-    type: EmailInviteeTypeOptions | None = None
+    type: EmailInviteeType | None = None
 
 
 class EventListQuery(PaginationQuery):
@@ -16,7 +16,7 @@ class EventListQuery(PaginationQuery):
     resource_type: str | None = None
     start_date_min: str | None = None
     start_date_max: str | None = None
-    order: EventsOrderOptions | None = None
+    order: EventsOrder | None = None
     updated_since: str | None = None
     updated_before: str | None = None
 
@@ -30,7 +30,7 @@ class EventCreateInput(WealthboxModel):
     all_day: bool | None = None
     location: str | None = None
     description: str | None = None
-    state: EventsStateOptions | None = None
+    state: EventsState | None = None
     # visible_to: str | None = None
     email_invitees: bool | None = None
     linked_to: list[LinkedToRef] | None = None
@@ -47,7 +47,7 @@ class EventUpdateInput(RequireAnyFieldModel):
     all_day: bool | None = None
     location: str | None = None
     description: str | None = None
-    state: EventsStateOptions | None = None
+    state: EventsState | None = None
     # visible_to: str | None = None
     email_invitees: bool | None = None
     linked_to: LinkedToRef | None = None
