@@ -1,89 +1,283 @@
+# Wealthbox CLI
 
-## Wealthbox Docs
-`https://www.wealthbox.com/api/`
+A command-line interface for interacting with the Wealthbox CRM API.
 
-`https://dev.wealthbox.com`
+This tool provides structured access to contacts, households, tasks,
+events, notes, users, categories, and more --- directly from your
+terminal.
 
-`https://dev.wealthbox.com/?_gl=1*u407x6*_gcl_aw*R0NMLjE3NzE5NjQwODEuQ2owS0NRaUF0ZlhNQmhEekFSSXNBSjBqcDNEVDA3QVBmOGd2Q205N01VZXQ4MXMtZ0o2ZlRrdDgtUlF6OUhwSHRtekJWOUhVcnU0WkduY2FBdDdTRUFMd193Y0I.*_gcl_au*OTk4NDQyNDQzLjE3NzEwMDU2ODE.`
+Official API documentation: - https://www.wealthbox.com/api/ -
+https://dev.wealthbox.com
 
+------------------------------------------------------------------------
 
-## Examples
+## Features
 
-### Health
-    wbox me
-    wbox users
-    wbox activity
+-   Full CRUD support for:
+    -   Contacts
+    -   Households
+    -   Tasks
+    -   Events
+    -   Notes (create, read, update --- delete not supported by API)
+-   Category and metadata lookups
+-   Filtering and query parameters
+-   JSON-based advanced field support
+-   Modular CLI structure
+-   Extensible client + model architecture
 
-### Contacts
-    wbox contacts list
+------------------------------------------------------------------------
 
-### Households
-    wbox households add-member <household_id> --member-id <person_contact_id> --title "[Head|Spouse|Parent|Other Dependent|Child|Sibling|Partner|Grandchild|Grandparent]"
-    wbox households remove-member <household_id> --member-id <person_contact_id>
+## Installation
 
-### Tasks
-    wbox tasks categories
+### 1. Clone the Repository
 
-    wbox tasks create "Test Task" --frame "today" --more-fields '{"linked_to": [{"id": 30776510, "type": "Contact"}]}'
-    wbox tasks get 79972986
-    wbox tasks update 79972986 '{"name": "Test Task 2", "frame": "tomorrow", "description": "Testing adding a description"}'
-    wbox tasks delete 79972986
+``` bash
+git clone <your-repo-url>
+cd wealthbox-cli
+```
 
-#### wbox tasks list 
-    ```
-    --resource-id
-    --resource-type
-    --assigned-to
-    --assigned-to-team
-    --created-by
-    --completed
-    --task-type
-    --updated-since
-    --updated-before
-    ```
+### 2. Install (Recommended: Virtual Environment)
 
-    wbox tasks create
-    wbox tasks update
-    wbox tasks delete
+``` bash
+python -m venv .venv
+source .venv/bin/activate  # macOS/Linux
+# OR
+.venv\Scripts\activate     # Windows
+```
 
-### Events
-wbox events categories
+Then install:
 
-#### wbox events list
---resource-id
---resource-type
---start-date-min
---start-date-max
---order [asc|desc|recent|created]
---updated-since
---updated-before
+``` bash
+pip install -e .
+```
 
-wbox events create '{"title": "Test Event", "starts_at": "2026-02-27 11:00 AM -0700", "ends_at": "2026-02-27 12:00 PM -0700", "linked_to": [{"id": 30776510, "type": "Contact"}], "invitees": [{"id": 152760, "type": "User"}]}'
-wbox events get 89801882
-wbox events update 89801882 '{"state": "confirmed", "location": "test location"}'
-wbox events delete 89801882
+------------------------------------------------------------------------
 
+## Configuration
 
+Set your Wealthbox API token as an environment variable:
 
-### Notes
-    wbox notes create '{"content": "Test note", "linked_to": [{"id": 30776510, "type": "Contact"}]}'
-    wbox notes get 240034639
-    wbox notes update 240034639 '{"content": "Updated test note"}'
-    Deleting notes is not supported via v1 API
+**macOS/Linux**
 
+``` bash
+export WEALTHBOX_API_TOKEN="your_api_token_here"
+```
 
-#### wbox notes list
-    --resource-id
-    --resource-type
-    --order
-    --updated-since
-    --updated-before
+**Windows (PowerShell)**
 
+``` powershell
+setx WEALTHBOX_API_TOKEN "your_api_token_here"
+```
+
+------------------------------------------------------------------------
+
+## Basic Usage
+
+``` bash
+wbox <resource> <command> [options]
+```
+
+Health checks:
+
+``` bash
+wbox me
+wbox users
+wbox activity
+```
+
+------------------------------------------------------------------------
+
+## Contacts
+
+``` bash
+wbox contacts list
+```
+
+------------------------------------------------------------------------
+
+## Households
+
+Add member:
+
+``` bash
+wbox households add-member <household_id>   --member-id <person_contact_id>   --title "Head|Spouse|Parent|Other Dependent|Child|Sibling|Partner|Grandchild|Grandparent"
+```
+
+Remove member:
+
+``` bash
+wbox households remove-member <household_id>   --member-id <person_contact_id>
+```
+
+------------------------------------------------------------------------
+
+## Tasks
 
 ### Categories
-    wbox categories [tags|file-categories|opportunity-stages|opportunity-pipelines|investment-objectives|financial-account-types]
 
+``` bash
+wbox tasks categories
+```
+
+### Create
+
+``` bash
+wbox tasks create "Task Name"   --frame "today"   --more-fields '{"linked_to": [{"id": 30776510, "type": "Contact"}]}'
+```
+
+### Get
+
+``` bash
+wbox tasks get <task_id>
+```
+
+### Update
+
+``` bash
+wbox tasks update <task_id> '{"name": "Updated Name", "frame": "tomorrow"}'
+```
+
+### Delete
+
+``` bash
+wbox tasks delete <task_id>
+```
+
+### List with Filters
+
+``` bash
+wbox tasks list   --resource-id <id>   --resource-type <Contact|Opportunity|Project>   --assigned-to <user_id>   --assigned-to-team <team_id>   --created-by <user_id>   --completed true|false   --task-type <type_id>   --updated-since YYYY-MM-DD   --updated-before YYYY-MM-DD
+```
+
+------------------------------------------------------------------------
+
+## Events
+
+### Categories
+
+``` bash
+wbox events categories
+```
+
+### List
+
+``` bash
+wbox events list   --resource-id <id>   --resource-type <Contact|Opportunity|Project>   --start-date-min YYYY-MM-DD   --start-date-max YYYY-MM-DD   --order asc|desc|recent|created   --updated-since YYYY-MM-DD   --updated-before YYYY-MM-DD
+```
+
+### Create
+
+``` bash
+wbox events create '{
+  "title": "Test Event",
+  "starts_at": "2026-02-27 11:00 AM -0700",
+  "ends_at": "2026-02-27 12:00 PM -0700",
+  "linked_to": [{"id": 30776510, "type": "Contact"}],
+  "invitees": [{"id": 152760, "type": "User"}]
+}'
+```
+
+### Get
+
+``` bash
+wbox events get <event_id>
+```
+
+### Update
+
+``` bash
+wbox events update <event_id> '{"state": "confirmed", "location": "Office"}'
+```
+
+### Delete
+
+``` bash
+wbox events delete <event_id>
+```
+
+------------------------------------------------------------------------
+
+## Notes
+
+### Create
+
+``` bash
+wbox notes create '{
+  "content": "Test note",
+  "linked_to": [{"id": 30776510, "type": "Contact"}]
+}'
+```
+
+### Get
+
+``` bash
+wbox notes get <note_id>
+```
+
+### Update
+
+``` bash
+wbox notes update <note_id> '{"content": "Updated content"}'
+```
+
+Note: Deleting notes is not supported via the Wealthbox v1 API.
+
+### List
+
+``` bash
+wbox notes list   --resource-id <id>   --resource-type <Contact|Opportunity|Project>   --order asc|desc|recent|created   --updated-since YYYY-MM-DD   --updated-before YYYY-MM-DD
+```
+
+------------------------------------------------------------------------
+
+## Categories & Metadata
+
+``` bash
+wbox categories tags
+wbox categories file-categories
+wbox categories opportunity-stages
+wbox categories opportunity-pipelines
+wbox categories investment-objectives
+wbox categories financial-account-types
+```
 
 ### Custom Fields
-    wbox categories custom-fields
-    wbox categories custom-fields --document-type [Contact|Opportunity|Project|Task|Event|ManualInvestmentAccount|DataFile]
+
+``` bash
+wbox categories custom-fields
+```
+
+Filter:
+
+``` bash
+wbox categories custom-fields   --document-type Contact|Opportunity|Project|Task|Event|ManualInvestmentAccount|DataFile
+```
+
+------------------------------------------------------------------------
+
+## Project Structure
+
+    src/
+      wealthbox_tools/
+        cli/        # CLI command definitions
+        client/     # API client logic
+        models/     # Data models and schemas
+
+------------------------------------------------------------------------
+
+## Troubleshooting
+
+**401 Unauthorized** Check your API token.
+
+**JSON Errors** Validate formatting and quoting.
+
+**Date Errors** Use proper ISO or Wealthbox-supported formats.
+
+------------------------------------------------------------------------
+
+## Disclaimer
+
+This CLI wraps the Wealthbox API. Behavior depends on API version and
+your account permissions.
+
+Test destructive operations carefully.
