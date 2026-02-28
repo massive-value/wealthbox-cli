@@ -1,21 +1,29 @@
 from __future__ import annotations
 
 from .base import WealthboxAPIError, _WealthboxBase
+from .activity import ActivityMixin
+from .categories import CategoriesMixin
 from .contacts import ContactsMixin
 from .events import EventsMixin
-from .notes import NotesMixin
 from .households import HouseholdsMixin
-from .readonly import ReadOnlyMixin
+from .me import MeMixin
+from .notes import NotesMixin
 from .tasks import TasksMixin
+from .users import UsersMixin
+
 
 
 class WealthboxClient(
+    ActivityMixin,
+    CategoriesMixin,
     ContactsMixin,
-    TasksMixin,
     EventsMixin,
-    NotesMixin,
     HouseholdsMixin,
-    ReadOnlyMixin,
+    MeMixin,
+    NotesMixin,
+    TasksMixin,
+    UsersMixin,
+    
     _WealthboxBase,
 ):
     """Async Wealthbox CRM API client.
