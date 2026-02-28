@@ -20,7 +20,7 @@ class WealthboxAPIError(Exception):
 
 
 class RateLimiter:
-    """Async token-bucket rate limiter: sustains 1 req/sec, allows bursts."""
+    """Async token-bucket rate limiter: simple rate limiting"""
 
     def __init__(self, rate: float = 1.0):
         self._rate = rate

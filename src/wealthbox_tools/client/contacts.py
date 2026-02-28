@@ -26,7 +26,7 @@ class ContactsMixin:
         return resp.json()
 
     async def update_contact(self, contact_id: int, data: ContactUpdateInput) -> dict[str, Any]:
-        payload = data.model_dump(exclude_none=True)
+        payload = data.model_dump(exclude_unset=True)
         resp = await self._request("PUT", f"/contacts/{contact_id}", json=payload)  # type: ignore[attr-defined]
         return resp.json()
 

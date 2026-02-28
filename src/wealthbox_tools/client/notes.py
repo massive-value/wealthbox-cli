@@ -23,6 +23,6 @@ class NotesMixin:
         return resp.json()
 
     async def update_note(self, note_id: int, data: NoteUpdateInput) -> dict[str, Any]:
-        payload = data.model_dump(exclude_none=True)
+        payload = data.model_dump(exclude_unset=True)
         resp = await self._request("PUT", f"/notes/{note_id}", json=payload)  # type: ignore[attr-defined]
         return resp.json()

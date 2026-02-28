@@ -23,7 +23,7 @@ class TasksMixin:
         return resp.json()
 
     async def update_task(self, task_id: int, data: TaskUpdateInput) -> dict[str, Any]:
-        payload = data.model_dump(exclude_none=True)
+        payload = data.model_dump(exclude_unset=True)
         resp = await self._request("PUT", f"/tasks/{task_id}", json=payload)  # type: ignore[attr-defined]
         return resp.json()
 

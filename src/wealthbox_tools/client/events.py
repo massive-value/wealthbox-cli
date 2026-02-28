@@ -23,7 +23,7 @@ class EventsMixin:
         return resp.json()
 
     async def update_event(self, event_id: int, data: EventUpdateInput) -> dict[str, Any]:
-        payload = data.model_dump(exclude_none=True)
+        payload = data.model_dump(exclude_unset=True)
         resp = await self._request("PUT", f"/events/{event_id}", json=payload)  # type: ignore[attr-defined]
         return resp.json()
 

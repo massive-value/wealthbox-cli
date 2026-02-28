@@ -24,10 +24,10 @@
 ### Tasks
     wbox tasks categories
 
-    wbox tasks create '{"name": "Test Task 2", "frame": "today", "linked_to": [{"id": 30776510, "type": "Contact"}]}'
-    wbox tasks get 79960846
-    wbox tasks update 79960846 '{"name": "Test Task 2", "frame": "tomorrow", "description": "Testing adding a description"}'
-    wbox tasks delete 79960846
+    wbox tasks create "Test Task" --frame "today" --more-fields '{"linked_to": [{"id": 30776510, "type": "Contact"}]}'
+    wbox tasks get 79972986
+    wbox tasks update 79972986 '{"name": "Test Task 2", "frame": "tomorrow", "description": "Testing adding a description"}'
+    wbox tasks delete 79972986
 
 #### wbox tasks list 
     ```

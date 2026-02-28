@@ -1,12 +1,12 @@
 from __future__ import annotations
 
 import asyncio
-import functools
 import json
-import sys
+from functools import wraps
 from typing import Any, Optional
 
 import typer
+from pydantic import ValidationError
 
 from wealthbox_tools.client import WealthboxAPIError, WealthboxClient
 
@@ -27,24 +27,36 @@ def output_result(data: Any, fmt: str = "json") -> None:
 
 
 
-def handle_errors(func):  # type: ignore[no-untyped-def]
-    """Decorator that catches known exceptions and prints user-friendly errors."""
-    @functools.wraps(func)
-    def wrapper(*args: Any, **kwargs: Any) -> Any:
+def handle_errors(func):
+    @wraps(func)
+    def wrapper(*args, **kwargs):
         try:
             return func(*args, **kwargs)
+
+        except WealthboxAPIError as e:
+            typer.echo(f"API Error ({e.status_code}): {e.detail}", err=True)
+            raise typer.Exit(code=1)
+
+        except ValidationError as e:
+            typer.echo("Validation Error:", err=True)
+            for err_item in e.errors():
+                loc = " -> ".join(str(x) for x in err_item["loc"])
+                msg = err_item["msg"]
+                typer.echo(f"  {loc}: {msg}", err=True)
+            raise typer.Exit(code=1)
+
         except json.JSONDecodeError as e:
             typer.echo(f"Invalid JSON: {e}", err=True)
             raise typer.Exit(code=1)
+
         except ValueError as e:
-            typer.echo(f"Validation error: {e}", err=True)
-            raise typer.Exit(code=1)
-        except WealthboxAPIError as e:
-            typer.echo(f"API error {e.status_code}: {e.detail}", err=True)
-            raise typer.Exit(code=1)
-        except Exception as e:
             typer.echo(f"Error: {e}", err=True)
             raise typer.Exit(code=1)
+
+        except Exception as e:
+            typer.echo(f"Unexpected error: {e}", err=True)
+            raise typer.Exit(code=1)
+
     return wrapper
 
 

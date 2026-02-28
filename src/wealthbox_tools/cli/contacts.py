@@ -44,7 +44,7 @@ def list_contacts(
     page: int | None = typer.Option(None, help="Page number"),
     per_page: int | None = typer.Option(None, "--per-page", help="Results per page"),
     token: str | None = typer.Option(None, envvar="WEALTHBOX_TOKEN", hidden=True),
-    fmt: str = typer.Option("json", "--format", help="Output format: json or table"),
+    fmt: str = typer.Option("json", "--format", help="Output format: json only for now"),
 ) -> None:
     """List contacts with optional filters."""
     tag_list = [t.strip() for t in tags.split(",")] if tags else None
@@ -78,7 +78,7 @@ def list_contacts(
 def get_contact(
     contact_id: int = typer.Argument(..., help="Contact ID"),
     token: str | None = typer.Option(None, envvar="WEALTHBOX_TOKEN", hidden=True),
-    fmt: str = typer.Option("json", "--format", help="Output format: json or table"),
+    fmt: str = typer.Option("json", "--format", help="Output format: json only for now"),
 ) -> None:
     """Get a single contact by ID."""
     async def _run() -> dict:
@@ -93,7 +93,7 @@ def get_contact(
 def create_contact(
     data: str = typer.Argument(..., help="JSON object of contact fields"),
     token: str | None = typer.Option(None, envvar="WEALTHBOX_TOKEN", hidden=True),
-    fmt: str = typer.Option("json", "--format", help="Output format: json or table"),
+    fmt: str = typer.Option("json", "--format", help="Output format: json only for now"),
 ) -> None:
     """Create a new contact. Pass fields as a JSON string."""
     input_model = ContactCreateInput(**json.loads(data))
@@ -111,7 +111,7 @@ def update_contact(
     contact_id: int = typer.Argument(..., help="Contact ID"),
     data: str = typer.Argument(..., help="JSON object of fields to update"),
     token: str | None = typer.Option(None, envvar="WEALTHBOX_TOKEN", hidden=True),
-    fmt: str = typer.Option("json", "--format", help="Output format: json or table"),
+    fmt: str = typer.Option("json", "--format", help="Output format: json only for now"),
 ) -> None:
     """Update an existing contact. Pass changed fields as a JSON string."""
     input_model = ContactUpdateInput(**json.loads(data))
