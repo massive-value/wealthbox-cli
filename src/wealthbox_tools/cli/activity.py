@@ -1,13 +1,13 @@
 from __future__ import annotations
 
-import asyncio
-
 import typer
 
-from ._util import get_client, handle_errors, output_result
+from wealthbox_tools.models import ActivityListQuery, ActivityType
+
+from ._util import handle_errors, output_result, run_client
 
 app = typer.Typer(help="List Wealthbox activity feed.", no_args_is_help=True)
-from wealthbox_tools.models import ActivityListQuery, ActivityType
+
 
 @app.command("list")
 @handle_errors
@@ -30,9 +30,4 @@ def list_activity(
         page=page,
         per_page=per_page,
     )
-
-    async def _run() -> dict:
-        async with get_client(token) as client:
-            return await client.list_activity(query)
-
-    output_result(asyncio.run(_run()), fmt)
+    output_result(run_client(token, lambda c: c.list_activity(query)), fmt)

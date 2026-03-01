@@ -1,13 +1,12 @@
 from __future__ import annotations
 
-import asyncio
 import json
 
 import typer
 
 from wealthbox_tools.models import EventCreateInput, EventListQuery, EventUpdateInput, EventsOrder, TaskResourceType
 
-from ._util import get_client, handle_errors, make_category_command, output_result
+from ._util import handle_errors, make_category_command, output_result, run_client
 
 app = typer.Typer(help="Manage Wealthbox events.", no_args_is_help=True)
 app.command("categories", help="List event category options.")(make_category_command("event_categories"))
@@ -41,11 +40,7 @@ def list_events(
         per_page=per_page,
     )
 
-    async def _run() -> dict:
-        async with get_client(token) as client:
-            return await client.list_events(query)
-
-    output_result(asyncio.run(_run()), fmt)
+    output_result(run_client(token, lambda c: c.list_events(query)), fmt)
 
 
 @app.command("get")
@@ -56,11 +51,7 @@ def get_event(
     fmt: str = typer.Option("json", "--format"),
 ) -> None:
     """Get a single event by ID."""
-    async def _run() -> dict:
-        async with get_client(token) as client:
-            return await client.get_event(event_id)
-
-    output_result(asyncio.run(_run()), fmt)
+    output_result(run_client(token, lambda c: c.get_event(event_id)), fmt)
 
 
 @app.command("create")
@@ -73,11 +64,7 @@ def create_event(
     """Create a new event. Required fields: title, starts_at."""
     input_model = EventCreateInput(**json.loads(data))
 
-    async def _run() -> dict:
-        async with get_client(token) as client:
-            return await client.create_event(input_model)
-
-    output_result(asyncio.run(_run()), fmt)
+    output_result(run_client(token, lambda c: c.create_event(input_model)), fmt)
 
 
 @app.command("update")
@@ -91,11 +78,7 @@ def update_event(
     """Update an existing event."""
     input_model = EventUpdateInput(**json.loads(data))
 
-    async def _run() -> dict:
-        async with get_client(token) as client:
-            return await client.update_event(event_id, input_model)
-
-    output_result(asyncio.run(_run()), fmt)
+    output_result(run_client(token, lambda c: c.update_event(event_id, input_model)), fmt)
 
 
 @app.command("delete")
@@ -105,9 +88,5 @@ def delete_event(
     token: str | None = typer.Option(None, envvar="WEALTHBOX_TOKEN", hidden=True),
 ) -> None:
     """Delete an event by ID."""
-    async def _run() -> None:
-        async with get_client(token) as client:
-            await client.delete_event(event_id)
-
-    asyncio.run(_run())
+    run_client(token, lambda c: c.delete_event(event_id))
     typer.echo(f"Event {event_id} deleted.")

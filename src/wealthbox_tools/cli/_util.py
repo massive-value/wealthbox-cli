@@ -2,8 +2,9 @@ from __future__ import annotations
 
 import asyncio
 import json
+from collections.abc import Awaitable, Callable
 from functools import wraps
-from typing import Any, Optional
+from typing import Any
 
 import typer
 from pydantic import ValidationError
@@ -21,15 +22,22 @@ def get_client(token: str | None = None) -> WealthboxClient:
     return WealthboxClient(token=token)
 
 
+def run_client(token: str | None, fn: Callable[[WealthboxClient], Awaitable[Any]]) -> Any:
+    """Run an async client operation, managing the event loop and client lifecycle."""
+    async def _execute() -> Any:
+        async with get_client(token) as client:
+            return await fn(client)
+    return asyncio.run(_execute())
+
+
 def output_result(data: Any, fmt: str = "json") -> None:
     """Print result to stdout in the requested format."""
     typer.echo(json.dumps(data, indent=2, default=str))
 
 
-
-def handle_errors(func):
+def handle_errors(func):  # type: ignore[no-untyped-def]
     @wraps(func)
-    def wrapper(*args, **kwargs):
+    def wrapper(*args, **kwargs):  # type: ignore[no-untyped-def]
         try:
             return func(*args, **kwargs)
 
@@ -64,11 +72,8 @@ def make_category_command(category_type: str):  # type: ignore[no-untyped-def]
     """Factory that returns a Typer command function for listing a category type."""
     @handle_errors
     def cmd(
-        token: Optional[str] = typer.Option(None, envvar="WEALTHBOX_TOKEN", hidden=True),
+        token: str | None = typer.Option(None, envvar="WEALTHBOX_TOKEN", hidden=True),
         fmt: str = typer.Option("json", "--format"),
     ) -> None:
-        async def _run() -> dict:
-            async with get_client(token) as client:
-                return await client.list_categories(category_type)
-        output_result(asyncio.run(_run()), fmt)
+        output_result(run_client(token, lambda c: c.list_categories(category_type)), fmt)
     return cmd

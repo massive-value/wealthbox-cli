@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import asyncio
 import json
 
 import typer
@@ -9,7 +8,7 @@ from wealthbox_tools.models import ContactCreateInput, ContactListQuery, Contact
 
 from wealthbox_tools.models import HouseholdTitle, ContactsOrder, RecordType
 
-from ._util import get_client, handle_errors, make_category_command, output_result
+from ._util import handle_errors, make_category_command, output_result, run_client
 
 app = typer.Typer(help="Manage Wealthbox contacts.", no_args_is_help=True)
 
@@ -66,11 +65,7 @@ def list_contacts(
         per_page=per_page,
     )
 
-    async def _run() -> dict:
-        async with get_client(token) as client:
-            return await client.list_contacts(query)
-
-    output_result(asyncio.run(_run()), fmt)
+    output_result(run_client(token, lambda c: c.list_contacts(query)), fmt)
 
 
 @app.command("get")
@@ -81,11 +76,7 @@ def get_contact(
     fmt: str = typer.Option("json", "--format", help="Output format: json only for now"),
 ) -> None:
     """Get a single contact by ID."""
-    async def _run() -> dict:
-        async with get_client(token) as client:
-            return await client.get_contact(contact_id)
-
-    output_result(asyncio.run(_run()), fmt)
+    output_result(run_client(token, lambda c: c.get_contact(contact_id)), fmt)
 
 
 @app.command("create")
@@ -98,11 +89,7 @@ def create_contact(
     """Create a new contact. Pass fields as a JSON string."""
     input_model = ContactCreateInput(**json.loads(data))
 
-    async def _run() -> dict:
-        async with get_client(token) as client:
-            return await client.create_contact(input_model)
-
-    output_result(asyncio.run(_run()), fmt)
+    output_result(run_client(token, lambda c: c.create_contact(input_model)), fmt)
 
 
 @app.command("update")
@@ -116,11 +103,7 @@ def update_contact(
     """Update an existing contact. Pass changed fields as a JSON string."""
     input_model = ContactUpdateInput(**json.loads(data))
 
-    async def _run() -> dict:
-        async with get_client(token) as client:
-            return await client.update_contact(contact_id, input_model)
-
-    output_result(asyncio.run(_run()), fmt)
+    output_result(run_client(token, lambda c: c.update_contact(contact_id, input_model)), fmt)
 
 
 @app.command("delete")
@@ -130,9 +113,5 @@ def delete_contact(
     token: str | None = typer.Option(None, envvar="WEALTHBOX_TOKEN", hidden=True),
 ) -> None:
     """Delete a contact by ID."""
-    async def _run() -> None:
-        async with get_client(token) as client:
-            await client.delete_contact(contact_id)
-
-    asyncio.run(_run())
+    run_client(token, lambda c: c.delete_contact(contact_id))
     typer.echo(f"Contact {contact_id} deleted.")

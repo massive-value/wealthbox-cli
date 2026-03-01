@@ -1,12 +1,10 @@
 from __future__ import annotations
 
-import asyncio
-
 import typer
 
 from wealthbox_tools.models import DocumentType
 
-from ._util import get_client, handle_errors, make_category_command, output_result
+from ._util import handle_errors, make_category_command, output_result, run_client
 
 app = typer.Typer(help="Workspace-level category lookups.", no_args_is_help=True)
 
@@ -26,7 +24,4 @@ def custom_fields(
     fmt: str = typer.Option("json", "--format"),
 ) -> None:
     """List custom field categories."""
-    async def _run() -> dict:
-        async with get_client(token) as client:
-            return await client.list_categories("custom_fields", document_type=document_type)
-    output_result(asyncio.run(_run()), fmt)
+    output_result(run_client(token, lambda c: c.list_categories("custom_fields", document_type=document_type)), fmt)

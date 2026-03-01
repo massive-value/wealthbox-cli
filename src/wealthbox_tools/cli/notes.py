@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import asyncio
 import json
 
 import typer
@@ -8,7 +7,7 @@ import typer
 from wealthbox_tools.models import NoteCreateInput, NoteListQuery, NoteUpdateInput
 from wealthbox_tools.models import NotesOrder
 
-from ._util import get_client, handle_errors, output_result
+from ._util import handle_errors, output_result, run_client
 
 app = typer.Typer(help="Manage Wealthbox notes.", no_args_is_help=True)
 
@@ -37,11 +36,7 @@ def list_notes(
         per_page=per_page,
     )
 
-    async def _run() -> dict:
-        async with get_client(token) as client:
-            return await client.list_notes(query)
-
-    output_result(asyncio.run(_run()), fmt)
+    output_result(run_client(token, lambda c: c.list_notes(query)), fmt)
 
 
 @app.command("get")
@@ -52,11 +47,7 @@ def get_note(
     fmt: str = typer.Option("json", "--format"),
 ) -> None:
     """Get a single note by ID."""
-    async def _run() -> dict:
-        async with get_client(token) as client:
-            return await client.get_note(note_id)
-
-    output_result(asyncio.run(_run()), fmt)
+    output_result(run_client(token, lambda c: c.get_note(note_id)), fmt)
 
 
 @app.command("create")
@@ -69,11 +60,7 @@ def create_note(
     """Create a new note. Required: content."""
     input_model = NoteCreateInput(**json.loads(data))
 
-    async def _run() -> dict:
-        async with get_client(token) as client:
-            return await client.create_note(input_model)
-
-    output_result(asyncio.run(_run()), fmt)
+    output_result(run_client(token, lambda c: c.create_note(input_model)), fmt)
 
 
 @app.command("update")
@@ -87,8 +74,4 @@ def update_note(
     """Update an existing note. Note: the API does not support deleting notes."""
     input_model = NoteUpdateInput(**json.loads(data))
 
-    async def _run() -> dict:
-        async with get_client(token) as client:
-            return await client.update_note(note_id, input_model)
-
-    output_result(asyncio.run(_run()), fmt)
+    output_result(run_client(token, lambda c: c.update_note(note_id, input_model)), fmt)

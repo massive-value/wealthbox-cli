@@ -1,10 +1,8 @@
 from __future__ import annotations
 
-import asyncio
-
 import typer
 
-from ._util import get_client, handle_errors, output_result
+from ._util import handle_errors, output_result, run_client
 
 app = typer.Typer(help="Show info about the current authenticated user.")
 
@@ -19,9 +17,4 @@ def get_me(
     """Get the current user ("me")."""
     if ctx.invoked_subcommand is not None:
         return
-    
-    async def _run() -> dict:
-        async with get_client(token) as client:
-            return await client.get_me()
-
-    output_result(asyncio.run(_run()), fmt)
+    output_result(run_client(token, lambda c: c.get_me()), fmt)

@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import asyncio
 import json
 from typing import Any
 
@@ -8,7 +7,7 @@ import typer
 
 from wealthbox_tools.models import TaskCreateInput, TaskListQuery, TaskUpdateInput, TaskResourceType, TaskType, TaskFrame
 
-from ._util import get_client, handle_errors, make_category_command, output_result
+from ._util import handle_errors, make_category_command, output_result, run_client
 
 app = typer.Typer(help="Manage Wealthbox tasks.", no_args_is_help=True)
 app.command("categories", help="List task category options.")(make_category_command("task_categories"))
@@ -46,11 +45,7 @@ def list_tasks(
         per_page=per_page,
     )
 
-    async def _run() -> dict:
-        async with get_client(token) as client:
-            return await client.list_tasks(query)
-
-    output_result(asyncio.run(_run()), fmt)
+    output_result(run_client(token, lambda c: c.list_tasks(query)), fmt)
 
 
 @app.command("get")
@@ -61,11 +56,7 @@ def get_task(
     fmt: str = typer.Option("json", "--format"),
 ) -> None:
     """Get a single task by ID."""
-    async def _run() -> dict:
-        async with get_client(token) as client:
-            return await client.get_task(task_id)
-
-    output_result(asyncio.run(_run()), fmt)
+    output_result(run_client(token, lambda c: c.get_task(task_id)), fmt)
 
 
 @app.command("create")
@@ -105,11 +96,7 @@ def create_task(
     # Let Pydantic do the real validation + coercion
     input_model = TaskCreateInput(**payload)
 
-    async def _run() -> dict:
-        async with get_client(token) as client:
-            return await client.create_task(input_model)
-
-    output_result(asyncio.run(_run()), fmt)
+    output_result(run_client(token, lambda c: c.create_task(input_model)), fmt)
 
 
 @app.command("update")
@@ -123,11 +110,7 @@ def update_task(
     """Update an existing task."""
     input_model = TaskUpdateInput(**json.loads(data))
 
-    async def _run() -> dict:
-        async with get_client(token) as client:
-            return await client.update_task(task_id, input_model)
-
-    output_result(asyncio.run(_run()), fmt)
+    output_result(run_client(token, lambda c: c.update_task(task_id, input_model)), fmt)
 
 
 @app.command("delete")
@@ -137,9 +120,5 @@ def delete_task(
     token: str | None = typer.Option(None, envvar="WEALTHBOX_TOKEN", hidden=True),
 ) -> None:
     """Delete a task by ID."""
-    async def _run() -> None:
-        async with get_client(token) as client:
-            await client.delete_task(task_id)
-
-    asyncio.run(_run())
+    run_client(token, lambda c: c.delete_task(task_id))
     typer.echo(f"Task {task_id} deleted.")
