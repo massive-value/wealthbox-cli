@@ -81,8 +81,8 @@ Health checks:
 
 ``` bash
 wbox me
-wbox users
-wbox activity
+wbox users list
+wbox activity list
 ```
 
 ------------------------------------------------------------------------
@@ -272,6 +272,11 @@ wbox categories custom-fields   --document-type Contact|Opportunity|Project|Task
 **JSON Errors** Validate formatting and quoting.
 
 **Date Errors** Use proper ISO or Wealthbox-supported formats.
+
+**Create/Update appears to succeed but nothing changed**
+Some category-constrained writes can silently no-op (return success while leaving fields unchanged).
+Always verify writes with an immediate readback (`wbox <resource> get <id>`), and treat unchanged intended fields as a failed write.
+Before category-constrained writes, discover valid values first (for example: `wbox contacts categories contact-sources`).
 
 ------------------------------------------------------------------------
 

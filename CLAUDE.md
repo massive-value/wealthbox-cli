@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Wealthbox CLI (`wbox`) is a command-line tool for the Wealthbox CRM API. It provides full CRUD access to contacts, households, tasks, events, notes, users, and categories. The API base URL is `https://api.crmworkspace.com/v1`. Official docs: https://dev.wealthbox.com
+Wealthbox CLI (`wbox`) is a command-line tool for the Wealthbox CRM API. It provides CRUD access for contacts, tasks, events, and notes, household member management commands, and read/list access for users, activity, `me`, and categories. The API base URL is `https://api.crmworkspace.com/v1`. Official docs: https://dev.wealthbox.com
 
 ## Commands
 
@@ -21,6 +21,8 @@ pytest tests/path/to/test_file.py::test_name
 # Use the CLI (requires WEALTHBOX_TOKEN env var or .env file)
 wbox <resource> <command> [options]
 ```
+
+**Command shape note:** `users` and `activity` use explicit list subcommands (`wbox users list`, `wbox activity list`).
 
 **Authentication:** Set `WEALTHBOX_TOKEN` in `.env` or as an env var. All CLI commands also accept `--token` (hidden option, not shown in `--help`).
 
