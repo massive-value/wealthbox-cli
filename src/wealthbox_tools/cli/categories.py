@@ -28,5 +28,5 @@ def custom_fields(
     """List custom field categories."""
     async def _run() -> dict:
         async with get_client(token) as client:
-            return await client.list_custom_categories("custom_fields", document_type=document_type)
+            return await client.list_categories("custom_fields", document_type=document_type)
     output_result(asyncio.run(_run()), fmt)

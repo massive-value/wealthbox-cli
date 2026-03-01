@@ -60,13 +60,13 @@ Set your Wealthbox API token as an environment variable:
 **macOS/Linux**
 
 ``` bash
-export WEALTHBOX_API_TOKEN="your_api_token_here"
+export WEALTHBOX_TOKEN="your_api_token_here"
 ```
 
 **Windows (PowerShell)**
 
 ``` powershell
-setx WEALTHBOX_API_TOKEN "your_api_token_here"
+setx WEALTHBOX_TOKEN "your_api_token_here"
 ```
 
 ------------------------------------------------------------------------

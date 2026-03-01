@@ -69,6 +69,6 @@ def make_category_command(category_type: str):  # type: ignore[no-untyped-def]
     ) -> None:
         async def _run() -> dict:
             async with get_client(token) as client:
-                return await client.list_custom_categories(category_type)
+                return await client.list_categories(category_type)
         output_result(asyncio.run(_run()), fmt)
     return cmd

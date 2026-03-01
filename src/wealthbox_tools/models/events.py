@@ -23,8 +23,8 @@ class EventListQuery(PaginationQuery):
 
 class EventCreateInput(WealthboxModel):
     title: str = Field(min_length=1)
-    starts_at: str | None = None
-    ends_at: str | None = None
+    starts_at: str = Field(min_length=1)
+    ends_at: str = Field(min_length=1)
     repeats: bool | None = None
     event_category: int | None = None
     all_day: bool | None = None
@@ -50,6 +50,6 @@ class EventUpdateInput(RequireAnyFieldModel):
     state: EventsState | None = None
     # visible_to: str | None = None
     email_invitees: bool | None = None
-    linked_to: LinkedToRef | None = None
+    linked_to: list[LinkedToRef] | None = None
     invitees: list[EmailInvitees] | None = None
     # custom_fields: str | None = None
