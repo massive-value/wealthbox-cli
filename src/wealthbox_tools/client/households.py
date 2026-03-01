@@ -23,8 +23,8 @@ class HouseholdsMixin:
         resp = await self._request(  # type: ignore[attr-defined]
             "DELETE", f"/households/{household_id}/members/{member_id}"
         )
-        # Wealthbox typically returns the household body, but normalize gracefully.
+        # Wealthbox typically returns the household body, but may return empty body.
         try:
             return resp.json()
-        except Exception:
+        except ValueError:
             return {"ok": True, "household_id": household_id, "member_id": member_id}

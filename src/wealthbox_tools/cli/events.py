@@ -5,7 +5,7 @@ import json
 
 import typer
 
-from wealthbox_tools.models import EventCreateInput, EventListQuery, EventUpdateInput, EventsOrder
+from wealthbox_tools.models import EventCreateInput, EventListQuery, EventUpdateInput, EventsOrder, TaskResourceType
 
 from ._util import get_client, handle_errors, make_category_command, output_result
 
@@ -17,7 +17,7 @@ app.command("categories", help="List event category options.")(make_category_com
 @handle_errors
 def list_events(
     resource_id: int | None = typer.Option(None, "--resource-id", help="Filter by resource ID"),
-    resource_type: str | None = typer.Option(None, "--resource-type", help="Supports: Contact, Project, Opportunity"),
+    resource_type: TaskResourceType | None = typer.Option(None, "--resource-type", help="Supports: Contact, Project, Opportunity"),
     start_date_min: str | None = typer.Option(None, "--start-date-min", help="Format example: '2015-05-24 10:00 AM -0400'"),
     start_date_max: str | None = typer.Option(None, "--start-date-max", help="Format example: '2015-05-24 10:00 AM -0400'"),
     order: EventsOrder | None = typer.Option(None, "--order", help="asc, desc, recent, created"),

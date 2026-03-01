@@ -3,7 +3,7 @@ from __future__ import annotations
 from pydantic import Field
 
 from .common import PaginationQuery, RequireAnyFieldModel, WealthboxModel, LinkedToRef
-from .enums import EventsOrder, EventsState, EmailInviteeType
+from .enums import EventsOrder, EventsState, EmailInviteeType, TaskResourceType
 
 
 class EmailInvitees(WealthboxModel):
@@ -13,7 +13,7 @@ class EmailInvitees(WealthboxModel):
 
 class EventListQuery(PaginationQuery):
     resource_id: int | None = None
-    resource_type: str | None = None
+    resource_type: TaskResourceType | None = None
     start_date_min: str | None = None
     start_date_max: str | None = None
     order: EventsOrder | None = None

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import json
-from typing import Any, Dict
+from typing import Any
 
 import typer
 
@@ -83,7 +83,7 @@ def create_task(
     if (due_date is None) == (frame is None):
         raise typer.BadParameter("Provide exactly one --due-date or --frame.")
 
-    payload: Dict[str, Any] = {"name": name, "due_date": due_date, "frame": frame}
+    payload: dict[str, Any] = {"name": name, "due_date": due_date, "frame": frame}
 
     if more_fields:
         try:

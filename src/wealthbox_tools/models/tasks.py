@@ -7,6 +7,11 @@ from .common import PaginationQuery, RequireAnyFieldModel, WealthboxModel, Linke
 from .enums import TaskType, TaskPriority, TaskFrame, TaskResourceType
 
 
+def _validate_assignment_target(assigned_to: int | None, assigned_to_team: int | None) -> None:
+    if assigned_to is not None and assigned_to_team is not None:
+        raise ValueError("Provide only one of assigned_to or assigned_to_team.")
+
+
 
 class TaskListQuery(PaginationQuery):
     resource_id: int | None = None
@@ -38,10 +43,9 @@ class TaskCreateInput(WealthboxModel):
 
     @model_validator(mode="after")
     def validate_assignment_target(self) -> "TaskCreateInput":
-        if self.assigned_to is not None and self.assigned_to_team is not None:
-            raise ValueError("Provide only one of assigned_to or assigned_to_team.")
+        _validate_assignment_target(self.assigned_to, self.assigned_to_team)
         return self
-    
+
     @model_validator(mode="after")
     def validate_due_date_xor_frame(self) -> "TaskCreateInput":
         if (self.due_date is None) == (self.frame is None):
@@ -69,6 +73,5 @@ class TaskUpdateInput(RequireAnyFieldModel):
 
     @model_validator(mode="after")
     def validate_assignment_target(self) -> "TaskUpdateInput":
-        if self.assigned_to is not None and self.assigned_to_team is not None:
-            raise ValueError("Provide only one of assigned_to or assigned_to_team.")
+        _validate_assignment_target(self.assigned_to, self.assigned_to_team)
         return self

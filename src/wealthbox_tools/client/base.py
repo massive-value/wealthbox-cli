@@ -34,7 +34,7 @@ class RateLimiter:
             min_gap = 1.0 / self._rate
             if elapsed < min_gap:
                 await asyncio.sleep(min_gap - elapsed)
-            self._last_request = time.monotonic()
+            self._last_request = now
 
 
 class _WealthboxBase:

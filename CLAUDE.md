@@ -4,90 +4,72 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-`wealthbox-tools` is a Python CLI and async HTTP client library for the [Wealthbox CRM API](https://dev.wealthbox.com). The CLI entry point is `wbox`.
+Wealthbox CLI (`wbox`) is a command-line tool for the Wealthbox CRM API. It provides full CRUD access to contacts, households, tasks, events, notes, users, and categories. The API base URL is `https://api.crmworkspace.com/v1`. Official docs: https://dev.wealthbox.com
 
 ## Commands
 
 ```bash
-# Install in editable mode with dev dependencies
+# Install (editable with dev deps)
 pip install -e ".[dev]"
-
-# Run the CLI
-wbox --help
-wbox contacts list
-wbox tasks list
-wbox me
 
 # Run tests
 pytest
 
-# Run a single test file
-pytest tests/path/to/test_file.py
-
 # Run a single test
 pytest tests/path/to/test_file.py::test_name
+
+# Use the CLI (requires WEALTHBOX_TOKEN env var or .env file)
+wbox <resource> <command> [options]
 ```
 
-**Authentication**: Set `WEALTHBOX_TOKEN` in a `.env` file or as an env var. All CLI commands also accept `--token`.
+**Authentication:** Set `WEALTHBOX_TOKEN` in `.env` or as an env var. All CLI commands also accept `--token` (hidden option, not shown in `--help`).
 
 ## Architecture
 
-The project has three layers under `src/wealthbox_tools/`:
+Three layers, each in `src/wealthbox_tools/`:
 
-### `models/`
-Pydantic v2 models for request validation and API typing:
-- `common.py` — Base classes (`WealthboxModel` with `extra="forbid"`, `RequireAnyFieldModel`, `PaginationQuery`), shared nested types (EmailAddress, PhoneNumber, etc.)
-- `enums.py` — Wealthbox API Literal types (RecordTypeOptions, TaskFrameOptions, CategoryTypeOptions, DocumentTypeOptions, etc.). Only contains types fixed by the Wealthbox API; workspace-customizable fields (contact types, sources, email/phone/address kinds) use plain `str`.
-- Per-resource files (`contacts.py`, `tasks.py`, `events.py`, `notes.py`, `households.py`) — Create/Update inputs and list query models
-
-### `client/`
-Async HTTP client using `httpx.AsyncClient`:
-- `base.py` — `_WealthboxBase`: connection to `https://api.crmworkspace.com/v1`, `ACCESS_TOKEN` header auth, token-bucket rate limiting (1 req/sec), 429 retry logic, `WealthboxAPIError`
-- Per-resource mixins (`contacts.py`, `tasks.py`, etc.) — CRUD methods per resource
-- `__init__.py` — `WealthboxClient` composes all mixins: `ContactsMixin + TasksMixin + EventsMixin + NotesMixin + HouseholdsMixin + ReadOnlyMixin + _WealthboxBase`
-
-Usage pattern:
-```python
-async with WealthboxClient(token="...") as client:
-    result = await client.list_contacts(query)
+```
+cli/        # Typer commands — user-facing, delegates to client
+client/     # Async HTTP client built from mixins
+models/     # Pydantic v2 models for input validation
 ```
 
-### `cli/`
-Typer-based CLI with one module per resource:
-- `main.py` — Root app; registers sub-apps (`contacts`, `tasks`, `events`, `notes`, `households`, `categories`) and readonly commands (`me`, `users`, `activity`) at the root level
-- `_util.py` — `get_client()` (loads .env, creates client), `output_result()` (JSON formatting), `@handle_errors` decorator, `make_category_command()` factory for category listing commands
-- `categories.py` — Top-level `wbox categories` sub-app for workspace-level categories (tags, custom-fields, opportunity stages, etc.)
+**Client mixin pattern:** `WealthboxClient` in `client/__init__.py` inherits from all resource mixins (`ActivityMixin`, `CategoriesMixin`, `ContactsMixin`, `EventsMixin`, `HouseholdsMixin`, `MeMixin`, `NotesMixin`, `TasksMixin`, `UsersMixin`) plus `_WealthboxBase` (core HTTP, rate limiting, error handling). To add a new resource, create a mixin and add it to the inheritance chain.
 
-CLI command pattern:
+**CLI command pattern:** Each resource module in `cli/` defines a `typer.Typer()` app registered in `cli/main.py`. All commands follow this structure:
+
 ```python
 @app.command("list")
 @handle_errors
-def list_contacts(..., token: Optional[str] = typer.Option(None, envvar="WEALTHBOX_TOKEN", hidden=True)):
+def list_contacts(..., token: str | None = typer.Option(None, envvar="WEALTHBOX_TOKEN", hidden=True)):
     async def _run():
         async with get_client(token) as client:
             return await client.list_contacts(query)
     output_result(asyncio.run(_run()), fmt)
 ```
 
-## Categories
+**Authentication:** Token is read from `WEALTHBOX_TOKEN` env var (`.env` auto-loaded via python-dotenv). Passed as `ACCESS_TOKEN` HTTP header. Rate limiting is token-bucket based (1 req/s); 429 responses trigger automatic retry.
 
-Category lookups are scoped to the resource they belong to:
-- **Contact categories** → `wbox contacts categories <type>` (contact-types, contact-sources, email-types, phone-types, address-types, website-types, contact-roles)
-- **Task categories** → `wbox tasks categories`
-- **Event categories** → `wbox events categories`
-- **Workspace-level** → `wbox categories <type>` (tags, custom-fields, file-categories, opportunity-stages, opportunity-pipelines, investment-objectives, financial-account-types)
+**Models:** Input models live in `models/` (e.g., `ContactCreateInput`, `TaskListQuery`). List queries use `exclude_none=True`; update inputs use `exclude_unset=True` to preserve explicit nulls. Enums use Python 3.11+ `StrEnum`. `RequireAnyFieldModel` (in `models/common.py`) rejects empty update payloads.
 
-Resource-scoped category commands are registered via `make_category_command()` from `_util.py`. The only hand-written category command is `custom-fields` (it has an extra `--document-type` option).
+**Categories:** Category lookups are scoped — resource-specific types via `wbox <resource> categories` (e.g., contact-types, email-types), workspace-level types via `wbox categories` (e.g., tags, opportunity-stages). Resource-scoped category commands are auto-generated by `make_category_command()` in `cli/_util.py`; the `custom-fields` command is hand-written because it needs an extra `--document-type` option.
+
+**Testing:** Uses pytest + pytest-asyncio + respx. Tests are async and mock the httpx transport layer via `respx.mock`.
 
 ## Adding a New Resource
 
 1. Add Pydantic models to `models/<resource>.py` (CreateInput, UpdateInput, ListQuery)
 2. Add a client mixin to `client/<resource>.py` with async CRUD methods
 3. Register the mixin in `client/__init__.py`
-4. Add CLI commands to `cli/<resource>.py` following the existing pattern
+4. Add CLI commands to `cli/<resource>.py` following the command pattern above
 5. Register the CLI sub-app in `cli/main.py`
-6. If the resource has Wealthbox category types, add them via `make_category_command()` — either as a `categories` sub-app (multiple types) or a single `categories` command
+6. If the resource has category types, add them via `make_category_command()` in the resource's `categories` sub-app
 
-## Testing
+## Key Files
 
-Uses pytest + pytest-asyncio + respx (HTTP mocking). Tests are async and mock the httpx transport layer via `respx.mock`.
+- `src/wealthbox_tools/cli/main.py` — registers all sub-apps
+- `src/wealthbox_tools/cli/_util.py` — `get_client`, `handle_errors`, `output_result`, `make_category_command`
+- `src/wealthbox_tools/client/base.py` — `_WealthboxBase`, `WealthboxAPIError`, `RateLimiter`
+- `src/wealthbox_tools/client/__init__.py` — `WealthboxClient` (combined mixins)
+- `src/wealthbox_tools/models/common.py` — base classes: `WealthboxModel`, `RequireAnyFieldModel`, `PaginationQuery`
+- `src/wealthbox_tools/models/enums.py` — all enum definitions

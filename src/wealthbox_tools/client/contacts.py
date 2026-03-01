@@ -1,11 +1,8 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 from wealthbox_tools.models import ContactCreateInput, ContactListQuery, ContactUpdateInput
-
-if TYPE_CHECKING:
-    pass
 
 
 class ContactsMixin:
