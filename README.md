@@ -85,6 +85,12 @@ wbox users list
 wbox activity list
 ```
 
+Activity feed pagination uses cursor-based navigation (not page/per-page):
+
+``` bash
+wbox activity list --cursor <cursor_from_previous_response>
+```
+
 ------------------------------------------------------------------------
 
 ## Contacts

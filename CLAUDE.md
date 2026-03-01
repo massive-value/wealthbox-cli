@@ -24,6 +24,8 @@ wbox <resource> <command> [options]
 
 **Command shape note:** `users` and `activity` use explicit list subcommands (`wbox users list`, `wbox activity list`).
 
+**Activity pagination note:** `/activity` is cursor-based. Use `--cursor` for subsequent pages; do not add `page`/`per_page` parameters for activity queries.
+
 **Authentication:** Set `WEALTHBOX_TOKEN` in `.env` or as an env var. All CLI commands also accept `--token` (hidden option, not shown in `--help`).
 
 ## Architecture
