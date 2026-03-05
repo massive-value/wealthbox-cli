@@ -253,11 +253,15 @@ wbox categories financial-account-types
 wbox categories custom-fields
 ```
 
-Filter:
+Filter and paginate:
 
 ``` bash
-wbox categories custom-fields   --document-type Contact|Opportunity|Project|Task|Event|ManualInvestmentAccount|DataFile
+wbox categories custom-fields \
+  --document-type Contact|Opportunity|Project|Task|Event|ManualInvestmentAccount|DataFile \
+  --page 1 --per-page 50
 ```
+
+All category list commands now support pagination via `--page` and `--per-page`.
 
 ------------------------------------------------------------------------
 
@@ -276,6 +280,8 @@ wbox categories custom-fields   --document-type Contact|Opportunity|Project|Task
 **401 Unauthorized** Check your API token.
 
 **JSON Errors** Validate formatting and quoting.
+
+**Unsupported `--format` value** Only `--format json` is supported. Unsupported values (for example `--format table`) now fail fast with a clear error.
 
 **Date Errors** Use proper ISO or Wealthbox-supported formats.
 
