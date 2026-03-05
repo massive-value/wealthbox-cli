@@ -26,7 +26,7 @@ from .common import (
 from .contacts import ContactCreateInput, ContactListQuery, ContactUpdateInput
 from .events import EventCreateInput, EventListQuery, EventUpdateInput
 from .households import HouseholdMemberInput
-from .custom_fields import CustomFieldsListQuery, CustomFieldValue
+from .custom_fields import CategoryListQuery, CustomFieldValue
 from .notes import NoteCreateInput, NoteListQuery, NoteUpdateInput
 from .tasks import TaskCreateInput, TaskListQuery, TaskUpdateInput
 
@@ -68,8 +68,8 @@ __all__ = [
     # Households
     "HouseholdMemberInput",
 
-    # Custom Fields
-    "CustomFieldsListQuery",
+    # Categories
+    "CategoryListQuery",
     "CustomFieldValue",
 
     # Notes

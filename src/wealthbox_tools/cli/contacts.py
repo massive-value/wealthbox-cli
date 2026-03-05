@@ -6,7 +6,7 @@ import typer
 
 from wealthbox_tools.models import ContactCreateInput, ContactListQuery, ContactUpdateInput
 
-from wealthbox_tools.models import HouseholdTitle, ContactsOrder, RecordType
+from wealthbox_tools.models import CategoryType, HouseholdTitle, ContactsOrder, RecordType
 
 from ._util import handle_errors, make_category_command, output_result, run_client
 
@@ -14,13 +14,13 @@ app = typer.Typer(help="Manage Wealthbox contacts.", no_args_is_help=True)
 
 # -- categories sub-app -------------------------------------------------------
 categories_app = typer.Typer(help="List available category values for contact fields.", no_args_is_help=True)
-categories_app.command("contact-types", help="List contact type options.")(make_category_command("contact_types"))
-categories_app.command("contact-sources", help="List contact source options.")(make_category_command("contact_sources"))
-categories_app.command("email-types", help="List email type options.")(make_category_command("email_types"))
-categories_app.command("phone-types", help="List phone type options.")(make_category_command("phone_types"))
-categories_app.command("address-types", help="List address type options.")(make_category_command("address_types"))
-categories_app.command("website-types", help="List website type options.")(make_category_command("website_types"))
-categories_app.command("contact-roles", help="List contact role options.")(make_category_command("contact_roles"))
+categories_app.command("contact-types", help="List contact type options.")(make_category_command(CategoryType.CONTACT_TYPES))
+categories_app.command("contact-sources", help="List contact source options.")(make_category_command(CategoryType.CONTACT_SOURCES))
+categories_app.command("email-types", help="List email type options.")(make_category_command(CategoryType.EMAIL_TYPES))
+categories_app.command("phone-types", help="List phone type options.")(make_category_command(CategoryType.PHONE_TYPES))
+categories_app.command("address-types", help="List address type options.")(make_category_command(CategoryType.ADDRESS_TYPES))
+categories_app.command("website-types", help="List website type options.")(make_category_command(CategoryType.WEBSITE_TYPES))
+categories_app.command("contact-roles", help="List contact role options.")(make_category_command(CategoryType.CONTACT_ROLES))
 app.add_typer(categories_app, name="categories")
 
 

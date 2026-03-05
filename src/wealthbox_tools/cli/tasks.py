@@ -5,12 +5,12 @@ from typing import Any
 
 import typer
 
-from wealthbox_tools.models import TaskCreateInput, TaskListQuery, TaskUpdateInput, TaskResourceType, TaskType, TaskFrame
+from wealthbox_tools.models import CategoryType, TaskCreateInput, TaskListQuery, TaskUpdateInput, TaskResourceType, TaskType, TaskFrame
 
 from ._util import handle_errors, make_category_command, output_result, run_client
 
 app = typer.Typer(help="Manage Wealthbox tasks.", no_args_is_help=True)
-app.command("categories", help="List task category options.")(make_category_command("task_categories"))
+app.command("categories", help="List task category options.")(make_category_command(CategoryType.TASK_CATEGORIES))
 
 
 @app.command("list")

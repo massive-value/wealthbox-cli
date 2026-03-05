@@ -10,6 +10,7 @@ import typer
 from pydantic import ValidationError
 
 from wealthbox_tools.client import WealthboxAPIError, WealthboxClient
+from wealthbox_tools.models import CategoryListQuery, CategoryType
 
 
 def get_client(token: str | None = None) -> WealthboxClient:
@@ -30,8 +31,13 @@ def run_client(token: str | None, fn: Callable[[WealthboxClient], Awaitable[Any]
     return asyncio.run(_execute())
 
 
+_SUPPORTED_FORMATS = ("json",)
+
+
 def output_result(data: Any, fmt: str = "json") -> None:
     """Print result to stdout in the requested format."""
+    if fmt not in _SUPPORTED_FORMATS:
+        raise ValueError(f"Unsupported format '{fmt}'. Supported formats: {', '.join(_SUPPORTED_FORMATS)}")
     typer.echo(json.dumps(data, indent=2, default=str))
 
 
@@ -68,12 +74,15 @@ def handle_errors(func):  # type: ignore[no-untyped-def]
     return wrapper
 
 
-def make_category_command(category_type: str):  # type: ignore[no-untyped-def]
+def make_category_command(category_type: CategoryType):  # type: ignore[no-untyped-def]
     """Factory that returns a Typer command function for listing a category type."""
     @handle_errors
     def cmd(
+        page: int | None = typer.Option(None, help="Page number"),
+        per_page: int | None = typer.Option(None, "--per-page", help="Results per page"),
         token: str | None = typer.Option(None, envvar="WEALTHBOX_TOKEN", hidden=True),
         fmt: str = typer.Option("json", "--format"),
     ) -> None:
-        output_result(run_client(token, lambda c: c.list_categories(category_type)), fmt)
+        query = CategoryListQuery(page=page, per_page=per_page)
+        output_result(run_client(token, lambda c: c.list_categories(category_type, query)), fmt)
     return cmd

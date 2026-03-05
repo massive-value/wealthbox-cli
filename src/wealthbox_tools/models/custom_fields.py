@@ -1,10 +1,9 @@
 """Pydantic models for metadata tool validation."""
 from __future__ import annotations
 
-from pydantic import BaseModel
 from typing import Any
 
-from .common import WealthboxModel
+from .common import PaginationQuery, WealthboxModel
 from .enums import DocumentType
 
 
@@ -14,5 +13,5 @@ class CustomFieldValue(WealthboxModel):
     value: Any | None = None
 
 
-class CustomFieldsListQuery(BaseModel):
+class CategoryListQuery(PaginationQuery):
     document_type: DocumentType | None = None

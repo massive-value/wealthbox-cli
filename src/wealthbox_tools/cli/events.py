@@ -4,12 +4,12 @@ import json
 
 import typer
 
-from wealthbox_tools.models import EventCreateInput, EventListQuery, EventUpdateInput, EventsOrder, TaskResourceType
+from wealthbox_tools.models import CategoryType, EventCreateInput, EventListQuery, EventUpdateInput, EventsOrder, TaskResourceType
 
 from ._util import handle_errors, make_category_command, output_result, run_client
 
 app = typer.Typer(help="Manage Wealthbox events.", no_args_is_help=True)
-app.command("categories", help="List event category options.")(make_category_command("event_categories"))
+app.command("categories", help="List event category options.")(make_category_command(CategoryType.EVENT_CATEGORIES))
 
 
 @app.command("list")
