@@ -34,10 +34,25 @@ def run_client(token: str | None, fn: Callable[[WealthboxClient], Awaitable[Any]
 _SUPPORTED_FORMATS = ("json",)
 
 
-def output_result(data: Any, fmt: str = "json") -> None:
+def _filter_fields(data: Any, fields: list[str]) -> Any:
+    if isinstance(data, list):
+        return [{f: item[f] for f in fields if f in item} for item in data]
+    if isinstance(data, dict):
+        if "meta" in data:
+            return {
+                k: ([{f: item[f] for f in fields if f in item} for item in v] if isinstance(v, list) else v)
+                for k, v in data.items()
+            }
+        return {f: data[f] for f in fields if f in data}
+    return data
+
+
+def output_result(data: Any, fmt: str = "json", fields: list[str] | None = None) -> None:
     """Print result to stdout in the requested format."""
     if fmt not in _SUPPORTED_FORMATS:
         raise ValueError(f"Unsupported format '{fmt}'. Supported formats: {', '.join(_SUPPORTED_FORMATS)}")
+    if fields is not None:
+        data = _filter_fields(data, fields)
     typer.echo(json.dumps(data, indent=2, default=str))
 
 
@@ -79,7 +94,7 @@ def make_category_command(category_type: CategoryType):  # type: ignore[no-untyp
     @handle_errors
     def cmd(
         page: int | None = typer.Option(None, help="Page number"),
-        per_page: int | None = typer.Option(None, "--per-page", help="Results per page"),
+        per_page: int | None = typer.Option(None, "--per-page", help="Results per page (max 100)"),
         token: str | None = typer.Option(None, envvar="WEALTHBOX_TOKEN", hidden=True),
         fmt: str = typer.Option("json", "--format"),
     ) -> None:

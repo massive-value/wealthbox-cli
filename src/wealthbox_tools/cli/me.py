@@ -7,14 +7,13 @@ from ._util import handle_errors, output_result, run_client
 app = typer.Typer(help="Show info about the current authenticated user.")
 
 
-@app.callback(invoke_without_command=True)
+@app.callback(invoke_without_command=True, help="Show info about the current authenticated user. Use subcommands for more specific info.")
 @handle_errors
 def get_me(
     ctx: typer.Context,
     token: str | None = typer.Option(None, envvar="WEALTHBOX_TOKEN", hidden=True),
     fmt: str = typer.Option("json", "--format"),
 ) -> None:
-    """Get the current user ("me")."""
     if ctx.invoked_subcommand is not None:
         return
     output_result(run_client(token, lambda c: c.get_me()), fmt)

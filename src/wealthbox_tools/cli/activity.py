@@ -9,7 +9,7 @@ from ._util import handle_errors, output_result, run_client
 app = typer.Typer(help="List Wealthbox activity feed.", no_args_is_help=True)
 
 
-@app.command("list")
+@app.command("list", help="List activity feed. Can filter by contact, activity type, and/or updated date range.")
 @handle_errors
 def list_activity(
     contact: int | None = typer.Option(None, help="Filter by contact ID"),
@@ -20,7 +20,6 @@ def list_activity(
     token: str | None = typer.Option(None, envvar="WEALTHBOX_TOKEN", hidden=True),
     fmt: str = typer.Option("json", "--format"),
 ) -> None:
-    """List activity feed."""
     query = ActivityListQuery(
         contact=contact,
         cursor=cursor,

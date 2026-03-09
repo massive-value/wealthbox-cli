@@ -16,15 +16,14 @@ app.command("investment-objectives", help="List investment objective options.")(
 app.command("financial-account-types", help="List financial account type options.")(make_category_command(CategoryType.FINANCIAL_ACCOUNT_TYPES))
 
 
-@app.command("custom-fields")
+@app.command("custom-fields", help="List custom field categories. Optionally filter by document type.")
 @handle_errors
 def custom_fields(
     document_type: DocumentType | None = typer.Option(None, "--document-type", help="Filter by document type"),
     page: int | None = typer.Option(None, help="Page number"),
-    per_page: int | None = typer.Option(None, "--per-page", help="Results per page"),
+    per_page: int | None = typer.Option(None, "--per-page", help="Results per page (max 100)"),
     token: str | None = typer.Option(None, envvar="WEALTHBOX_TOKEN", hidden=True),
     fmt: str = typer.Option("json", "--format"),
 ) -> None:
-    """List custom field categories."""
     query = CategoryListQuery(document_type=document_type, page=page, per_page=per_page)
     output_result(run_client(token, lambda c: c.list_categories(CategoryType.CUSTOM_FIELDS, query)), fmt)

@@ -12,8 +12,10 @@ from ._util import handle_errors, make_category_command, output_result, run_clie
 app = typer.Typer(help="Manage Wealthbox tasks.", no_args_is_help=True)
 app.command("categories", help="List task category options.")(make_category_command(CategoryType.TASK_CATEGORIES))
 
+_DEFAULT_FIELDS = ["id", "name", "due_date", "frame", "complete", "category"]
 
-@app.command("list")
+
+@app.command("list", help="Returns a list of tasks, with optional filters. By default, only outstanding tasks are returned; use --include-completed to include completed tasks in the results.")
 @handle_errors
 def list_tasks(
     resource_id: int | None = typer.Option(None, "--resource-id", help="Filter by resource id. Must specify resource resource_type"),
@@ -21,23 +23,23 @@ def list_tasks(
     assigned_to: int | None = typer.Option(None, "--assigned-to"),
     assigned_to_team: int | None = typer.Option(None, "--assigned-to-team"),
     created_by: int | None = typer.Option(None, "--created-by", help="user id"),
-    completed: bool | None = typer.Option(None, help="Filter by completion status"),
+    include_completed: bool = typer.Option(False, "--include-completed", help="Include completed tasks (default returns outstanding tasks only)"),
     task_type: TaskType | None = typer.Option(None, "--type", help="all, parents, subtasks"),
     updated_since: str | None = typer.Option(None, "--updated-since"),
     updated_before: str | None = typer.Option(None, "--updated-before"),
     page: int | None = typer.Option(None),
-    per_page: int | None = typer.Option(None, "--per-page"),
+    per_page: int | None = typer.Option(None, "--per-page", help="Results per page (max 100)"),
+    verbose: bool = typer.Option(False, "--verbose", "-v", help="Show all fields"),
     token: str | None = typer.Option(None, envvar="WEALTHBOX_TOKEN", hidden=True),
     fmt: str = typer.Option("json", "--format", help="Output format: json only for now"),
 ) -> None:
-    """List tasks with optional filters."""
     query = TaskListQuery(
         resource_id=resource_id,
         resource_type=resource_type,
         assigned_to=assigned_to,
         assigned_to_team=assigned_to_team,
         created_by=created_by,
-        completed=completed,
+        completed=True if include_completed else None,
         task_type=task_type,
         updated_since=updated_since,
         updated_before=updated_before,
@@ -45,21 +47,21 @@ def list_tasks(
         per_page=per_page,
     )
 
-    output_result(run_client(token, lambda c: c.list_tasks(query)), fmt)
+    output_result(run_client(token, lambda c: c.list_tasks(query)), fmt, fields=None if verbose else _DEFAULT_FIELDS)
 
 
-@app.command("get")
+@app.command("get", help="Get a single task by ID.")
 @handle_errors
 def get_task(
     task_id: int = typer.Argument(..., help="Task ID"),
+    verbose: bool = typer.Option(False, "--verbose", "-v", help="Show all fields"),
     token: str | None = typer.Option(None, envvar="WEALTHBOX_TOKEN", hidden=True),
     fmt: str = typer.Option("json", "--format"),
 ) -> None:
-    """Get a single task by ID."""
-    output_result(run_client(token, lambda c: c.get_task(task_id)), fmt)
+    output_result(run_client(token, lambda c: c.get_task(task_id)), fmt, fields=None if verbose else _DEFAULT_FIELDS)
 
 
-@app.command("create")
+@app.command("create", help="Create a new task. Required: name, and either due_date or frame.")
 @handle_errors
 def create_task(
     name: str = typer.Argument(..., help="Task title/name"),
@@ -69,7 +71,6 @@ def create_task(
     token: str | None = typer.Option(None, envvar="WEALTHBOX_TOKEN", hidden=True),
     fmt: str = typer.Option("json", "--format"),
 ) -> None:
-    """Create a new task. Required: name, and either due_date or frame."""
     # Friendly CLI-level guardrail (still keep model validation too)
     if (due_date is None) == (frame is None):
         raise typer.BadParameter("Provide exactly one --due-date or --frame.")
@@ -99,7 +100,7 @@ def create_task(
     output_result(run_client(token, lambda c: c.create_task(input_model)), fmt)
 
 
-@app.command("update")
+@app.command("update", help="Update an existing task.")
 @handle_errors
 def update_task(
     task_id: int = typer.Argument(..., help="Task ID"),
@@ -107,18 +108,16 @@ def update_task(
     token: str | None = typer.Option(None, envvar="WEALTHBOX_TOKEN", hidden=True),
     fmt: str = typer.Option("json", "--format"),
 ) -> None:
-    """Update an existing task."""
     input_model = TaskUpdateInput(**json.loads(data))
 
     output_result(run_client(token, lambda c: c.update_task(task_id, input_model)), fmt)
 
 
-@app.command("delete")
+@app.command("delete", help="Delete a task by ID.")
 @handle_errors
 def delete_task(
     task_id: int = typer.Argument(..., help="Task ID"),
     token: str | None = typer.Option(None, envvar="WEALTHBOX_TOKEN", hidden=True),
 ) -> None:
-    """Delete a task by ID."""
     run_client(token, lambda c: c.delete_task(task_id))
     typer.echo(f"Task {task_id} deleted.")

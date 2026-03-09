@@ -19,7 +19,7 @@ class RequireAnyFieldModel(WealthboxModel):
 
 class PaginationQuery(WealthboxModel):
     page: int | None = Field(default=None, ge=1)
-    per_page: int | None = Field(default=None, ge=1)
+    per_page: int | None = Field(default=25, ge=1, le=100)
 
 
 class EmailAddress(WealthboxModel):

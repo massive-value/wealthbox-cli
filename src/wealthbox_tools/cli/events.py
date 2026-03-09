@@ -11,8 +11,10 @@ from ._util import handle_errors, make_category_command, output_result, run_clie
 app = typer.Typer(help="Manage Wealthbox events.", no_args_is_help=True)
 app.command("categories", help="List event category options.")(make_category_command(CategoryType.EVENT_CATEGORIES))
 
+_DEFAULT_FIELDS = ["id", "title", "starts_at", "ends_at", "state", "event_category"]
 
-@app.command("list")
+
+@app.command("list", help="List events with optional filters.")
 @handle_errors
 def list_events(
     resource_id: int | None = typer.Option(None, "--resource-id", help="Filter by resource ID"),
@@ -23,11 +25,11 @@ def list_events(
     updated_since: str | None = typer.Option(None, "--updated-since", help="Format example: '2015-05-24 10:00 AM -0400'"),
     updated_before: str | None = typer.Option(None, "--updated-before", help="Format example: '2015-05-24 10:00 AM -0400'"),
     page: int | None = typer.Option(None),
-    per_page: int | None = typer.Option(None, "--per-page"),
+    per_page: int | None = typer.Option(None, "--per-page", help="Results per page (max 100)"),
+    verbose: bool = typer.Option(False, "--verbose", "-v", help="Show all fields"),
     token: str | None = typer.Option(None, envvar="WEALTHBOX_TOKEN", hidden=True),
     fmt: str = typer.Option("json", "--format"),
 ) -> None:
-    """List events with optional filters."""
     query = EventListQuery(
         resource_id=resource_id,
         resource_type=resource_type,
@@ -40,34 +42,33 @@ def list_events(
         per_page=per_page,
     )
 
-    output_result(run_client(token, lambda c: c.list_events(query)), fmt)
+    output_result(run_client(token, lambda c: c.list_events(query)), fmt, fields=None if verbose else _DEFAULT_FIELDS)
 
 
-@app.command("get")
+@app.command("get", help="Get a single event by ID.")
 @handle_errors
 def get_event(
     event_id: int = typer.Argument(..., help="Event ID"),
+    verbose: bool = typer.Option(False, "--verbose", "-v", help="Show all fields"),
     token: str | None = typer.Option(None, envvar="WEALTHBOX_TOKEN", hidden=True),
     fmt: str = typer.Option("json", "--format"),
 ) -> None:
-    """Get a single event by ID."""
-    output_result(run_client(token, lambda c: c.get_event(event_id)), fmt)
+    output_result(run_client(token, lambda c: c.get_event(event_id)), fmt, fields=None if verbose else _DEFAULT_FIELDS)
 
 
-@app.command("create")
+@app.command("create", help="Create a new event. Required fields: title, starts_at.")
 @handle_errors
 def create_event(
     data: str = typer.Argument(..., help="JSON object with title and starts_at required"),
     token: str | None = typer.Option(None, envvar="WEALTHBOX_TOKEN", hidden=True),
     fmt: str = typer.Option("json", "--format"),
 ) -> None:
-    """Create a new event. Required fields: title, starts_at."""
     input_model = EventCreateInput(**json.loads(data))
 
     output_result(run_client(token, lambda c: c.create_event(input_model)), fmt)
 
 
-@app.command("update")
+@app.command("update", help="Update an existing event.")
 @handle_errors
 def update_event(
     event_id: int = typer.Argument(..., help="Event ID"),
@@ -75,18 +76,16 @@ def update_event(
     token: str | None = typer.Option(None, envvar="WEALTHBOX_TOKEN", hidden=True),
     fmt: str = typer.Option("json", "--format"),
 ) -> None:
-    """Update an existing event."""
     input_model = EventUpdateInput(**json.loads(data))
 
     output_result(run_client(token, lambda c: c.update_event(event_id, input_model)), fmt)
 
 
-@app.command("delete")
+@app.command("delete", help="Delete an existing event.")
 @handle_errors
 def delete_event(
     event_id: int = typer.Argument(..., help="Event ID"),
     token: str | None = typer.Option(None, envvar="WEALTHBOX_TOKEN", hidden=True),
 ) -> None:
-    """Delete an event by ID."""
     run_client(token, lambda c: c.delete_event(event_id))
     typer.echo(f"Event {event_id} deleted.")
