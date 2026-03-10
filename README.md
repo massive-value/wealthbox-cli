@@ -20,7 +20,7 @@ https://dev.wealthbox.com
     -   Events
     -   Notes (create, read, update --- delete not supported by API)
 -   Category and metadata lookups
--   Filtering and query parameters
+-   Filtering and query parameters, including client-side filters for fields the API doesn't support server-side (e.g. `--assigned-to`)
 -   JSON-based advanced field support
 -   Modular CLI structure
 -   Extensible client + model architecture
@@ -69,6 +69,12 @@ export WEALTHBOX_TOKEN="your_api_token_here"
 setx WEALTHBOX_TOKEN "your_api_token_here"
 ```
 
+Or place a `.env` file in the project root:
+
+```
+WEALTHBOX_TOKEN=your_api_token_here
+```
+
 ------------------------------------------------------------------------
 
 ## Basic Usage
@@ -97,6 +103,26 @@ wbox activity list --cursor <cursor_from_previous_response>
 
 ``` bash
 wbox contacts list
+wbox contacts list --type Person|Household|Organization|Trust
+wbox contacts list --contact-type "Client"
+wbox contacts list --name "Smith"
+wbox contacts list --active
+wbox contacts list --tags "tag1,tag2"
+wbox contacts list --updated-since "2025-01-01"
+wbox contacts list --per-page 100 --page 2
+```
+
+Filter by assigned user (fetches all pages client-side — the API has no server-side filter for this):
+
+``` bash
+wbox contacts list --assigned-to <user_id>
+wbox contacts list --assigned-to <user_id> --type Household
+```
+
+Progress output goes to stderr, so the result stays pipeable:
+
+``` bash
+wbox contacts list --assigned-to <user_id> | jq '.contacts | length'
 ```
 
 ------------------------------------------------------------------------
@@ -106,13 +132,13 @@ wbox contacts list
 Add member:
 
 ``` bash
-wbox households add-member <household_id>   --member-id <person_contact_id>   --title "Head|Spouse|Parent|Other Dependent|Child|Sibling|Partner|Grandchild|Grandparent"
+wbox households add-member <household_id> <member_id> --title "Head|Spouse|Parent|Other Dependent|Child|Sibling|Partner|Grandchild|Grandparent"
 ```
 
 Remove member:
 
 ``` bash
-wbox households remove-member <household_id>   --member-id <person_contact_id>
+wbox households remove-member <household_id> <member_id>
 ```
 
 ------------------------------------------------------------------------
