@@ -42,12 +42,21 @@ def list_contacts(
     order: ContactsOrder | None = typer.Option(None, help="The order that the contacts should be returned in"),
     updated_since: str | None = typer.Option(None, "--updated-since", help="Format of 'YYYY-MM-DD 07:00 AM -0700'"),
     updated_before: str | None = typer.Option(None, "--updated-before", help="Format of 'YYYY-MM-DD 07:00 AM -0700'"),
+    assigned_to: int | None = typer.Option(
+        None, "--assigned-to",
+        help="Filter by assigned user ID (client-side scan — fetches all pages).",
+    ),
     page: int | None = typer.Option(None, help="Page number"),
     per_page: int | None = typer.Option(None, "--per-page", help="Results per page (max 100)"),
     verbose: bool = typer.Option(False, "--verbose", "-v", help="Show all fields"),
     token: str | None = typer.Option(None, envvar="WEALTHBOX_TOKEN", hidden=True),
     fmt: str = typer.Option("json", "--format", help="Output format: json only for now"),
 ) -> None:
+    if assigned_to is not None:
+        if page is not None or per_page is not None:
+            typer.echo("Warning: --page and --per-page are ignored when --assigned-to is active.", err=True)
+        typer.echo("Note: --assigned-to requires fetching all contacts. This may take a moment.", err=True)
+
     tag_list = [t.strip() for t in tags.split(",")] if tags else None
     query = ContactListQuery(
         contact_type=contact_type,
@@ -63,11 +72,21 @@ def list_contacts(
         order=order,
         updated_since=updated_since,
         updated_before=updated_before,
-        page=page,
-        per_page=per_page,
+        page=None if assigned_to is not None else page,
+        per_page=None if assigned_to is not None else per_page,
     )
 
-    output_result(run_client(token, lambda c: c.list_contacts(query)), fmt, fields=None if verbose else _DEFAULT_FIELDS)
+    if assigned_to is not None:
+        def _progress(page_num: int, total_fetched: int) -> None:
+            typer.echo(f"Scanning page {page_num}... ({total_fetched} fetched so far)", err=True)
+
+        raw = run_client(token, lambda c: c.list_all_contacts(query, on_progress=_progress))
+        matched = [c for c in raw.get("contacts", []) if c.get("assigned_to") == assigned_to]
+        result = {"contacts": matched, "meta": {"total_count": len(matched)}}
+    else:
+        result = run_client(token, lambda c: c.list_contacts(query))
+
+    output_result(result, fmt, fields=None if verbose else _DEFAULT_FIELDS)
 
 
 @app.command("get", help="Get a single contact by ID.")

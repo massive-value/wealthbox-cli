@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Callable
 from typing import Any
 
 from wealthbox_tools.models import ContactCreateInput, ContactListQuery, ContactUpdateInput
@@ -29,3 +30,15 @@ class ContactsMixin:
 
     async def delete_contact(self, contact_id: int) -> None:
         await self._request("DELETE", f"/contacts/{contact_id}")  # type: ignore[attr-defined]
+
+    async def list_all_contacts(
+        self,
+        query: ContactListQuery | None = None,
+        on_progress: Callable[[int, int], None] | None = None,
+    ) -> dict[str, Any]:
+        """Fetch all pages of contacts. Use when client-side filtering requires the full dataset."""
+        params = query.model_dump(exclude_none=True) if query else {}
+        # Remove pagination fields — fetch_all_pages controls these
+        params.pop("page", None)
+        params.pop("per_page", None)
+        return await self.fetch_all_pages("/contacts", params, "contacts", on_progress=on_progress)  # type: ignore[attr-defined]
