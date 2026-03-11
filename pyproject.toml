@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "wealthbox-tools"
-version = "0.7.2"
+version = "0.8.0"
 description = "CLI and client library for the Wealthbox CRM API"
 requires-python = ">=3.11"
 dependencies = [
@@ -23,6 +23,7 @@ dev = [
 
 [project.scripts]
 wbox = "wealthbox_tools.cli.main:app"
+wb = "wealthbox_tools.cli.main:app"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/wealthbox_tools"]
