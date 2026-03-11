@@ -10,7 +10,7 @@ import typer
 from pydantic import ValidationError
 
 from wealthbox_tools.client import WealthboxAPIError, WealthboxClient
-from wealthbox_tools.models import CategoryListQuery, CategoryType, LinkedToRef
+from wealthbox_tools.models import CategoryListQuery, CategoryType, LinkedToRef, TaskResourceType
 
 
 def get_client(token: str | None = None) -> WealthboxClient:
@@ -45,6 +45,21 @@ def _filter_fields(data: Any, fields: list[str]) -> Any:
             }
         return {f: data[f] for f in fields if f in data}
     return data
+
+
+def truncate_field(data: Any, field: str, max_len: int) -> Any:
+    """Truncate a string field in each item of a response to max_len characters."""
+    def _trim(item: Any) -> Any:
+        if isinstance(item, dict) and field in item and isinstance(item[field], str):
+            if len(item[field]) > max_len:
+                item = {**item, field: item[field][:max_len] + "..."}
+        return item
+
+    if isinstance(data, list):
+        return [_trim(item) for item in data]
+    if isinstance(data, dict):
+        return {k: [_trim(i) for i in v] if isinstance(v, list) else v for k, v in data.items()}
+    return _trim(data)
 
 
 def output_result(data: Any, fmt: str = "json", fields: list[str] | None = None) -> None:
@@ -112,6 +127,25 @@ def build_linked_to(
     if opportunity is not None:
         refs.append(LinkedToRef(id=opportunity, type="Opportunity"))
     return refs if refs else None
+
+
+def build_resource_filter(
+    contact: int | None,
+    project: int | None,
+    opportunity: int | None,
+) -> tuple[int | None, TaskResourceType | None]:
+    """Map friendly --contact/--project/--opportunity options to (resource_id, resource_type).
+
+    Raises BadParameter if more than one is provided.
+    Returns (None, None) if none are provided.
+    """
+    result: tuple[int | None, TaskResourceType | None] = (None, None)
+    for id_, rtype in ((contact, TaskResourceType.CONTACT), (project, TaskResourceType.PROJECT), (opportunity, TaskResourceType.OPPORTUNITY)):
+        if id_ is not None:
+            if result[0] is not None:
+                raise typer.BadParameter("Provide only one of --contact, --project, or --opportunity.")
+            result = (id_, rtype)
+    return result
 
 
 def make_category_command(category_type: CategoryType):  # type: ignore[no-untyped-def]

@@ -94,6 +94,7 @@ Activity feed pagination uses cursor-based navigation (not page/per-page):
 
 ``` bash
 wbox activity list --cursor <cursor_from_previous_response>
+wbox activity list --verbose   # show full body content (default truncates to 500 chars)
 ```
 
 ------------------------------------------------------------------------
@@ -209,7 +210,9 @@ wbox households remove-member <household_id> <member_id>
 
 ``` bash
 wbox tasks list
-wbox tasks list --resource-id <id> --resource-type Contact|Opportunity|Project
+wbox tasks list --contact <id>
+wbox tasks list --project <id>
+wbox tasks list --opportunity <id>
 wbox tasks list --assigned-to <user_id>
 wbox tasks list --include-completed
 wbox tasks list --updated-since "2025-01-01"
@@ -319,8 +322,11 @@ wbox events delete <event_id>
 
 ``` bash
 wbox notes list
-wbox notes list --resource-id <id> --resource-type Contact|Opportunity|Project
+wbox notes list --contact <id>
+wbox notes list --project <id>
+wbox notes list --opportunity <id>
 wbox notes list --updated-since "2025-01-01"
+wbox notes list --verbose   # show full content (default truncates to 500 chars)
 ```
 
 ### Add

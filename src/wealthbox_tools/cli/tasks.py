@@ -5,9 +5,9 @@ from typing import Any
 
 import typer
 
-from wealthbox_tools.models import CategoryType, TaskCreateInput, TaskListQuery, TaskUpdateInput, TaskResourceType, TaskType, TaskFrame, TaskPriority
+from wealthbox_tools.models import CategoryType, TaskCreateInput, TaskListQuery, TaskUpdateInput, TaskType, TaskFrame, TaskPriority
 
-from ._util import build_linked_to, handle_errors, make_category_command, output_result, run_client
+from ._util import build_linked_to, build_resource_filter, handle_errors, make_category_command, output_result, run_client
 
 app = typer.Typer(help="Manage Wealthbox tasks.", no_args_is_help=True)
 app.command("categories", help="List task category options.")(make_category_command(CategoryType.TASK_CATEGORIES))
@@ -18,8 +18,9 @@ _DEFAULT_FIELDS = ["id", "name", "due_date", "frame", "complete", "category"]
 @app.command("list", help="Returns a list of tasks, with optional filters. By default, only outstanding tasks are returned; use --include-completed to include completed tasks in the results.")
 @handle_errors
 def list_tasks(
-    resource_id: int | None = typer.Option(None, "--resource-id", help="Filter by resource id. Must specify resource resource_type"),
-    resource_type: TaskResourceType | None = typer.Option(None, "--resource-type", help="Supported Types: Contact, Project, Opportunity"),
+    contact: int | None = typer.Option(None, "--contact", help="Filter tasks linked to a Contact (by ID)"),
+    project: int | None = typer.Option(None, "--project", help="Filter tasks linked to a Project (by ID)"),
+    opportunity: int | None = typer.Option(None, "--opportunity", help="Filter tasks linked to an Opportunity (by ID)"),
     assigned_to: int | None = typer.Option(None, "--assigned-to"),
     assigned_to_team: int | None = typer.Option(None, "--assigned-to-team"),
     created_by: int | None = typer.Option(None, "--created-by", help="user id"),
@@ -33,6 +34,8 @@ def list_tasks(
     token: str | None = typer.Option(None, envvar="WEALTHBOX_TOKEN", hidden=True),
     fmt: str = typer.Option("json", "--format", help="Output format: json only for now"),
 ) -> None:
+    resource_id, resource_type = build_resource_filter(contact, project, opportunity)
+
     query = TaskListQuery(
         resource_id=resource_id,
         resource_type=resource_type,

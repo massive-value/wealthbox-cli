@@ -4,33 +4,33 @@ from typing import Any
 
 import typer
 
-from wealthbox_tools.models import NoteCreateInput, NoteListQuery, NoteUpdateInput
+from wealthbox_tools.models import NoteCreateInput, NoteListQuery, NoteResourceType, NoteUpdateInput
 from wealthbox_tools.models import NotesOrder
 
-from ._util import build_linked_to, handle_errors, output_result, run_client
+from ._util import build_linked_to, handle_errors, output_result, run_client, truncate_field
 
 app = typer.Typer(help="Manage Wealthbox notes.", no_args_is_help=True)
 
 _DEFAULT_FIELDS = ["id", "content", "linked_to", "creator_id", "updated_at"]
+_CONTENT_PREVIEW_LEN = 500
 
 
 @app.command("list", help="List notes. Can filter by linked resource and/or updated date range.")
 @handle_errors
 def list_notes(
-    resource_id: int | None = typer.Option(None),
-    resource_type: str | None = typer.Option(None),
+    contact: int | None = typer.Option(None, "--contact", help="Filter notes linked to a Contact (by ID)"),
     order: NotesOrder | None = typer.Option("updated"),
     updated_since: str | None = typer.Option(None, "--updated-since"),
     updated_before: str | None = typer.Option(None, "--updated-before"),
     page: int | None = typer.Option(None),
     per_page: int | None = typer.Option(None, "--per-page", help="Results per page (max 100)"),
-    verbose: bool = typer.Option(False, "--verbose", "-v", help="Show all fields"),
+    verbose: bool = typer.Option(False, "--verbose", "-v", help="Show all fields; content is not truncated"),
     token: str | None = typer.Option(None, envvar="WEALTHBOX_TOKEN", hidden=True),
     fmt: str = typer.Option("json", "--format"),
 ) -> None:
     query = NoteListQuery(
-        resource_id=resource_id,
-        resource_type=resource_type,
+        resource_id=contact,
+        resource_type=NoteResourceType.CONTACT if contact is not None else None,
         order=order,
         updated_since=updated_since,
         updated_before=updated_before,
@@ -38,7 +38,10 @@ def list_notes(
         per_page=per_page,
     )
 
-    output_result(run_client(token, lambda c: c.list_notes(query)), fmt, fields=None if verbose else _DEFAULT_FIELDS)
+    result = run_client(token, lambda c: c.list_notes(query))
+    if not verbose:
+        result = truncate_field(result, "content", _CONTENT_PREVIEW_LEN)
+    output_result(result, fmt, fields=None if verbose else _DEFAULT_FIELDS)
 
 
 @app.command("get", help="Get a single note by ID.")

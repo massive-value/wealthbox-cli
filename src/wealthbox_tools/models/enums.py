@@ -141,6 +141,10 @@ class TaskResourceType(StrEnum):
     OPPORTUNITY = "Opportunity"
 
 
+class NoteResourceType(StrEnum):
+    CONTACT = "Contact"
+
+
 class TaskType(StrEnum):
     ALL = "all"
     PARENTS = "parents"
