@@ -23,7 +23,7 @@ class MaritalStatus(StrEnum):
     SINGLE = "Single"
     DIVORCED = "Divorced"
     WIDOWED = "Widowed"
-    LIFE_PARTNER = "Life Partner"
+    LIFE_PARTNER = "Life partner"
     SEPARATED = "Separated"
     UNKNOWN = "Unknown"
 
