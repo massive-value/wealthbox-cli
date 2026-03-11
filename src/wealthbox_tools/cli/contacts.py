@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from typing import Any
 
 import typer
 
@@ -8,7 +9,20 @@ from wealthbox_tools.models import ContactCreateInput, ContactListQuery, Contact
 
 from wealthbox_tools.models import CategoryType, HouseholdTitle, ContactsOrder, RecordType
 
-from ._util import handle_errors, make_category_command, output_result, run_client
+from ._util import active_to_status, handle_errors, make_category_command, output_result, run_client
+
+
+_RECORD_TYPE_METAVAR = "[" + "|".join(m.value.lower() for m in RecordType) + "]"
+
+
+def _parse_record_type(value: str | None) -> RecordType | None:
+    if value is None:
+        return None
+    for member in RecordType:
+        if member.value.lower() == value.lower():
+            return member
+    valid = ", ".join(m.value for m in RecordType)
+    raise typer.BadParameter(f"Invalid type '{value}'. Choose from: {valid}")
 
 app = typer.Typer(help="Manage Wealthbox contacts.", no_args_is_help=True)
 
@@ -100,27 +114,110 @@ def get_contact(
     output_result(run_client(token, lambda c: c.get_contact(contact_id)), fmt, fields=None if verbose else _DEFAULT_FIELDS)
 
 
-@app.command("create", help="Create a new contact. Pass fields as a JSON string.")
+@app.command("add", help="Create a new contact.")
 @handle_errors
-def create_contact(
-    data: str = typer.Argument(..., help="JSON object of contact fields"),
+def add_contact(
+    record_type: str | None = typer.Argument(None, metavar=_RECORD_TYPE_METAVAR, help="Contact record type (case-insensitive)"),
+    # Advanced path
+    json_data: str | None = typer.Option(None, "--json", help="Full contact as JSON (for complex/nested fields); must include 'type'"),
+    # Common scalar flags
+    first_name: str | None = typer.Option(None, "--first-name"),
+    middle_name: str | None = typer.Option(None, "--middle-name"),
+    last_name: str | None = typer.Option(None, "--last-name"),
+    name: str | None = typer.Option(None, "--name", help="Full name (use for Household/Organization/Trust; use --first-name/--last-name for Person)"),
+    job_title: str | None = typer.Option(None, "--job-title"),
+    company_name: str | None = typer.Option(None, "--company-name"),
+    contact_type: str | None = typer.Option(None, "--contact-type", help="e.g. Client, Prospect"),
+    contact_source: str | None = typer.Option(None, "--contact-source"),
+    active: bool | None = typer.Option(None, "--active/--inactive", help="Set contact status to Active or Inactive"),
+    assigned_to: int | None = typer.Option(None, "--assigned-to", help="Assign to a user by ID"),
+    email: str | None = typer.Option(None, "--email", help="Primary email address"),
+    email_type: str | None = typer.Option(None, "--email-type", help="Email kind (e.g. Work, Personal) — see: wbox contacts categories email-types"),
+    phone: str | None = typer.Option(None, "--phone", help="Primary phone number"),
+    phone_type: str | None = typer.Option(None, "--phone-type", help="Phone kind (e.g. Work, Mobile) — see: wbox contacts categories phone-types"),
     token: str | None = typer.Option(None, envvar="WEALTHBOX_TOKEN", hidden=True),
     fmt: str = typer.Option("json", "--format", help="Output format: json only for now"),
 ) -> None:
-    input_model = ContactCreateInput(**json.loads(data))
+    if json_data is not None:
+        parsed = json.loads(json_data)
+        if "type" not in parsed:
+            raise typer.BadParameter(
+                "--json payload must include a 'type' field (Person, Household, Organization, Trust).",
+                param_hint="--json",
+            )
+        input_model = ContactCreateInput(**parsed)
+    else:
+        if record_type is None:
+            raise typer.BadParameter(
+                "RECORD_TYPE argument is required. Example: wbox contacts add Person --first-name John\n"
+                "To use a full JSON payload instead, pass --json '{...}' with a 'type' field.",
+                param_hint="RECORD_TYPE",
+            )
+        resolved_type = _parse_record_type(record_type)
+        payload: dict[str, Any] = {
+            "type": resolved_type,
+            "first_name": first_name,
+            "middle_name": middle_name,
+            "last_name": last_name,
+            "name": name,
+            "job_title": job_title,
+            "company_name": company_name,
+            "contact_type": contact_type,
+            "contact_source": contact_source,
+            "status": active_to_status(active),
+            "assigned_to": assigned_to,
+        }
+        if email:
+            email_entry: dict[str, Any] = {"address": email, "principal": True}
+            if email_type:
+                email_entry["kind"] = email_type
+            payload["email_addresses"] = [email_entry]
+        if phone:
+            phone_entry: dict[str, Any] = {"address": phone, "principal": True}
+            if phone_type:
+                phone_entry["kind"] = phone_type
+            payload["phone_numbers"] = [phone_entry]
+        input_model = ContactCreateInput(**{k: v for k, v in payload.items() if v is not None})
 
     output_result(run_client(token, lambda c: c.create_contact(input_model)), fmt)
 
 
-@app.command("update", help="Update an existing contact. Pass changed fields as a JSON string.")
+@app.command("update", help="Update an existing contact. Pass only the fields you want to change.")
 @handle_errors
 def update_contact(
     contact_id: int = typer.Argument(..., help="Contact ID"),
-    data: str = typer.Argument(..., help="JSON object of fields to update"),
+    # Advanced path for nested arrays (email_addresses, phone_numbers, etc.)
+    json_data: str | None = typer.Option(None, "--json", help="Full update as JSON (for nested fields like email_addresses)"),
+    # Scalar flags
+    first_name: str | None = typer.Option(None, "--first-name"),
+    middle_name: str | None = typer.Option(None, "--middle-name"),
+    last_name: str | None = typer.Option(None, "--last-name"),
+    name: str | None = typer.Option(None, "--name", help="Full name (for Household/Org/Trust)"),
+    job_title: str | None = typer.Option(None, "--job-title"),
+    company_name: str | None = typer.Option(None, "--company-name"),
+    contact_type: str | None = typer.Option(None, "--contact-type", help="e.g. Client, Prospect"),
+    contact_source: str | None = typer.Option(None, "--contact-source"),
+    active: bool | None = typer.Option(None, "--active/--inactive", help="Set contact status to Active or Inactive"),
+    assigned_to: int | None = typer.Option(None, "--assigned-to", help="Reassign to a user by ID"),
     token: str | None = typer.Option(None, envvar="WEALTHBOX_TOKEN", hidden=True),
     fmt: str = typer.Option("json", "--format", help="Output format: json only for now"),
 ) -> None:
-    input_model = ContactUpdateInput(**json.loads(data))
+    if json_data is not None:
+        input_model = ContactUpdateInput(**json.loads(json_data))
+    else:
+        payload: dict[str, Any] = {k: v for k, v in {
+            "first_name": first_name,
+            "middle_name": middle_name,
+            "last_name": last_name,
+            "name": name,
+            "job_title": job_title,
+            "company_name": company_name,
+            "contact_type": contact_type,
+            "contact_source": contact_source,
+            "status": active_to_status(active),
+            "assigned_to": assigned_to,
+        }.items() if v is not None}
+        input_model = ContactUpdateInput(**payload)
 
     output_result(run_client(token, lambda c: c.update_contact(contact_id, input_model)), fmt)
 

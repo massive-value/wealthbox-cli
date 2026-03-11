@@ -10,7 +10,7 @@ import typer
 from pydantic import ValidationError
 
 from wealthbox_tools.client import WealthboxAPIError, WealthboxClient
-from wealthbox_tools.models import CategoryListQuery, CategoryType
+from wealthbox_tools.models import CategoryListQuery, CategoryType, LinkedToRef
 
 
 def get_client(token: str | None = None) -> WealthboxClient:
@@ -87,6 +87,31 @@ def handle_errors(func):  # type: ignore[no-untyped-def]
             raise typer.Exit(code=1)
 
     return wrapper
+
+
+def active_to_status(active: bool | None) -> str | None:
+    """Map --active/--inactive flag to Wealthbox status string."""
+    if active is True:
+        return "Active"
+    if active is False:
+        return "Inactive"
+    return None
+
+
+def build_linked_to(
+    contact: int | None,
+    project: int | None,
+    opportunity: int | None,
+) -> list[LinkedToRef] | None:
+    """Build a linked_to list from typed ID options. Returns None if none provided."""
+    refs: list[LinkedToRef] = []
+    if contact is not None:
+        refs.append(LinkedToRef(id=contact, type="Contact"))
+    if project is not None:
+        refs.append(LinkedToRef(id=project, type="Project"))
+    if opportunity is not None:
+        refs.append(LinkedToRef(id=opportunity, type="Opportunity"))
+    return refs if refs else None
 
 
 def make_category_command(category_type: CategoryType):  # type: ignore[no-untyped-def]

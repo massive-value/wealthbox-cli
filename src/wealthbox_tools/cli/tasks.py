@@ -5,9 +5,9 @@ from typing import Any
 
 import typer
 
-from wealthbox_tools.models import CategoryType, TaskCreateInput, TaskListQuery, TaskUpdateInput, TaskResourceType, TaskType, TaskFrame
+from wealthbox_tools.models import CategoryType, TaskCreateInput, TaskListQuery, TaskUpdateInput, TaskResourceType, TaskType, TaskFrame, TaskPriority
 
-from ._util import handle_errors, make_category_command, output_result, run_client
+from ._util import build_linked_to, handle_errors, make_category_command, output_result, run_client
 
 app = typer.Typer(help="Manage Wealthbox tasks.", no_args_is_help=True)
 app.command("categories", help="List task category options.")(make_category_command(CategoryType.TASK_CATEGORIES))
@@ -61,13 +61,18 @@ def get_task(
     output_result(run_client(token, lambda c: c.get_task(task_id)), fmt, fields=None if verbose else _DEFAULT_FIELDS)
 
 
-@app.command("create", help="Create a new task. Required: name, and either due_date or frame.")
+@app.command("add", help="Create a new task. Required: name, and either due_date or frame.")
 @handle_errors
-def create_task(
+def add_task(
     name: str = typer.Argument(..., help="Task title/name"),
     due_date: str | None = typer.Option(None, "--due-date", help="Example: '2025-05-24 10:00 AM -0700' (must match Wealthbox format)"),
     frame: TaskFrame | None = typer.Option(None, "--frame", help="friendly due timeframe"),
-    more_fields: str | None = typer.Option(None, "--more-fields", help='JSON: {"assigned_to": 123456, "linked_to": [{"id": 987654, "type": "Contact"}]}'),
+    priority: TaskPriority | None = typer.Option(None, "--priority", help="Low, Medium, or High"),
+    assigned_to: int | None = typer.Option(None, "--assigned-to", help="Assign to a user by ID"),
+    contact: int | None = typer.Option(None, "--contact", help="Link to a Contact by ID"),
+    project: int | None = typer.Option(None, "--project", help="Link to a Project by ID"),
+    opportunity: int | None = typer.Option(None, "--opportunity", help="Link to an Opportunity by ID"),
+    more_fields: str | None = typer.Option(None, "--more-fields", help='JSON: {"category": 123, "complete": false, "assigned_to_team": 456, "description": "..."}'),
     token: str | None = typer.Option(None, envvar="WEALTHBOX_TOKEN", hidden=True),
     fmt: str = typer.Option("json", "--format"),
 ) -> None:
@@ -75,7 +80,14 @@ def create_task(
     if (due_date is None) == (frame is None):
         raise typer.BadParameter("Provide exactly one --due-date or --frame.")
 
-    payload: dict[str, Any] = {"name": name, "due_date": due_date, "frame": frame}
+    payload: dict[str, Any] = {
+        "name": name,
+        "due_date": due_date,
+        "frame": frame,
+        "priority": priority,
+        "assigned_to": assigned_to,
+        "linked_to": build_linked_to(contact, project, opportunity),
+    }
 
     if more_fields:
         try:
@@ -86,29 +98,51 @@ def create_task(
         if not isinstance(extra, dict):
             raise typer.BadParameter("--more-fields must be a JSON object (e.g. {...}), not a list or string.")
 
-        # Prevent “shadowing” explicit args
-        reserved = {"name", "due_date", "frame"}
+        # Prevent "shadowing" explicit args
+        reserved = {"name", "due_date", "frame", "priority", "assigned_to", "linked_to"}
         collision = reserved.intersection(extra.keys())
         if collision:
             raise typer.BadParameter(f"--more-fields cannot include {sorted(collision)}; use explicit CLI args instead.")
 
         payload.update(extra)
 
-    # Let Pydantic do the real validation + coercion
-    input_model = TaskCreateInput(**payload)
+    # Strip None before model construction (due_date XOR frame validator needs clean input)
+    input_model = TaskCreateInput(**{k: v for k, v in payload.items() if v is not None})
 
     output_result(run_client(token, lambda c: c.create_task(input_model)), fmt)
 
 
-@app.command("update", help="Update an existing task.")
+@app.command("update", help="Update an existing task. Pass only the fields you want to change.")
 @handle_errors
 def update_task(
     task_id: int = typer.Argument(..., help="Task ID"),
-    data: str = typer.Argument(..., help="JSON object of fields to update"),
+    name: str | None = typer.Option(None, "--name", help="Task name"),
+    due_date: str | None = typer.Option(None, "--due-date", help="Example: '2025-05-24 10:00 AM -0700'"),
+    frame: TaskFrame | None = typer.Option(None, "--frame", help="Friendly due timeframe"),
+    priority: TaskPriority | None = typer.Option(None, "--priority", help="Low, Medium, or High"),
+    assigned_to: int | None = typer.Option(None, "--assigned-to", help="Reassign to a user by ID"),
+    complete: bool | None = typer.Option(None, "--complete/--no-complete", help="Mark as complete or incomplete"),
+    description: str | None = typer.Option(None, "--description"),
+    contact: int | None = typer.Option(None, "--contact", help="Replace linked Contact (by ID)"),
+    project: int | None = typer.Option(None, "--project", help="Replace linked Project (by ID)"),
+    opportunity: int | None = typer.Option(None, "--opportunity", help="Replace linked Opportunity (by ID)"),
     token: str | None = typer.Option(None, envvar="WEALTHBOX_TOKEN", hidden=True),
     fmt: str = typer.Option("json", "--format"),
 ) -> None:
-    input_model = TaskUpdateInput(**json.loads(data))
+    payload: dict[str, Any] = {k: v for k, v in {
+        "name": name,
+        "due_date": due_date,
+        "frame": frame,
+        "priority": priority,
+        "assigned_to": assigned_to,
+        "description": description,
+    }.items() if v is not None}
+    if complete is not None:
+        payload["complete"] = complete
+    linked = build_linked_to(contact, project, opportunity)
+    if linked is not None:
+        payload["linked_to"] = linked
+    input_model = TaskUpdateInput(**payload)
 
     output_result(run_client(token, lambda c: c.update_task(task_id, input_model)), fmt)
 

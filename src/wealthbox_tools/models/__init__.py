@@ -6,6 +6,7 @@ from .enums import (
     Gender,
     MaritalStatus,
     EventsOrder,
+    EventsState,
     HouseholdTitle,
     DocumentType,
     ContactsOrder,
@@ -14,6 +15,7 @@ from .enums import (
     NotesOrder,
     TaskResourceType,
     TaskFrame,
+    TaskPriority,
     TaskType,
 )
 from .common import (
@@ -44,8 +46,10 @@ __all__ = [
     "CategoryType",
     "NotesOrder",
     "TaskFrame",
+    "TaskPriority",
     "TaskResourceType",
     "TaskType",
+    "EventsState",
 
     # Activity
     "ActivityListQuery",

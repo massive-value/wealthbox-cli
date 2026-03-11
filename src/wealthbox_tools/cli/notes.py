@@ -1,13 +1,13 @@
 from __future__ import annotations
 
-import json
+from typing import Any
 
 import typer
 
 from wealthbox_tools.models import NoteCreateInput, NoteListQuery, NoteUpdateInput
 from wealthbox_tools.models import NotesOrder
 
-from ._util import handle_errors, output_result, run_client
+from ._util import build_linked_to, handle_errors, output_result, run_client
 
 app = typer.Typer(help="Manage Wealthbox notes.", no_args_is_help=True)
 
@@ -52,15 +52,20 @@ def get_note(
     output_result(run_client(token, lambda c: c.get_note(note_id)), fmt, fields=None if verbose else _DEFAULT_FIELDS)
 
 
-@app.command("create", help="Create a new note. Required: content.")
+@app.command("add", help="Create a new note.")
 @handle_errors
-def create_note(
-    data: str = typer.Argument(..., help="JSON object with content required. Optionally linked_to: [{id, type}]."),
+def add_note(
+    content: str = typer.Argument(..., help="Note body text"),
+    contact: int | None = typer.Option(None, "--contact", help="Link to a Contact by ID"),
+    project: int | None = typer.Option(None, "--project", help="Link to a Project by ID"),
+    opportunity: int | None = typer.Option(None, "--opportunity", help="Link to an Opportunity by ID"),
     token: str | None = typer.Option(None, envvar="WEALTHBOX_TOKEN", hidden=True),
     fmt: str = typer.Option("json", "--format"),
 ) -> None:
-    input_model = NoteCreateInput(**json.loads(data))
-
+    input_model = NoteCreateInput(
+        content=content,
+        linked_to=build_linked_to(contact, project, opportunity),
+    )
     output_result(run_client(token, lambda c: c.create_note(input_model)), fmt)
 
 
@@ -68,10 +73,19 @@ def create_note(
 @handle_errors
 def update_note(
     note_id: int = typer.Argument(..., help="Note ID"),
-    data: str = typer.Argument(..., help="JSON object of fields to update"),
+    content: str | None = typer.Option(None, "--content", help="New note body text"),
+    contact: int | None = typer.Option(None, "--contact", help="Replace linked Contact (by ID)"),
+    project: int | None = typer.Option(None, "--project", help="Replace linked Project (by ID)"),
+    opportunity: int | None = typer.Option(None, "--opportunity", help="Replace linked Opportunity (by ID)"),
     token: str | None = typer.Option(None, envvar="WEALTHBOX_TOKEN", hidden=True),
     fmt: str = typer.Option("json", "--format"),
 ) -> None:
-    input_model = NoteUpdateInput(**json.loads(data))
+    payload: dict[str, Any] = {}
+    if content is not None:
+        payload["content"] = content
+    linked = build_linked_to(contact, project, opportunity)
+    if linked is not None:
+        payload["linked_to"] = linked
+    input_model = NoteUpdateInput(**payload)
 
     output_result(run_client(token, lambda c: c.update_note(note_id, input_model)), fmt)

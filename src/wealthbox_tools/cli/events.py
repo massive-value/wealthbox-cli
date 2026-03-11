@@ -1,12 +1,12 @@
 from __future__ import annotations
 
-import json
+from typing import Any
 
 import typer
 
-from wealthbox_tools.models import CategoryType, EventCreateInput, EventListQuery, EventUpdateInput, EventsOrder, TaskResourceType
+from wealthbox_tools.models import CategoryType, EventCreateInput, EventListQuery, EventUpdateInput, EventsOrder, EventsState, TaskResourceType
 
-from ._util import handle_errors, make_category_command, output_result, run_client
+from ._util import build_linked_to, handle_errors, make_category_command, output_result, run_client
 
 app = typer.Typer(help="Manage Wealthbox events.", no_args_is_help=True)
 app.command("categories", help="List event category options.")(make_category_command(CategoryType.EVENT_CATEGORIES))
@@ -56,27 +56,70 @@ def get_event(
     output_result(run_client(token, lambda c: c.get_event(event_id)), fmt, fields=None if verbose else _DEFAULT_FIELDS)
 
 
-@app.command("create", help="Create a new event. Required fields: title, starts_at.")
+@app.command("add", help="Create a new event.")
 @handle_errors
-def create_event(
-    data: str = typer.Argument(..., help="JSON object with title and starts_at required"),
+def add_event(
+    title: str = typer.Argument(..., help="Event title"),
+    starts_at: str = typer.Option(..., "--starts-at", help="Start datetime, e.g. '2026-01-15 10:00 AM -0700'"),
+    ends_at: str = typer.Option(..., "--ends-at", help="End datetime, e.g. '2026-01-15 11:00 AM -0700'"),
+    location: str | None = typer.Option(None, "--location"),
+    state: EventsState | None = typer.Option(None, "--state", help="unconfirmed, confirmed, tentative, completed, cancelled"),
+    all_day: bool | None = typer.Option(None, "--all-day/--no-all-day"),
+    description: str | None = typer.Option(None, "--description"),
+    event_category: int | None = typer.Option(None, "--category", help="Event category ID"),
+    contact: int | None = typer.Option(None, "--contact", help="Link to a Contact by ID"),
+    project: int | None = typer.Option(None, "--project", help="Link to a Project by ID"),
+    opportunity: int | None = typer.Option(None, "--opportunity", help="Link to an Opportunity by ID"),
     token: str | None = typer.Option(None, envvar="WEALTHBOX_TOKEN", hidden=True),
     fmt: str = typer.Option("json", "--format"),
 ) -> None:
-    input_model = EventCreateInput(**json.loads(data))
-
+    input_model = EventCreateInput(
+        title=title,
+        starts_at=starts_at,
+        ends_at=ends_at,
+        location=location,
+        state=state,
+        all_day=all_day,
+        description=description,
+        event_category=event_category,
+        linked_to=build_linked_to(contact, project, opportunity),
+    )
     output_result(run_client(token, lambda c: c.create_event(input_model)), fmt)
 
 
-@app.command("update", help="Update an existing event.")
+@app.command("update", help="Update an existing event. Pass only the fields you want to change.")
 @handle_errors
 def update_event(
     event_id: int = typer.Argument(..., help="Event ID"),
-    data: str = typer.Argument(..., help="JSON object of fields to update"),
+    title: str | None = typer.Option(None, "--title", help="Event title"),
+    starts_at: str | None = typer.Option(None, "--starts-at", help="Start datetime, e.g. '2026-01-15 10:00 AM -0700'"),
+    ends_at: str | None = typer.Option(None, "--ends-at", help="End datetime, e.g. '2026-01-15 11:00 AM -0700'"),
+    location: str | None = typer.Option(None, "--location"),
+    state: EventsState | None = typer.Option(None, "--state", help="unconfirmed, confirmed, tentative, completed, cancelled"),
+    all_day: bool | None = typer.Option(None, "--all-day/--no-all-day"),
+    description: str | None = typer.Option(None, "--description"),
+    event_category: int | None = typer.Option(None, "--category", help="Event category ID"),
+    contact: int | None = typer.Option(None, "--contact", help="Replace linked Contact (by ID)"),
+    project: int | None = typer.Option(None, "--project", help="Replace linked Project (by ID)"),
+    opportunity: int | None = typer.Option(None, "--opportunity", help="Replace linked Opportunity (by ID)"),
     token: str | None = typer.Option(None, envvar="WEALTHBOX_TOKEN", hidden=True),
     fmt: str = typer.Option("json", "--format"),
 ) -> None:
-    input_model = EventUpdateInput(**json.loads(data))
+    payload: dict[str, Any] = {k: v for k, v in {
+        "title": title,
+        "starts_at": starts_at,
+        "ends_at": ends_at,
+        "location": location,
+        "state": state,
+        "description": description,
+        "event_category": event_category,
+    }.items() if v is not None}
+    if all_day is not None:
+        payload["all_day"] = all_day
+    linked = build_linked_to(contact, project, opportunity)
+    if linked is not None:
+        payload["linked_to"] = linked
+    input_model = EventUpdateInput(**payload)
 
     output_result(run_client(token, lambda c: c.update_event(event_id, input_model)), fmt)
 
