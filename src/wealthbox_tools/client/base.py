@@ -90,6 +90,7 @@ class _WealthboxBase:
         token: str | None = None,
         base_url: str = BASE_URL,
         rate_limit: bool = True,
+        max_429_retries: int = 5,
     ):
         self._token = token or os.environ.get("WEALTHBOX_TOKEN", "")
         if not self._token:
@@ -97,6 +98,7 @@ class _WealthboxBase:
                 "Wealthbox token required. Pass token= or set WEALTHBOX_TOKEN env var."
             )
         self._rate_limiter = RateLimiter() if rate_limit else None
+        self._max_429_retries = max_429_retries
         self._http = httpx.AsyncClient(
             base_url=base_url,
             headers={"ACCESS_TOKEN": self._token},
@@ -114,15 +116,30 @@ class _WealthboxBase:
         if self._rate_limiter:
             await self._rate_limiter.acquire()
 
-        try:
-            response = await self._http.request(method, path, params=params, json=json)
-        except httpx.RequestError as exc:
-            raise WealthboxAPIError(0, f"Request failed: {exc}", exc.request) from exc  # type: ignore[arg-type]
+        retries = 0
+        while True:
+            try:
+                response = await self._http.request(method, path, params=params, json=json)
+            except httpx.RequestError as exc:
+                raise WealthboxAPIError(0, f"Request failed: {exc}", exc.request) from exc  # type: ignore[arg-type]
 
-        if response.status_code == 429:
-            retry_after = float(response.headers.get("Retry-After", "5"))
-            await asyncio.sleep(retry_after)
-            return await self._request(method, path, params=params, json=json)
+            if response.status_code != 429:
+                break
+
+            retries += 1
+            if retries > self._max_429_retries:
+                raise WealthboxAPIError(
+                    429,
+                    f"Rate limited after {self._max_429_retries} retries.",
+                    response,
+                )
+
+            try:
+                retry_after = float(response.headers.get("Retry-After", "5"))
+            except ValueError:
+                retry_after = 5.0
+
+            await asyncio.sleep(max(retry_after, 0.0))
 
         if response.is_error:
             try:
