@@ -155,3 +155,13 @@ class TaskPriority(StrEnum):
     LOW = "Low"
     MEDIUM = "Medium"
     HIGH = "High"
+
+class InvestmentRiskTolerance(StrEnum):
+    LOW = "Low"
+    MODERATE = "Moderate"
+    HIGH = "High Risk"
+
+class InvestmentTimeHorizon(StrEnum):
+    SHORT_TERM = "Short Term"
+    INTERMEDIATE = "Intermediate"
+    LONG_TERM = "Long Term"

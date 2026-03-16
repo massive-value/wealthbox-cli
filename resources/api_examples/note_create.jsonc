@@ -1,0 +1,14 @@
+{
+  "content": "Spoke with Kevin Anderson on the phone...",
+  "linked_to": [
+    {
+      "id": 1,
+      "type": "Contact",
+      "name": "Kevin Anderson"
+    }
+  ],
+  "visible_to": "Everyone",
+  "tags": [
+    "Clients"
+  ]
+}

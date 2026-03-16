@@ -1,0 +1,50 @@
+{
+  "name": "Andersons, Kevin & Jane",
+  "background_information": "Met Kevin at a conference.",
+  "assigned_to": 1,
+  "contact_source": "Referral",
+  "contact_type": "Client",
+  "status": "Active",
+  "external_unique_id": "ext-12345",
+  // tags that dont already exist in the workspace will be created, use caution and see if a similar tag already exists before creating new tags.
+  // you are updating the entire tag object, omitting existing tags will remove them from the contact. Including new tags will add them to the contact.
+  "tags": [
+    "Clients"
+  ],
+  // you do not need to include emails that are not being updated or removed
+  "email_addresses": [
+    // add a new email address
+    {
+      "address": "new.email@example.com",
+      "principal": true,
+      "kind": "Work"
+    },
+    // update an existing email address (include the id of the email address to update, include fields to update, and exclude fields that are not being updated)
+    {
+      "id": 1,
+      "address": "existing.email@example.com",
+      "principal": false,
+      "kind": "Work"
+    },
+    // remove an existing email address (include the id of the email address to remove and set destroy to true)
+    {
+      "id": 1,
+      "destroy": true
+    }
+  ],
+  // you can only update custom fields, removing fields is not supported. You do not need to include custom fields that are not being updated.
+  "custom_fields": [
+    {
+      "id": 1,
+      "value": "123456789"
+    }
+  ],
+  // you can only update contact roles, removing roles is not supported. You do not need to include contact roles that are not being updated.
+  "contact_roles": [
+    {
+      "id": 1,
+      "value": 1
+    }
+  ],
+  "visible_to": "Everyone"
+}

@@ -57,11 +57,10 @@ def list_tasks(
 @handle_errors
 def get_task(
     task_id: int = typer.Argument(..., help="Task ID"),
-    verbose: bool = typer.Option(False, "--verbose", "-v", help="Show all fields"),
     token: str | None = typer.Option(None, envvar="WEALTHBOX_TOKEN", hidden=True),
     fmt: str = typer.Option("json", "--format"),
 ) -> None:
-    output_result(run_client(token, lambda c: c.get_task(task_id)), fmt, fields=None if verbose else _DEFAULT_FIELDS)
+    output_result(run_client(token, lambda c: c.get_task(task_id)), fmt)
 
 
 @app.command("add", help="Create a new task. Required: name, and either due_date or frame.")

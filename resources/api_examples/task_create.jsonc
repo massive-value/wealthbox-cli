@@ -1,0 +1,56 @@
+{
+  "name": "Return Bill's call",
+  "due_date": "2015-05-24 11:00 AM -0400",
+  "complete": true,
+  "category": 1,
+  "linked_to": [
+    {
+      "id": 1,
+      "type": "Contact",
+      "name": "Kevin Anderson"
+    }
+  ],
+  "priority": "Low",
+  "visible_to": "Everyone",
+  "due_later": "2 days later at 5:00 PM",
+  "subtasks": [
+    {
+      "id": 1,
+      "creator": 1,
+      "created_at": "2015-05-24 10:00 AM -0400",
+      "updated_at": "2015-10-12 11:30 PM -0400",
+      "due_date": "2024-10-03 12:00 PM -0400",
+      "name": "Call with client",
+      "frame": "specific",
+      "complete": true,
+      "repeats": true,
+      "description": "Review meeting for Kevin...",
+      "description_html": "<p>Review meeting for Kevin...</p>",
+      "priority": "None",
+      "due_later": "2 days later at 5:00 PM",
+      "completer": 1,
+      "category": "null",
+      "linked_to": [
+        {
+          "id": 1,
+          "type": "Contact",
+          "name": "Kevin Anderson"
+        }
+      ],
+      "parent": [
+        {
+          "id": 1,
+          "type": "Task"
+        }
+      ]
+    }
+  ],
+  "custom_fields": [
+    {
+      "id": 1,
+      "value": "123456789"
+    }
+  ],
+  "assigned_to": 1,
+  "description": "Follow up from message..."
+}

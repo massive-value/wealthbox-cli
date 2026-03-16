@@ -43,23 +43,20 @@ app.add_typer(categories_app, name="categories")
 @app.command("list", help="List contacts with optional filters.")
 @handle_errors
 def list_contacts(
-    contact_type: str | None = typer.Option(None, "--contact-type", help="Client, Prospect, Vendor, etc."),
+    type_: RecordType | None = typer.Option(None, "--type", help="Record Type - Person, Household, Organization, or Trust"),
     name: str | None = typer.Option(None, help="Filter by name - Contains"),
     email: str | None = typer.Option(None, help="Filter by email - Full Match"),
     phone: str | None = typer.Option(None, help="Filter by phone - Full Match - Parsing handled by Wealthbox"),
+    contact_type: str | None = typer.Option(None, "--contact-type", help="Client, Prospect, Vendor, etc. - see wbox contacts categories contact-types"),
     active: bool | None = typer.Option(None, "--active/--inactive", help="Filter by active status"),
-    tags: str | None = typer.Option(None, help="Comma-separated tags"),
     deleted: bool | None = typer.Option(None, "--deleted", help="Filter to deleted contacts only (omit to see non-deleted, which is the API default)"),
-    deleted_since: str | None = typer.Option(None, help="Only returns deleted contacts that were deleted on or after this timestamp"),
     household_title: HouseholdTitle | None = typer.Option(None, help="The household title you wish to filter the household title"),
-    type_: RecordType | None = typer.Option(None, "--type", help="Record Type - Person, Household, Organization, or Trust"),
-    order: ContactsOrder | None = typer.Option(None, help="The order that the contacts should be returned in"),
+    tags: str | None = typer.Option(None, help="Comma-separated tags"),
+    order: ContactsOrder = typer.Option(ContactsOrder.ASC, help="The order that the contacts should be returned in"),
     updated_since: str | None = typer.Option(None, "--updated-since", help="Format of 'YYYY-MM-DD 07:00 AM -0700'"),
     updated_before: str | None = typer.Option(None, "--updated-before", help="Format of 'YYYY-MM-DD 07:00 AM -0700'"),
-    assigned_to: int | None = typer.Option(
-        None, "--assigned-to",
-        help="Filter by assigned user ID (client-side scan — fetches all pages).",
-    ),
+    deleted_since: str | None = typer.Option(None, help="Only returns deleted contacts that were deleted on or after this timestamp"),
+    assigned_to: int | None = typer.Option(None, "--assigned-to", help="Filter by assigned user ID (client-side scan — fetches all pages)."),
     page: int | None = typer.Option(None, help="Page number"),
     per_page: int | None = typer.Option(None, "--per-page", help="Results per page (max 100)"),
     verbose: bool = typer.Option(False, "--verbose", "-v", help="Show all fields"),
@@ -73,19 +70,19 @@ def list_contacts(
 
     tag_list = [t.strip() for t in tags.split(",")] if tags else None
     query = ContactListQuery(
-        contact_type=contact_type,
+        type=type_,
         name=name,
         email=email,
         phone=phone,
-        tags=tag_list,
+        contact_type=contact_type,
         active=active,
         deleted=deleted,
-        deleted_since=deleted_since,
         household_title=household_title,
-        type=type_,
+        tags=tag_list,
         order=order,
         updated_since=updated_since,
         updated_before=updated_before,
+        deleted_since=deleted_since,
         page=None if assigned_to is not None else page,
         per_page=None if assigned_to is not None else per_page,
     )
@@ -107,11 +104,10 @@ def list_contacts(
 @handle_errors
 def get_contact(
     contact_id: int = typer.Argument(..., help="Contact ID"),
-    verbose: bool = typer.Option(False, "--verbose", "-v", help="Show all fields"),
     token: str | None = typer.Option(None, envvar="WEALTHBOX_TOKEN", hidden=True),
     fmt: str = typer.Option("json", "--format", help="Output format: json only for now"),
 ) -> None:
-    output_result(run_client(token, lambda c: c.get_contact(contact_id)), fmt, fields=None if verbose else _DEFAULT_FIELDS)
+    output_result(run_client(token, lambda c: c.get_contact(contact_id)), fmt)
 
 
 @app.command("add", help="Create a new contact.")

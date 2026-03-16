@@ -209,7 +209,7 @@ __marimo__/
 
 
 # Custom
-test.json
-testing.py
+scripts/test.json
+scripts/testing.py
 .claude/
 **/.claude/

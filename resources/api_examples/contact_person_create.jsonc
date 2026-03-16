@@ -1,0 +1,135 @@
+{
+  "prefix": "Mr.",
+  "first_name": "Kevin",
+  "middle_name": "James",
+  "last_name": "Anderson",
+  "suffix": "M.D.",
+  "nickname": "Kev",
+  "job_title": "CEO",
+  "company_name": "Acme Co.",
+  "twitter_name": "kev.anderson",
+  "linkedin_url": "linkedin.com/in/kanderson",
+  "background_information": "Met Kevin at a conference.",
+  "birth_date": "1975-10-27",
+  "anniversary": "1998-11-29",
+  "client_since": "2002-05-21",
+  "date_of_death": "2018-01-21",
+  "assigned_to": 1,
+  "referred_by": 1,
+  "type": "Person",
+  "gender": "Female",
+  "contact_source": "Referral",
+  "contact_type": "Client",
+  "status": "Active",
+  "marital_status": "Married",
+  "attorney": 1,
+  "cpa": 1,
+  "doctor": 1,
+  "insurance": 1,
+  "business_manager": 1,
+  "family_officer": 1,
+  "assistant": 1,
+  "other": 1,
+  "trusted_contact": 1,
+  "important_information": "Has 3 kids in college",
+  "personal_interests": "Skiing: Downhill, Traveling",
+  "investment_objective": "Aggressive Growth",
+  "time_horizon": "Short Term",
+  "risk_tolerance": "Low",
+  "mutual_fund_experience": 3,
+  "stocks_and_bonds_experience": 2,
+  "partnerships_experience": 1,
+  "other_investing_experience": 5,
+  "gross_annual_income": 100000,
+  "assets": 250000,
+  "non_liquid_assets": 50000,
+  "liabilities": 50000,
+  "adjusted_gross_income": 75000,
+  "estimated_taxes": 18000,
+  "confirmed_by_tax_return": true,
+  "tax_year": 2015,
+  "tax_bracket": 10,
+  "birth_place": "New York, NY",
+  "maiden_name": "Anderson",
+  "passport_number": "AB1234CD5689",
+  "green_card_number": "ZX567HG134",
+  "occupation": {
+    "name": "CEO",
+    "start_date": "2015-11-25"
+  },
+  "drivers_license": {
+    "number": "1111111",
+    "state": "New York",
+    "issued_date": "2001-10-27",
+    "expires_date": "2011-10-27"
+  },
+  "retirement_date": "2025-09-30",
+  "signed_fee_agreement_date": "2013-05-15",
+  "signed_ips_agreement_date": "2014-03-12",
+  "signed_fp_agreement_date": "2015-03-12",
+  "last_adv_offering_date": "2013-09-21",
+  "initial_crs_offering_date": "2012-09-21",
+  "last_crs_offering_date": "2013-09-21",
+  "last_privacy_offering_date": "2011-10-23",
+  "external_unique_id": "ext-12345",
+  // including the household object will create a new household. Linking to an existing household upon person creation is not supported. See the household endpoint for adding or removing members.
+  "household": {
+    "name": "The Andersons",
+    "title": "Head"
+  },
+  // tags that dont already exist in the workspace will be created, use caution and see if a similar tag already exists before creating new tags.
+  "tags": [
+    "Clients"
+  ],
+  "street_addresses": [
+    {
+      "street_line_1": "155 12th Ave.",
+      "street_line_2": "Apt 3B",
+      "city": "New York",
+      "state": "New York",
+      "zip_code": "10001",
+      "country": "United States",
+      "principal": true,
+      "kind": "Work",
+      "destroy": false
+    }
+  ],
+  "email_addresses": [
+    {
+      "address": "kevin.anderson@example.com",
+      "principal": true,
+      "kind": "Work",
+      "destroy": false
+    }
+  ],
+  "phone_numbers": [
+    {
+      "address": "(555) 555-5555",
+      "principal": true,
+      "extension": "77",
+      "kind": "Work",
+      "destroy": false
+    }
+  ],
+  "websites": [
+    {
+      "address": "https://www.example.com",
+      "principal": true,
+      "kind": "Website",
+      "destroy": false
+    }
+  ],
+  "custom_fields": [
+    {
+      "id": 1,
+      "value": "123456789"
+    }
+  ],
+  "contact_roles": [
+    {
+      "id": 1,
+      "value": 1
+    }
+  ],
+  "visible_to": "Everyone"
+}

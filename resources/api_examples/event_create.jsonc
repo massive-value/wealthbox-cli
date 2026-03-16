@@ -1,0 +1,32 @@
+{
+  "title": "Client Meeting",
+  "starts_at": "2015-05-24 10:00 AM -0400",
+  "ends_at": "2015-05-24 11:00 AM -0400",
+  "repeats": true,
+  "event_category": 2,
+  "all_day": true,
+  "location": "Conference Room",
+  "description": "Review meeting for Kevin...",
+  "state": "unconfirmed",
+  "visible_to": "Everyone",
+  "email_invitees": true,
+  "linked_to": [
+    {
+      "id": 1,
+      "type": "Contact",
+      "name": "Kevin Anderson"
+    }
+  ],
+  "invitees": [
+    {
+      "id": 1,
+      "type": "User"
+    }
+  ],
+  "custom_fields": [
+    {
+      "id": 1,
+      "value": "123456789"
+    }
+  ]
+}

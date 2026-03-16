@@ -1,0 +1,17 @@
+{
+  "content": "Spoke with Kevin Anderson on the phone...",
+  // you are updating the entire linked_to object, omitting existing linked records will remove the link. Including new linked records will add the link.
+  "linked_to": [
+    {
+      "id": 1,
+      "type": "Contact",
+      "name": "Kevin Anderson"
+    }
+  ],
+  "visible_to": "Everyone",
+  // tags that dont already exist in the workspace will be created, use caution and see if a similar tag already exists before creating new tags.
+  // you are updating the entire tag object, omitting existing tags will remove them from the note. Including new tags will add them to the note.
+  "tags": [
+    "Clients"
+  ]
+}

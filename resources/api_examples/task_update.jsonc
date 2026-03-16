@@ -1,0 +1,59 @@
+{
+  "name": "Return Bill's call",
+  "due_date": "2015-05-24 11:00 AM -0400",
+  "complete": true,
+  "category": 1,
+  // you are updating the entire linked_to object, omitting existing linked_to will remove the links. Including new linked_to will add them to the event.
+  "linked_to": [
+    {
+      "id": 1,
+      "type": "Contact",
+      "name": "Kevin Anderson"
+    }
+  ],
+  "priority": "Low",
+  "visible_to": "Everyone",
+  "due_later": "2 days later at 5:00 PM",
+  // I dont know how to properly update subtasks, you may be able to update them here, or you may want to update them as their own task records using the task endpoint.
+  "subtasks": [
+    {
+      "id": 1,
+      "creator": 1,
+      "created_at": "2015-05-24 10:00 AM -0400",
+      "updated_at": "2015-10-12 11:30 PM -0400",
+      "due_date": "2024-10-03 12:00 PM -0400",
+      "name": "Call with client",
+      "frame": "specific",
+      "complete": true,
+      "repeats": true,
+      "description": "Review meeting for Kevin...",
+      "description_html": "<p>Review meeting for Kevin...</p>",
+      "priority": "None",
+      "due_later": "2 days later at 5:00 PM",
+      "completer": 1,
+      "category": "null",
+      "linked_to": [
+        {
+          "id": 1,
+          "type": "Contact",
+          "name": "Kevin Anderson"
+        }
+      ],
+      "parent": [
+        {
+          "id": 1,
+          "type": "Task"
+        }
+      ]
+    }
+  ],
+  // you can only update custom fields, removing fields is not supported. You do not need to include custom fields that are not being updated.
+  "custom_fields": [
+    {
+      "id": 1,
+      "value": "123456789"
+    }
+  ],
+  "assigned_to": 1,
+  "description": "Follow up from message..."
+}

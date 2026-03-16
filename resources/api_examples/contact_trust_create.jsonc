@@ -1,0 +1,111 @@
+{
+  "name": "Conglomerate Trust",
+  "background_information": "Background information about Conglomerate Trust",
+  "assigned_to": 1,
+  "type": "Trust",
+  "contact_source": "Referral",
+  "contact_type": "Client",
+  "status": "Active",
+  "attorney": 1,
+  "cpa": 1,
+  "doctor": 1,
+  "insurance": 1,
+  "business_manager": 1,
+  "family_officer": 1,
+  "assistant": 1,
+  "other": 1,
+  "trusted_contact": 1,
+  "important_information": "This is important",
+  "personal_interests": "I dont think Trusts have personal interests",
+  "investment_objective": "Aggressive Growth",
+  "time_horizon": "Short Term",
+  "risk_tolerance": "Low",
+  "mutual_fund_experience": 3,
+  "stocks_and_bonds_experience": 2,
+  "partnerships_experience": 1,
+  "other_investing_experience": 5,
+  "gross_annual_income": 100000,
+  "assets": 250000,
+  "non_liquid_assets": 50000,
+  "liabilities": 50000,
+  "adjusted_gross_income": 75000,
+  "estimated_taxes": 18000,
+  "confirmed_by_tax_return": true,
+  "tax_year": 2015,
+  "tax_bracket": 10,
+  "birth_place": "Impossible City, USA",
+  "maiden_name": "Impossible",
+  "passport_number": "AB1234CD5689",
+  "green_card_number": "ZX567HG134",
+  "occupation": {
+    "name": "Trusts dont have occupations, yet this is allowed to be filled out for trust contacts",
+    "start_date": "2015-11-25"
+  },
+  "drivers_license": {
+    "number": "1111111",
+    "state": "New York",
+    "issued_date": "2001-10-27",
+    "expires_date": "2011-10-27"
+  },
+  "retirement_date": "2025-09-30",
+  "signed_fee_agreement_date": "2013-05-15",
+  "signed_ips_agreement_date": "2014-03-12",
+  "signed_fp_agreement_date": "2015-03-12",
+  "last_adv_offering_date": "2013-09-21",
+  "initial_crs_offering_date": "2012-09-21",
+  "last_crs_offering_date": "2013-09-21",
+  "last_privacy_offering_date": "2011-10-23",
+  "external_unique_id": "ext-12345",
+  // tags that dont already exist in the workspace will be created, use caution and see if a similar tag already exists before creating new tags.
+  "tags": [
+    "Clients"
+  ],
+  "street_addresses": [
+    {
+      "street_line_1": "155 12th Ave.",
+      "street_line_2": "Apt 3B",
+      "city": "New York",
+      "state": "New York",
+      "zip_code": "10001",
+      "country": "United States",
+      "principal": true,
+      "kind": "Work"
+    }
+  ],
+  "email_addresses": [
+    {
+      "address": "conglomerate.trust@example.com",
+      "principal": true,
+      "kind": "Work"
+    }
+  ],
+  "phone_numbers": [
+    {
+      "address": "(555) 555-5555",
+      "principal": true,
+      "extension": "77",
+      "kind": "Work"
+    }
+  ],
+  "websites": [
+    {
+      "address": "https://www.example.com",
+      "principal": true,
+      "kind": "Website",
+      "destroy": false
+    }
+  ],
+  "custom_fields": [
+    {
+      "id": 1,
+      "value": "123456789"
+    }
+  ],
+  "contact_roles": [
+    {
+      "id": 1,
+      "value": 1
+    }
+  ],
+  "visible_to": "Everyone"
+}

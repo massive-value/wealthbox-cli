@@ -1,0 +1,174 @@
+{
+  "name": "Company and Co.",
+  "background_information": "A business that does work",
+  "assigned_to": 1,
+  "contact_source": "Referral",
+  "contact_type": "Client",
+  "status": "Active",
+  "attorney": 1,
+  "cpa": 1,
+  "doctor": 1,
+  "insurance": 1,
+  "business_manager": 1,
+  "family_officer": 1,
+  "assistant": 1,
+  "other": 1,
+  "trusted_contact": 1,
+  "important_information": "This is important",
+  "personal_interests": "I dont think organizations have personal interests",
+  "investment_objective": "Aggressive Growth",
+  "time_horizon": "Short Term",
+  "risk_tolerance": "Low",
+  "mutual_fund_experience": 3,
+  "stocks_and_bonds_experience": 2,
+  "partnerships_experience": 1,
+  "other_investing_experience": 5,
+  "gross_annual_income": 100000,
+  "assets": 250000,
+  "non_liquid_assets": 50000,
+  "liabilities": 50000,
+  "adjusted_gross_income": 75000,
+  "estimated_taxes": 18000,
+  "confirmed_by_tax_return": true,
+  "tax_year": 2015,
+  "tax_bracket": 10,
+  "birth_place": "Impossible City, USA",
+  "maiden_name": "Impossible",
+  "passport_number": "AB1234CD5689",
+  "green_card_number": "ZX567HG134",
+  // you only need to include fields that are being updated, excluding fields will not remove them.
+  "occupation": {
+    "name": "Organizations dont have occupations, yet this is allowed to be filled out for organization contacts",
+    "start_date": "2015-11-25"
+  },
+  // you only need to include fields that are being updated, excluding fields will not remove them.
+  "drivers_license": {
+    "number": "1111111",
+    "state": "New York",
+    "issued_date": "2011-10-27",
+    "expires_date": "2021-10-27"
+  },
+  "retirement_date": "2025-09-30",
+  "signed_fee_agreement_date": "2013-05-15",
+  "signed_ips_agreement_date": "2014-03-12",
+  "signed_fp_agreement_date": "2015-03-12",
+  "last_adv_offering_date": "2013-09-21",
+  "initial_crs_offering_date": "2012-09-21",
+  "last_crs_offering_date": "2013-09-21",
+  "last_privacy_offering_date": "2011-10-23",
+  "external_unique_id": "ext-12345",
+  // tags that dont already exist in the workspace will be created, use caution and see if a similar tag already exists before creating new tags.
+  // you are updating the entire tag object, omitting existing tags will remove them from the contact. Including new tags will add them to the contact.
+  "tags": [
+    "Existing Tag",
+    "New Tag"
+  ],
+  "street_addresses": [
+    // add a new street address
+    {
+      "street_line_1": "155 12th Ave.",
+      "street_line_2": "Apt 3B",
+      "city": "New York",
+      "state": "New York",
+      "zip_code": "10001",
+      "country": "United States",
+      "principal": true,
+      "kind": "Work"
+    },
+    // update an existing street address (include the id of the street address to update, include fields to update, and exclude fields that are not being updated)
+    {
+      "id": 1,
+      "street_line_1": "156 13th Ave.",
+      "street_line_2": "Apt 3C",
+      "city": "New York",
+      "state": "New York",
+      "zip_code": "10001",
+      "country": "United States",
+      "principal": false,
+      "kind": "Work"
+    },
+    // remove an existing street address (include the id of the street address to remove and set destroy to true)
+    {
+      "id": 1,
+      "destroy": true
+    }
+  ],
+  // you do not need to include emails that are not being updated or removed
+  "email_addresses": [
+    // add a new email address
+    {
+      "address": "new.email@example.com",
+      "principal": true,
+      "kind": "Work"
+    },
+    // update an existing email address (include the id of the email address to update, include fields to update, and exclude fields that are not being updated)
+    {
+      "id": 1,
+      "address": "existing.email@example.com",
+      "principal": false,
+      "kind": "Work"
+    },
+    // remove an existing email address (include the id of the email address to remove and set destroy to true)
+    {
+      "id": 1,
+      "destroy": true
+    }
+  ],
+  "phone_numbers": [
+    // add a new phone number
+    {
+      "address": "(555) 555-5555",
+      "principal": true,
+      "extension": "77",
+      "kind": "Work"
+    },
+    // update an existing phone number (include the id of the phone number to update, include fields to update, and exclude fields that are not being updated)
+    {
+      "id": 1,
+      "address": "(666) 666-6666",
+      "principal": false,
+      "extension": "88",
+      "kind": "Work"
+    },
+    // remove an existing phone number (include the id of the phone number to remove and set destroy to true)
+    {
+      "id": 1,
+      "destroy": true
+    }
+  ],
+  "websites": [
+    // add a new website
+    {
+      "address": "https://www.example.com",
+      "principal": true,
+      "kind": "Website"
+    },
+    // update an existing website (include the id of the website to update, include fields to update, and exclude fields that are not being updated)
+    {
+      "id": 1,
+      "address": "https://www.updatedexample.com",
+      "principal": false,
+      "kind": "Website"
+    },
+    // remove an existing website (include the id of the website to remove and set destroy to true)
+    {
+      "id": 1,
+      "destroy": true
+    }
+  ],
+  // you can only update custom fields, removing fields is not supported. You do not need to include custom fields that are not being updated.
+  "custom_fields": [
+    {
+      "id": 1,
+      "value": "123456789"
+    }
+  ],
+  // you can only update contact roles, removing roles is not supported. You do not need to include contact roles that are not being updated.
+  "contact_roles": [
+    {
+      "id": 1,
+      "value": 1
+    }
+  ],
+  "visible_to": "Everyone"
+}

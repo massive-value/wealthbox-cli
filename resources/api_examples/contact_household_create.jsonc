@@ -1,0 +1,34 @@
+{
+  "name": "Andersons, Kevin & Jane",
+  "background_information": "Met Kevin at a conference.",
+  "assigned_to": 1,
+  "type": "Household",
+  "contact_source": "Referral",
+  "contact_type": "Client",
+  "status": "Active",
+  "external_unique_id": "ext-12345",
+  // tags that dont already exist in the workspace will be created, use caution and see if a similar tag already exists before creating new tags.
+  "tags": [
+    "Clients"
+  ],
+  "email_addresses": [
+    {
+      "address": "kevin.anderson@example.com",
+      "principal": true,
+      "kind": "Work"
+    }
+  ],
+  "custom_fields": [
+    {
+      "id": 1,
+      "value": "123456789"
+    }
+  ],
+  "contact_roles": [
+    {
+      "id": 1,
+      "value": 1
+    }
+  ],
+  "visible_to": "Everyone"
+}
