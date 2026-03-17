@@ -10,8 +10,11 @@ from .events import app as events_app
 from .households import app as households_app
 from .me import app as me_app
 from .notes import app as notes_app
+from .opportunities import app as opportunities_app
+from .projects import app as projects_app
 from .tasks import app as tasks_app
 from .users import app as users_app
+from .workflows import app as workflows_app
 
 app = typer.Typer(
     name="wbox",
@@ -27,8 +30,11 @@ app.add_typer(events_app, name="events")
 app.add_typer(households_app, name="households")
 app.add_typer(me_app, name="me")
 app.add_typer(notes_app, name="notes")
+app.add_typer(opportunities_app, name="opportunities")
+app.add_typer(projects_app, name="projects")
 app.add_typer(tasks_app, name="tasks")
 app.add_typer(users_app, name="users")
+app.add_typer(workflows_app, name="workflows")
 
 
 if __name__ == "__main__":

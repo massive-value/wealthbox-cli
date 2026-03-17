@@ -170,6 +170,24 @@ def build_resource_filter(
     return result
 
 
+def parse_more_fields(more_fields: str, reserved: set[str]) -> dict[str, Any]:
+    """Parse --more-fields JSON and validate against reserved keys.
+
+    Raises BadParameter if the value is not valid JSON, not an object, or collides with
+    a reserved key that has an explicit CLI flag.
+    """
+    try:
+        extra = json.loads(more_fields)
+    except json.JSONDecodeError as e:
+        raise typer.BadParameter(f"--more-fields must be valid JSON: {e.msg}") from e
+    if not isinstance(extra, dict):
+        raise typer.BadParameter("--more-fields must be a JSON object (e.g. {...}), not a list or string.")
+    collision = reserved.intersection(extra.keys())
+    if collision:
+        raise typer.BadParameter(f"--more-fields cannot include {sorted(collision)}; use explicit CLI args instead.")
+    return extra
+
+
 def make_category_command(category_type: CategoryType):  # type: ignore[no-untyped-def]
     """Factory that returns a Typer command function for listing a category type."""
     @handle_errors

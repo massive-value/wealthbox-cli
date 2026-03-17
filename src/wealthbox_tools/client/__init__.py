@@ -9,9 +9,11 @@ from .events import EventsMixin
 from .households import HouseholdsMixin
 from .me import MeMixin
 from .notes import NotesMixin
+from .opportunities import OpportunitiesMixin
+from .projects import ProjectsMixin
 from .tasks import TasksMixin
 from .users import UsersMixin
-
+from .workflows import WorkflowsMixin
 
 
 class WealthboxClient(
@@ -23,9 +25,11 @@ class WealthboxClient(
     HouseholdsMixin,
     MeMixin,
     NotesMixin,
+    OpportunitiesMixin,
+    ProjectsMixin,
     TasksMixin,
     UsersMixin,
-    
+    WorkflowsMixin,
     _WealthboxBase,
 ):
     """Async Wealthbox CRM API client.

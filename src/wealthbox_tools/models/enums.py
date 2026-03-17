@@ -113,6 +113,8 @@ class EventsOrder(StrEnum):
     CREATED = "created"
 
 
+
+
 class EmailInviteeType(StrEnum):
     USER = "User"
     CONTACT = "Contact"
@@ -156,12 +158,36 @@ class TaskPriority(StrEnum):
     MEDIUM = "Medium"
     HIGH = "High"
 
+
 class InvestmentRiskTolerance(StrEnum):
     LOW = "Low"
     MODERATE = "Moderate"
     HIGH = "High Risk"
 
+
 class InvestmentTimeHorizon(StrEnum):
     SHORT_TERM = "Short Term"
     INTERMEDIATE = "Intermediate"
     LONG_TERM = "Long Term"
+
+
+# Opportunities
+class OpportunityOrder(StrEnum):
+    ASC = "asc"
+    DESC = "desc"
+    RECENT = "recent"
+    CREATED = "created"
+
+
+class OpportunityAmountKind(StrEnum):
+    FEE = "Fee"
+    COMMISSION = "Commission"
+    AUM = "AUM"
+    OTHER = "Other"
+
+
+# Workflows
+class WorkflowStatus(StrEnum):
+    ACTIVE = "active"
+    COMPLETED = "completed"
+    SCHEDULED = "scheduled"
