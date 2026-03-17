@@ -47,6 +47,28 @@ def _filter_fields(data: Any, fields: list[str]) -> Any:
     return data
 
 
+def truncate_nested_field(data: Any, parent: str, fields: list[str], max_len: int) -> Any:
+    """Truncate one or more string fields nested inside a dict field in each item of a response."""
+    def _trim(item: Any) -> Any:
+        if not (isinstance(item, dict) and isinstance(item.get(parent), dict)):
+            return item
+        nested = item[parent]
+        updates = {
+            f: nested[f][:max_len] + "..."
+            for f in fields
+            if f in nested and isinstance(nested[f], str) and len(nested[f]) > max_len
+        }
+        if updates:
+            item = {**item, parent: {**nested, **updates}}
+        return item
+
+    if isinstance(data, list):
+        return [_trim(item) for item in data]
+    if isinstance(data, dict):
+        return {k: [_trim(i) for i in v] if isinstance(v, list) else v for k, v in data.items()}
+    return _trim(data)
+
+
 def truncate_field(data: Any, field: str, max_len: int) -> Any:
     """Truncate a string field in each item of a response to max_len characters."""
     def _trim(item: Any) -> Any:

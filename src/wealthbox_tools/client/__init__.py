@@ -3,6 +3,7 @@ from __future__ import annotations
 from .base import WealthboxAPIError, _WealthboxBase
 from .activity import ActivityMixin
 from .categories import CategoriesMixin
+from .comments import CommentsMixin
 from .contacts import ContactsMixin
 from .events import EventsMixin
 from .households import HouseholdsMixin
@@ -16,6 +17,7 @@ from .users import UsersMixin
 class WealthboxClient(
     ActivityMixin,
     CategoriesMixin,
+    CommentsMixin,
     ContactsMixin,
     EventsMixin,
     HouseholdsMixin,

@@ -1,6 +1,7 @@
 """Pydantic models for Wealthbox tool payload/query validation."""
 
 from .activity import ActivityListQuery
+from .comments import CommentListQuery
 from .enums import (
     RecordType,
     Gender,
@@ -55,6 +56,9 @@ __all__ = [
 
     # Activity
     "ActivityListQuery",
+
+    # Comments
+    "CommentListQuery",
 
     # Contacts
     "ContactCreateInput",
