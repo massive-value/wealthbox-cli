@@ -1,6 +1,5 @@
 # Wealthbox CLI
 
-[![CI](https://github.com/massive-value/wealthbox-cli/actions/workflows/ci.yml/badge.svg)](https://github.com/massive-value/wealthbox-cli/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
 
 A command-line interface for interacting with the Wealthbox CRM API.

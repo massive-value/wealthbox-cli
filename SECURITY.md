@@ -4,7 +4,7 @@
 
 Please **do not** open a public GitHub issue for security vulnerabilities.
 
-Instead, email **kadinbullock@gmail.com** with:
+Instead, email **dev.bluehorizon@gmail.com** with:
 
 - A description of the vulnerability
 - Steps to reproduce
