@@ -213,3 +213,4 @@ scripts/test.json
 scripts/testing.py
 .claude/
 **/.claude/
+CLAUDE.md

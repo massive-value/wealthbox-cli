@@ -1,5 +1,8 @@
 # Wealthbox CLI
 
+[![CI](https://github.com/massive-value/wealthbox-cli/actions/workflows/ci.yml/badge.svg)](https://github.com/massive-value/wealthbox-cli/actions/workflows/ci.yml)
+[![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
+
 A command-line interface for interacting with the Wealthbox CRM API.
 
 This tool provides structured access to contacts, households, tasks,
@@ -7,6 +10,10 @@ events, notes, users, categories, and more — directly from your
 terminal.
 
 Official API documentation: https://dev.wealthbox.com
+
+> **Disclaimer:** This is an unofficial, community-built tool. It is not affiliated with,
+> endorsed by, or supported by Wealthbox or its parent company. "Wealthbox" is a trademark
+> of its respective owner.
 
 ------------------------------------------------------------------------
 
@@ -33,7 +40,7 @@ Official API documentation: https://dev.wealthbox.com
 ### 1. Clone the Repository
 
 ``` bash
-git clone <your-repo-url>
+git clone https://github.com/massive-value/wealthbox-cli
 cd wealthbox-cli
 ```
 
@@ -56,7 +63,13 @@ pip install -e .
 
 ## Configuration
 
-Set your Wealthbox API token as an environment variable:
+Copy `.env.example` to `.env` and fill in your token:
+
+```
+WEALTHBOX_TOKEN=your_api_token_here
+```
+
+Or set it as an environment variable:
 
 **macOS/Linux**
 
@@ -68,12 +81,6 @@ export WEALTHBOX_TOKEN="your_api_token_here"
 
 ``` powershell
 setx WEALTHBOX_TOKEN "your_api_token_here"
-```
-
-Or place a `.env` file in the project root:
-
-```
-WEALTHBOX_TOKEN=your_api_token_here
 ```
 
 ------------------------------------------------------------------------
@@ -117,6 +124,8 @@ pytest
 pytest tests/path/to/test_file.py::test_name
 ```
 
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the full contributor guide.
+
 ------------------------------------------------------------------------
 
 ## Troubleshooting
@@ -134,7 +143,15 @@ Before category-constrained writes, discover valid values first (e.g. `wbox cont
 
 ## Disclaimer
 
-This CLI wraps the Wealthbox API. Behavior depends on API version and
-your account permissions.
+This is an **unofficial, community-built** tool. It is not affiliated with, endorsed by,
+or supported by Wealthbox or its parent company. "Wealthbox" is a trademark of its
+respective owner. Use of this tool is subject to the [Wealthbox API Terms of Service](https://dev.wealthbox.com).
 
-Test destructive operations carefully.
+This CLI wraps the Wealthbox API. Behavior depends on API version and your account
+permissions. Test destructive operations carefully.
+
+------------------------------------------------------------------------
+
+## License
+
+Apache 2.0 — see [LICENSE](LICENSE).
