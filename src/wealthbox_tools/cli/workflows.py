@@ -12,11 +12,11 @@ from wealthbox_tools.models import (
     WorkflowTemplateListQuery,
 )
 
-from ._util import build_linked_to, handle_errors, output_result, parse_more_fields, run_client
+from ._util import OutputFormat, build_linked_to, handle_errors, output_result, parse_more_fields, run_client
 
-app = typer.Typer(help="Manage Wealthbox workflows.", no_args_is_help=True)
+app = typer.Typer(context_settings={"help_option_names": ["-h", "--help"]}, help="Manage Wealthbox workflows.", no_args_is_help=True)
 
-templates_app = typer.Typer(help="List workflow templates.", no_args_is_help=True)
+templates_app = typer.Typer(context_settings={"help_option_names": ["-h", "--help"]}, help="List workflow templates.", no_args_is_help=True)
 app.add_typer(templates_app, name="templates")
 
 _DEFAULT_FIELDS = ["id", "label", "status", "workflow_template", "linked_to", "created_at"]
@@ -35,7 +35,7 @@ def list_workflows(
     per_page: int | None = typer.Option(None, "--per-page", help="Results per page (max 100)"),
     verbose: bool = typer.Option(False, "--verbose", "-v", help="Show all fields"),
     token: str | None = typer.Option(None, envvar="WEALTHBOX_TOKEN", hidden=True),
-    fmt: str = typer.Option("json", "--format"),
+    fmt: OutputFormat = typer.Option(OutputFormat.JSON, "--format"),
 ) -> None:
     query = WorkflowListQuery(
         resource_id=resource_id,
@@ -54,7 +54,7 @@ def list_workflows(
 def get_workflow(
     workflow_id: int = typer.Argument(..., help="Workflow ID"),
     token: str | None = typer.Option(None, envvar="WEALTHBOX_TOKEN", hidden=True),
-    fmt: str = typer.Option("json", "--format"),
+    fmt: OutputFormat = typer.Option(OutputFormat.JSON, "--format"),
 ) -> None:
     output_result(run_client(token, lambda c: c.get_workflow(workflow_id)), fmt)
 
@@ -71,7 +71,7 @@ def add_workflow(
     starts_at: str | None = typer.Option(None, "--starts-at", help="Start date (e.g. 2026-06-01)"),
     more_fields: str | None = typer.Option(None, "--more-fields", help='JSON object for additional fields (e.g. workflow_milestones)'),
     token: str | None = typer.Option(None, envvar="WEALTHBOX_TOKEN", hidden=True),
-    fmt: str = typer.Option("json", "--format"),
+    fmt: OutputFormat = typer.Option(OutputFormat.JSON, "--format"),
 ) -> None:
     payload: dict[str, Any] = {
         "workflow_template": template,
@@ -97,7 +97,7 @@ def complete_workflow_step(
     due_date: str | None = typer.Option(None, "--due-date", help="Due date when restarting a step (requires --due-date-set)"),
     due_date_set: bool = typer.Option(False, "--due-date-set", help="Whether the restarted step has a due date"),
     token: str | None = typer.Option(None, envvar="WEALTHBOX_TOKEN", hidden=True),
-    fmt: str = typer.Option("json", "--format"),
+    fmt: OutputFormat = typer.Option(OutputFormat.JSON, "--format"),
 ) -> None:
     data = WorkflowStepCompleteInput(
         workflow_outcome_id=outcome_id,
@@ -113,7 +113,7 @@ def revert_workflow_step(
     workflow_id: int = typer.Argument(..., help="Workflow ID"),
     step_id: int = typer.Argument(..., help="Step ID"),
     token: str | None = typer.Option(None, envvar="WEALTHBOX_TOKEN", hidden=True),
-    fmt: str = typer.Option("json", "--format"),
+    fmt: OutputFormat = typer.Option(OutputFormat.JSON, "--format"),
 ) -> None:
     output_result(run_client(token, lambda c: c.revert_workflow_step(workflow_id, step_id)), fmt)
 
@@ -130,7 +130,7 @@ def list_workflow_templates(
     per_page: int | None = typer.Option(None, "--per-page", help="Results per page (max 100)"),
     verbose: bool = typer.Option(False, "--verbose", "-v", help="Show all fields"),
     token: str | None = typer.Option(None, envvar="WEALTHBOX_TOKEN", hidden=True),
-    fmt: str = typer.Option("json", "--format"),
+    fmt: OutputFormat = typer.Option(OutputFormat.JSON, "--format"),
 ) -> None:
     query = WorkflowTemplateListQuery(
         resource_id=resource_id,

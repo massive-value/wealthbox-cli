@@ -7,9 +7,9 @@ import typer
 from wealthbox_tools.models import NoteCreateInput, NoteListQuery, NoteResourceType, NoteUpdateInput
 from wealthbox_tools.models import NotesOrder
 
-from ._util import build_linked_to, handle_errors, output_result, run_client, truncate_field
+from ._util import OutputFormat, build_linked_to, handle_errors, output_result, run_client, truncate_field
 
-app = typer.Typer(help="Manage Wealthbox notes.", no_args_is_help=True)
+app = typer.Typer(context_settings={"help_option_names": ["-h", "--help"]}, help="Manage Wealthbox notes.", no_args_is_help=True)
 
 _DEFAULT_FIELDS = ["id", "content", "linked_to", "creator_id", "updated_at"]
 _CONTENT_PREVIEW_LEN = 500
@@ -26,7 +26,7 @@ def list_notes(
     per_page: int | None = typer.Option(None, "--per-page", help="Results per page (max 100)"),
     verbose: bool = typer.Option(False, "--verbose", "-v", help="Show all fields; content is not truncated"),
     token: str | None = typer.Option(None, envvar="WEALTHBOX_TOKEN", hidden=True),
-    fmt: str = typer.Option("json", "--format"),
+    fmt: OutputFormat = typer.Option(OutputFormat.JSON, "--format"),
 ) -> None:
     query = NoteListQuery(
         resource_id=contact,
@@ -50,7 +50,7 @@ def get_note(
     note_id: int = typer.Argument(..., help="Note ID"),
     verbose: bool = typer.Option(False, "--verbose", "-v", help="Show all fields"),
     token: str | None = typer.Option(None, envvar="WEALTHBOX_TOKEN", hidden=True),
-    fmt: str = typer.Option("json", "--format"),
+    fmt: OutputFormat = typer.Option(OutputFormat.JSON, "--format"),
 ) -> None:
     output_result(run_client(token, lambda c: c.get_note(note_id)), fmt, fields=None if verbose else _DEFAULT_FIELDS)
 
@@ -63,7 +63,7 @@ def add_note(
     project: int | None = typer.Option(None, "--project", help="Link to a Project by ID"),
     opportunity: int | None = typer.Option(None, "--opportunity", help="Link to an Opportunity by ID"),
     token: str | None = typer.Option(None, envvar="WEALTHBOX_TOKEN", hidden=True),
-    fmt: str = typer.Option("json", "--format"),
+    fmt: OutputFormat = typer.Option(OutputFormat.JSON, "--format"),
 ) -> None:
     input_model = NoteCreateInput(
         content=content,
@@ -81,7 +81,7 @@ def update_note(
     project: int | None = typer.Option(None, "--project", help="Replace linked Project (by ID)"),
     opportunity: int | None = typer.Option(None, "--opportunity", help="Replace linked Opportunity (by ID)"),
     token: str | None = typer.Option(None, envvar="WEALTHBOX_TOKEN", hidden=True),
-    fmt: str = typer.Option("json", "--format"),
+    fmt: OutputFormat = typer.Option(OutputFormat.JSON, "--format"),
 ) -> None:
     payload: dict[str, Any] = {}
     if content is not None:

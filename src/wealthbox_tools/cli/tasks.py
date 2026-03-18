@@ -7,9 +7,9 @@ import typer
 
 from wealthbox_tools.models import CategoryType, TaskCreateInput, TaskListQuery, TaskUpdateInput, TaskType, TaskFrame, TaskPriority
 
-from ._util import build_linked_to, build_resource_filter, handle_errors, make_category_command, output_result, run_client
+from ._util import OutputFormat, build_linked_to, build_resource_filter, handle_errors, make_category_command, output_result, run_client
 
-app = typer.Typer(help="Manage Wealthbox tasks.", no_args_is_help=True)
+app = typer.Typer(context_settings={"help_option_names": ["-h", "--help"]}, help="Manage Wealthbox tasks.", no_args_is_help=True)
 app.command("categories", help="List task category options.")(make_category_command(CategoryType.TASK_CATEGORIES))
 
 _DEFAULT_FIELDS = ["id", "name", "due_date", "frame", "complete", "category"]
@@ -32,7 +32,7 @@ def list_tasks(
     per_page: int | None = typer.Option(None, "--per-page", help="Results per page (max 100)"),
     verbose: bool = typer.Option(False, "--verbose", "-v", help="Show all fields"),
     token: str | None = typer.Option(None, envvar="WEALTHBOX_TOKEN", hidden=True),
-    fmt: str = typer.Option("json", "--format", help="Output format: json only for now"),
+    fmt: OutputFormat = typer.Option(OutputFormat.JSON, "--format"),
 ) -> None:
     resource_id, resource_type = build_resource_filter(contact, project, opportunity)
 
@@ -58,7 +58,7 @@ def list_tasks(
 def get_task(
     task_id: int = typer.Argument(..., help="Task ID"),
     token: str | None = typer.Option(None, envvar="WEALTHBOX_TOKEN", hidden=True),
-    fmt: str = typer.Option("json", "--format"),
+    fmt: OutputFormat = typer.Option(OutputFormat.JSON, "--format"),
 ) -> None:
     output_result(run_client(token, lambda c: c.get_task(task_id)), fmt)
 
@@ -76,7 +76,7 @@ def add_task(
     opportunity: int | None = typer.Option(None, "--opportunity", help="Link to an Opportunity by ID"),
     more_fields: str | None = typer.Option(None, "--more-fields", help='JSON: {"category": 123, "complete": false, "assigned_to_team": 456, "description": "..."}'),
     token: str | None = typer.Option(None, envvar="WEALTHBOX_TOKEN", hidden=True),
-    fmt: str = typer.Option("json", "--format"),
+    fmt: OutputFormat = typer.Option(OutputFormat.JSON, "--format"),
 ) -> None:
     # Friendly CLI-level guardrail (still keep model validation too)
     if (due_date is None) == (frame is None):
@@ -129,7 +129,7 @@ def update_task(
     project: int | None = typer.Option(None, "--project", help="Replace linked Project (by ID)"),
     opportunity: int | None = typer.Option(None, "--opportunity", help="Replace linked Opportunity (by ID)"),
     token: str | None = typer.Option(None, envvar="WEALTHBOX_TOKEN", hidden=True),
-    fmt: str = typer.Option("json", "--format"),
+    fmt: OutputFormat = typer.Option(OutputFormat.JSON, "--format"),
 ) -> None:
     payload: dict[str, Any] = {k: v for k, v in {
         "name": name,

@@ -6,9 +6,9 @@ import typer
 
 from wealthbox_tools.models import ProjectCreateInput, ProjectListQuery, ProjectUpdateInput
 
-from ._util import handle_errors, output_result, parse_more_fields, run_client
+from ._util import OutputFormat, handle_errors, output_result, parse_more_fields, run_client
 
-app = typer.Typer(help="Manage Wealthbox projects.", no_args_is_help=True)
+app = typer.Typer(context_settings={"help_option_names": ["-h", "--help"]}, help="Manage Wealthbox projects.", no_args_is_help=True)
 
 _DEFAULT_FIELDS = ["id", "name", "description", "organizer", "updated_at"]
 
@@ -22,7 +22,7 @@ def list_projects(
     per_page: int | None = typer.Option(None, "--per-page", help="Results per page (max 100)"),
     verbose: bool = typer.Option(False, "--verbose", "-v", help="Show all fields"),
     token: str | None = typer.Option(None, envvar="WEALTHBOX_TOKEN", hidden=True),
-    fmt: str = typer.Option("json", "--format"),
+    fmt: OutputFormat = typer.Option(OutputFormat.JSON, "--format"),
 ) -> None:
     query = ProjectListQuery(
         updated_since=updated_since,
@@ -38,7 +38,7 @@ def list_projects(
 def get_project(
     project_id: int = typer.Argument(..., help="Project ID"),
     token: str | None = typer.Option(None, envvar="WEALTHBOX_TOKEN", hidden=True),
-    fmt: str = typer.Option("json", "--format"),
+    fmt: OutputFormat = typer.Option(OutputFormat.JSON, "--format"),
 ) -> None:
     output_result(run_client(token, lambda c: c.get_project(project_id)), fmt)
 
@@ -52,7 +52,7 @@ def add_project(
     visible_to: str | None = typer.Option(None, "--visible-to"),
     more_fields: str | None = typer.Option(None, "--more-fields", help='JSON object for additional fields (e.g. custom_fields)'),
     token: str | None = typer.Option(None, envvar="WEALTHBOX_TOKEN", hidden=True),
-    fmt: str = typer.Option("json", "--format"),
+    fmt: OutputFormat = typer.Option(OutputFormat.JSON, "--format"),
 ) -> None:
     payload: dict[str, Any] = {
         "name": name,
@@ -78,7 +78,7 @@ def update_project(
     visible_to: str | None = typer.Option(None, "--visible-to"),
     more_fields: str | None = typer.Option(None, "--more-fields", help='JSON object for additional fields (e.g. custom_fields)'),
     token: str | None = typer.Option(None, envvar="WEALTHBOX_TOKEN", hidden=True),
-    fmt: str = typer.Option("json", "--format"),
+    fmt: OutputFormat = typer.Option(OutputFormat.JSON, "--format"),
 ) -> None:
     payload: dict[str, Any] = {k: v for k, v in {
         "name": name,

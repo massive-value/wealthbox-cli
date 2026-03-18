@@ -4,9 +4,9 @@ import typer
 
 from wealthbox_tools.models import CommentListQuery
 
-from ._util import handle_errors, output_result, run_client, truncate_nested_field
+from ._util import OutputFormat, handle_errors, output_result, run_client, truncate_nested_field
 
-app = typer.Typer(help="Retrieve Wealthbox comments.", no_args_is_help=True)
+app = typer.Typer(context_settings={"help_option_names": ["-h", "--help"]}, help="Retrieve Wealthbox comments.", no_args_is_help=True)
 
 _DEFAULT_FIELDS = ["id", "creator", "resource_type", "resource_id", "created_at", "updated_at", "body"]
 _BODY_PREVIEW_LEN = 500
@@ -23,7 +23,7 @@ def list_comments(
     per_page: int | None = typer.Option(None, "--per-page", help="Results per page (max 100)"),
     verbose: bool = typer.Option(False, "--verbose", "-v", help="Show all fields"),
     token: str | None = typer.Option(None, envvar="WEALTHBOX_TOKEN", hidden=True),
-    fmt: str = typer.Option("json", "--format"),
+    fmt: OutputFormat = typer.Option(OutputFormat.JSON, "--format"),
 ) -> None:
     query = CommentListQuery(
         resource_id=resource_id,

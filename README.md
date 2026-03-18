@@ -20,6 +20,8 @@ Official API documentation: https://dev.wealthbox.com
     -   Notes (create, read, update — delete not supported by API)
 -   Structured flag-based `add` and `update` commands — no raw JSON required
 -   `--json` escape hatch on contacts for complex nested payloads
+-   Multiple output formats via `--format`: `json` (default), `table`, `csv`, `tsv`
+-   Nested API fields (linked_to, email_addresses, tags, etc.) automatically flattened for tabular output
 -   Category and metadata lookups (resource-scoped and workspace-level)
 -   Client-side filters for fields the API doesn't support server-side (e.g. `--assigned-to` on contacts)
 -   Modular CLI structure with extensible client + model architecture

@@ -2,9 +2,9 @@ from __future__ import annotations
 
 import typer
 
-from ._util import handle_errors, output_result, run_client
+from ._util import OutputFormat, handle_errors, output_result, run_client
 
-app = typer.Typer(help="Manage Wealthbox users.", no_args_is_help=True)
+app = typer.Typer(context_settings={"help_option_names": ["-h", "--help"]}, help="Manage Wealthbox users.", no_args_is_help=True)
 
 
 _DEFAULT_FIELDS = ["id", "name", "email"]
@@ -15,6 +15,6 @@ _DEFAULT_FIELDS = ["id", "name", "email"]
 def list_users(
     verbose: bool = typer.Option(False, "--verbose", "-v", help="Show all fields"),
     token: str | None = typer.Option(None, envvar="WEALTHBOX_TOKEN", hidden=True),
-    fmt: str = typer.Option("json", "--format"),
+    fmt: OutputFormat = typer.Option(OutputFormat.JSON, "--format"),
 ) -> None:
     output_result(run_client(token, lambda c: c.list_users()), fmt, fields=None if verbose else _DEFAULT_FIELDS)

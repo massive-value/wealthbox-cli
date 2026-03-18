@@ -27,6 +27,38 @@ wbox activity list --verbose   # show full body content (default truncates to 50
 
 ------------------------------------------------------------------------
 
+## Output Formats
+
+All list and get commands accept `--format [json|table|csv|tsv]` (default: `json`).
+
+``` bash
+# Terminal table (bordered grid, good for interactive use)
+wbox contacts list --format table
+wbox contacts get 123 --format table
+
+# CSV — pipe to a file for Excel/Sheets
+wbox contacts list --format csv > contacts.csv
+
+# TSV
+wbox tasks list --format tsv > tasks.tsv
+```
+
+**Single-object commands** (e.g. `get`) render as a two-column Field/Value table.
+**List commands** render as a row-per-record table and print `Showing N of M results` to stderr when a total count is available.
+
+**Nested field flattening:** Tabular output automatically flattens nested API structures so columns stay readable:
+
+| Field type | Raw API value | Flattened |
+|---|---|---|
+| `linked_to` | `[{"id": 12, "type": "Contact"}]` | `Contact:12` |
+| `email_addresses` | `[{"address": "a@b.com", "principal": true, ...}]` | `a@b.com` |
+| `tags` | `["VIP", "Prospect"]` | `VIP, Prospect` |
+| `custom_fields` | `[{...}, {...}]` | `[2 items]` |
+
+Use `--verbose` with tabular formats to include all fields (same as JSON verbose mode).
+
+------------------------------------------------------------------------
+
 ## Contacts
 
 ### List

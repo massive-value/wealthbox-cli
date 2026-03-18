@@ -6,9 +6,9 @@ import typer
 
 from wealthbox_tools.models import CategoryType, EventCreateInput, EventListQuery, EventUpdateInput, EventsOrder, EventsState, TaskResourceType
 
-from ._util import build_linked_to, handle_errors, make_category_command, output_result, run_client
+from ._util import OutputFormat, build_linked_to, handle_errors, make_category_command, output_result, run_client
 
-app = typer.Typer(help="Manage Wealthbox events.", no_args_is_help=True)
+app = typer.Typer(context_settings={"help_option_names": ["-h", "--help"]}, help="Manage Wealthbox events.", no_args_is_help=True)
 app.command("categories", help="List event category options.")(make_category_command(CategoryType.EVENT_CATEGORIES))
 
 _DEFAULT_FIELDS = ["id", "title", "starts_at", "ends_at", "state", "event_category"]
@@ -28,7 +28,7 @@ def list_events(
     per_page: int | None = typer.Option(None, "--per-page", help="Results per page (max 100)"),
     verbose: bool = typer.Option(False, "--verbose", "-v", help="Show all fields"),
     token: str | None = typer.Option(None, envvar="WEALTHBOX_TOKEN", hidden=True),
-    fmt: str = typer.Option("json", "--format"),
+    fmt: OutputFormat = typer.Option(OutputFormat.JSON, "--format"),
 ) -> None:
     query = EventListQuery(
         resource_id=resource_id,
@@ -51,7 +51,7 @@ def get_event(
     event_id: int = typer.Argument(..., help="Event ID"),
     verbose: bool = typer.Option(False, "--verbose", "-v", help="Show all fields"),
     token: str | None = typer.Option(None, envvar="WEALTHBOX_TOKEN", hidden=True),
-    fmt: str = typer.Option("json", "--format"),
+    fmt: OutputFormat = typer.Option(OutputFormat.JSON, "--format"),
 ) -> None:
     output_result(run_client(token, lambda c: c.get_event(event_id)), fmt, fields=None if verbose else _DEFAULT_FIELDS)
 
@@ -71,7 +71,7 @@ def add_event(
     project: int | None = typer.Option(None, "--project", help="Link to a Project by ID"),
     opportunity: int | None = typer.Option(None, "--opportunity", help="Link to an Opportunity by ID"),
     token: str | None = typer.Option(None, envvar="WEALTHBOX_TOKEN", hidden=True),
-    fmt: str = typer.Option("json", "--format"),
+    fmt: OutputFormat = typer.Option(OutputFormat.JSON, "--format"),
 ) -> None:
     input_model = EventCreateInput(
         title=title,
@@ -103,7 +103,7 @@ def update_event(
     project: int | None = typer.Option(None, "--project", help="Replace linked Project (by ID)"),
     opportunity: int | None = typer.Option(None, "--opportunity", help="Replace linked Opportunity (by ID)"),
     token: str | None = typer.Option(None, envvar="WEALTHBOX_TOKEN", hidden=True),
-    fmt: str = typer.Option("json", "--format"),
+    fmt: OutputFormat = typer.Option(OutputFormat.JSON, "--format"),
 ) -> None:
     payload: dict[str, Any] = {k: v for k, v in {
         "title": title,

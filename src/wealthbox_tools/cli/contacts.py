@@ -9,7 +9,7 @@ from wealthbox_tools.models import ContactCreateInput, ContactListQuery, Contact
 
 from wealthbox_tools.models import CategoryType, HouseholdTitle, ContactsOrder, RecordType
 
-from ._util import active_to_status, handle_errors, make_category_command, output_result, run_client
+from ._util import OutputFormat, active_to_status, handle_errors, make_category_command, output_result, run_client
 
 
 _RECORD_TYPE_METAVAR = "[" + "|".join(m.value.lower() for m in RecordType) + "]"
@@ -24,12 +24,12 @@ def _parse_record_type(value: str | None) -> RecordType | None:
     valid = ", ".join(m.value for m in RecordType)
     raise typer.BadParameter(f"Invalid type '{value}'. Choose from: {valid}")
 
-app = typer.Typer(help="Manage Wealthbox contacts.", no_args_is_help=True)
+app = typer.Typer(context_settings={"help_option_names": ["-h", "--help"]}, help="Manage Wealthbox contacts.", no_args_is_help=True)
 
 _DEFAULT_FIELDS = ["id", "name", "type", "contact_type", "assigned_to", "status"]
 
 # -- categories sub-app -------------------------------------------------------
-categories_app = typer.Typer(help="List available category values for contact fields.", no_args_is_help=True)
+categories_app = typer.Typer(context_settings={"help_option_names": ["-h", "--help"]}, help="List available category values for contact fields.", no_args_is_help=True)
 categories_app.command("contact-types", help="List contact type options.")(make_category_command(CategoryType.CONTACT_TYPES))
 categories_app.command("contact-sources", help="List contact source options.")(make_category_command(CategoryType.CONTACT_SOURCES))
 categories_app.command("email-types", help="List email type options.")(make_category_command(CategoryType.EMAIL_TYPES))
@@ -61,7 +61,7 @@ def list_contacts(
     per_page: int | None = typer.Option(None, "--per-page", help="Results per page (max 100)"),
     verbose: bool = typer.Option(False, "--verbose", "-v", help="Show all fields"),
     token: str | None = typer.Option(None, envvar="WEALTHBOX_TOKEN", hidden=True),
-    fmt: str = typer.Option("json", "--format", help="Output format: json only for now"),
+    fmt: OutputFormat = typer.Option(OutputFormat.JSON, "--format"),
 ) -> None:
     if assigned_to is not None:
         if page is not None or per_page is not None:
@@ -105,7 +105,7 @@ def list_contacts(
 def get_contact(
     contact_id: int = typer.Argument(..., help="Contact ID"),
     token: str | None = typer.Option(None, envvar="WEALTHBOX_TOKEN", hidden=True),
-    fmt: str = typer.Option("json", "--format", help="Output format: json only for now"),
+    fmt: OutputFormat = typer.Option(OutputFormat.JSON, "--format"),
 ) -> None:
     output_result(run_client(token, lambda c: c.get_contact(contact_id)), fmt)
 
@@ -132,7 +132,7 @@ def add_contact(
     phone: str | None = typer.Option(None, "--phone", help="Primary phone number"),
     phone_type: str | None = typer.Option(None, "--phone-type", help="Phone kind (e.g. Work, Mobile) — see: wbox contacts categories phone-types"),
     token: str | None = typer.Option(None, envvar="WEALTHBOX_TOKEN", hidden=True),
-    fmt: str = typer.Option("json", "--format", help="Output format: json only for now"),
+    fmt: OutputFormat = typer.Option(OutputFormat.JSON, "--format"),
 ) -> None:
     if json_data is not None:
         parsed = json.loads(json_data)
@@ -196,7 +196,7 @@ def update_contact(
     active: bool | None = typer.Option(None, "--active/--inactive", help="Set contact status to Active or Inactive"),
     assigned_to: int | None = typer.Option(None, "--assigned-to", help="Reassign to a user by ID"),
     token: str | None = typer.Option(None, envvar="WEALTHBOX_TOKEN", hidden=True),
-    fmt: str = typer.Option("json", "--format", help="Output format: json only for now"),
+    fmt: OutputFormat = typer.Option(OutputFormat.JSON, "--format"),
 ) -> None:
     if json_data is not None:
         input_model = ContactUpdateInput(**json.loads(json_data))

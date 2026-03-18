@@ -1,8 +1,11 @@
 from __future__ import annotations
 
 import asyncio
+import csv
+import io
 import json
 from collections.abc import Awaitable, Callable
+from enum import StrEnum
 from functools import wraps
 from typing import Any
 
@@ -31,7 +34,11 @@ def run_client(token: str | None, fn: Callable[[WealthboxClient], Awaitable[Any]
     return asyncio.run(_execute())
 
 
-_SUPPORTED_FORMATS = ("json",)
+class OutputFormat(StrEnum):
+    JSON = "json"
+    TABLE = "table"
+    CSV = "csv"
+    TSV = "tsv"
 
 
 def _filter_fields(data: Any, fields: list[str]) -> Any:
@@ -84,13 +91,107 @@ def truncate_field(data: Any, field: str, max_len: int) -> Any:
     return _trim(data)
 
 
-def output_result(data: Any, fmt: str = "json", fields: list[str] | None = None) -> None:
+def _flatten_value(value: Any) -> Any:
+    """Convert a single field value to a scalar suitable for tabular display."""
+    if value is None:
+        return ""
+    if isinstance(value, list):
+        if not value:
+            return ""
+        first = value[0]
+        if isinstance(first, str):
+            # e.g. tags: ["VIP", "Prospect"]
+            return ", ".join(str(v) for v in value)
+        if isinstance(first, dict):
+            if "address" in first:
+                # e.g. email_addresses, phone_numbers — return principal's address
+                for item in value:
+                    if item.get("principal"):
+                        return item["address"]
+                return first["address"]
+            if "id" in first and "type" in first:
+                # e.g. linked_to, invitees
+                return f"{first['type']}:{first['id']}"
+            return f"[{len(value)} items]"
+    if isinstance(value, dict):
+        return json.dumps(value)
+    return value
+
+
+def _flatten_record(record: dict) -> dict:  # type: ignore[type-arg]
+    return {k: _flatten_value(v) for k, v in record.items()}
+
+
+def _extract_collection(data: Any) -> tuple[list[dict] | None, int | None]:  # type: ignore[type-arg]
+    """Return (rows, total_count) or (None, None) for a single-object response."""
+    if isinstance(data, list):
+        return data, None
+    if isinstance(data, dict):
+        if "meta" in data:
+            rows: list[dict] = []  # type: ignore[type-arg]
+            for k, v in data.items():
+                if k != "meta" and isinstance(v, list):
+                    rows = v
+                    break
+            total = data["meta"].get("total_count") or data["meta"].get("total_entries")
+            return rows, total
+        # Check if any value is a list (collection without meta)
+        for v in data.values():
+            if isinstance(v, list) and v and isinstance(v[0], dict):
+                return v, None
+    return None, None
+
+
+def _render_table(rows: list[dict], headers: list[str], total_count: int | None) -> tuple[str, str | None]:  # type: ignore[type-arg]
+    from tabulate import tabulate
+    table_data = [[row.get(h, "") for h in headers] for row in rows]
+    rendered = tabulate(table_data, headers=headers, tablefmt="simple_grid")
+    footer = f"Showing {len(rows)} of {total_count} results" if total_count is not None else None
+    return rendered, footer
+
+
+def _render_kv_table(record: dict) -> str:  # type: ignore[type-arg]
+    from tabulate import tabulate
+    return tabulate(list(record.items()), headers=["Field", "Value"], tablefmt="simple_grid")
+
+
+def _render_dsv(rows: list[dict], headers: list[str], sep: str) -> str:  # type: ignore[type-arg]
+    buf = io.StringIO()
+    writer = csv.writer(buf, delimiter=sep)
+    writer.writerow(headers)
+    for row in rows:
+        writer.writerow([row.get(h, "") for h in headers])
+    return buf.getvalue()
+
+
+def output_result(data: Any, fmt: OutputFormat = OutputFormat.JSON, fields: list[str] | None = None) -> None:
     """Print result to stdout in the requested format."""
-    if fmt not in _SUPPORTED_FORMATS:
-        raise ValueError(f"Unsupported format '{fmt}'. Supported formats: {', '.join(_SUPPORTED_FORMATS)}")
     if fields is not None:
         data = _filter_fields(data, fields)
-    typer.echo(json.dumps(data, indent=2, default=str))
+    if fmt == OutputFormat.JSON:
+        typer.echo(json.dumps(data, indent=2, default=str))
+        return
+
+    # Tabular formats
+    sep = "\t" if fmt == OutputFormat.TSV else ","
+    rows, total_count = _extract_collection(data)
+    if rows is None:
+        # Single object
+        record = _flatten_record(data if isinstance(data, dict) else {"value": data})
+        if fmt == OutputFormat.TABLE:
+            typer.echo(_render_kv_table(record))
+        else:
+            typer.echo(_render_dsv([record], list(record.keys()), sep), nl=False)
+    else:
+        flat_rows = [_flatten_record(r) for r in rows]
+        headers = list(flat_rows[0].keys()) if flat_rows else []
+        if fmt == OutputFormat.TABLE:
+            rendered, footer = _render_table(flat_rows, headers, total_count)
+            typer.echo(rendered)
+            if footer:
+                typer.echo(footer, err=True)
+        else:
+            typer.echo(_render_dsv(flat_rows, headers, sep), nl=False)
 
 
 def handle_errors(func):  # type: ignore[no-untyped-def]
@@ -195,7 +296,7 @@ def make_category_command(category_type: CategoryType):  # type: ignore[no-untyp
         page: int | None = typer.Option(None, help="Page number"),
         per_page: int | None = typer.Option(None, "--per-page", help="Results per page (max 100)"),
         token: str | None = typer.Option(None, envvar="WEALTHBOX_TOKEN", hidden=True),
-        fmt: str = typer.Option("json", "--format"),
+        fmt: OutputFormat = typer.Option(OutputFormat.JSON, "--format"),
     ) -> None:
         query = CategoryListQuery(page=page, per_page=per_page)
         output_result(run_client(token, lambda c: c.list_categories(category_type, query)), fmt)

@@ -12,9 +12,9 @@ from wealthbox_tools.models import (
     OpportunityUpdateInput,
 )
 
-from ._util import build_linked_to, handle_errors, output_result, parse_more_fields, run_client
+from ._util import OutputFormat, build_linked_to, handle_errors, output_result, parse_more_fields, run_client
 
-app = typer.Typer(help="Manage Wealthbox opportunities.", no_args_is_help=True)
+app = typer.Typer(context_settings={"help_option_names": ["-h", "--help"]}, help="Manage Wealthbox opportunities.", no_args_is_help=True)
 
 _DEFAULT_FIELDS = ["id", "name", "stage", "probability", "target_close", "manager", "linked_to"]
 
@@ -51,7 +51,7 @@ def list_opportunities(
     per_page: int | None = typer.Option(None, "--per-page", help="Results per page (max 100)"),
     verbose: bool = typer.Option(False, "--verbose", "-v", help="Show all fields"),
     token: str | None = typer.Option(None, envvar="WEALTHBOX_TOKEN", hidden=True),
-    fmt: str = typer.Option("json", "--format"),
+    fmt: OutputFormat = typer.Option(OutputFormat.JSON, "--format"),
 ) -> None:
     query = OpportunityListQuery(
         resource_id=resource_id,
@@ -71,7 +71,7 @@ def list_opportunities(
 def get_opportunity(
     opportunity_id: int = typer.Argument(..., help="Opportunity ID"),
     token: str | None = typer.Option(None, envvar="WEALTHBOX_TOKEN", hidden=True),
-    fmt: str = typer.Option("json", "--format"),
+    fmt: OutputFormat = typer.Option(OutputFormat.JSON, "--format"),
 ) -> None:
     output_result(run_client(token, lambda c: c.get_opportunity(opportunity_id)), fmt)
 
@@ -95,7 +95,7 @@ def add_opportunity(
     currency: str = typer.Option("USD", "--currency", help="Currency code for all amounts (default: USD)"),
     more_fields: str | None = typer.Option(None, "--more-fields", help='JSON object for additional fields (e.g. custom_fields)'),
     token: str | None = typer.Option(None, envvar="WEALTHBOX_TOKEN", hidden=True),
-    fmt: str = typer.Option("json", "--format"),
+    fmt: OutputFormat = typer.Option(OutputFormat.JSON, "--format"),
 ) -> None:
     payload: dict[str, Any] = {
         "name": name,
@@ -136,7 +136,7 @@ def update_opportunity(
     currency: str = typer.Option("USD", "--currency", help="Currency code for all amounts (default: USD)"),
     more_fields: str | None = typer.Option(None, "--more-fields", help='JSON object for additional fields (e.g. custom_fields)'),
     token: str | None = typer.Option(None, envvar="WEALTHBOX_TOKEN", hidden=True),
-    fmt: str = typer.Option("json", "--format"),
+    fmt: OutputFormat = typer.Option(OutputFormat.JSON, "--format"),
 ) -> None:
     payload: dict[str, Any] = {k: v for k, v in {
         "name": name,
