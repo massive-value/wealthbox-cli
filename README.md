@@ -93,6 +93,21 @@ wb <resource> <command> [options]
 
 For the full command reference see [docs/cli-reference.md](docs/cli-reference.md).
 
+### Local wrapper
+
+For this workspace, the easiest entrypoint is:
+
+```bash
+./run-wbox.sh me --format json
+./run-wbox.sh users list --format json
+./run-wbox.sh contacts list --per-page 1 --format json
+```
+
+The wrapper:
+- loads `.env`
+- uses the repo-local `.venv`
+- runs the installed `wbox` CLI
+
 ------------------------------------------------------------------------
 
 ## Project Structure
@@ -122,6 +137,31 @@ pytest
 # Run a single test
 pytest tests/path/to/test_file.py::test_name
 ```
+
+### Recommended local workflow
+
+```bash
+cd ~/.openclaw/workspace/integrations/wealthbox-cli
+
+# Sync latest code
+git pull
+
+# Refresh editable install
+.venv/bin/pip install -e .
+
+# Run the read-only smoke test
+./smoke_test.sh
+```
+
+Smoke test coverage:
+- `wbox me`
+- `wbox users list`
+- `wbox contacts list --per-page 1`
+
+This is intentionally read-only and meant to catch:
+- token/config issues
+- CLI install issues
+- basic Wealthbox API access issues
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for the full contributor guide.
 
