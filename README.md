@@ -199,8 +199,3 @@ permissions. Test destructive operations carefully.
 ## License
 
 Apache 2.0 — see [LICENSE](LICENSE).
-----------------------------------------------------------------------
-
-## License
-
-Apache 2.0 — see [LICENSE](LICENSE).
