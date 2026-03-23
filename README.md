@@ -173,7 +173,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for the full contributor guide.
 
 **401 Unauthorized** — Check your API token.
 
-**Date format errors** — Wealthbox expects `"YYYY-MM-DD HH:MM AM/PM -OFFSET"` (e.g. `"2026-04-01 10:00 AM -0700"`).
+**Date format errors** — Datetime fields expect ISO 8601 format: `"YYYY-MM-DDTHH:MM:SS±HH:MM"` or `"YYYY-MM-DDTHH:MM:SSZ"` (e.g. `"2026-04-01T10:00:00-07:00"`). Date-only fields (birth dates, etc.) use `"YYYY-MM-DD"`.
 
 **Add/Update appears to succeed but nothing changed** —
 Some category-constrained writes can silently no-op (return success while leaving fields unchanged).
