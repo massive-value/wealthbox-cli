@@ -10,8 +10,8 @@ from wealthbox_tools.cli.main import app
 _EVENT_RESPONSE = {
     "id": 3,
     "title": "Annual Review",
-    "starts_at": "2026-04-01 10:00 AM -0700",
-    "ends_at": "2026-04-01 11:00 AM -0700",
+    "starts_at": "2026-04-01T10:00:00-07:00",
+    "ends_at": "2026-04-01T11:00:00-07:00",
     "state": "confirmed",
 }
 
@@ -81,14 +81,14 @@ def test_update_event_reschedule(runner) -> None:
         app,
         [
             "events", "update", "3",
-            "--starts-at", "2026-05-01 10:00 AM -0700",
-            "--ends-at", "2026-05-01 11:00 AM -0700",
+            "--starts-at", "2026-05-01T10:00:00-07:00",
+            "--ends-at", "2026-05-01T11:00:00-07:00",
         ],
     )
     assert result.exit_code == 0
     sent = json.loads(route.calls[0].request.content)
-    assert sent["starts_at"] == "2026-05-01 10:00 AM -0700"
-    assert sent["ends_at"] == "2026-05-01 11:00 AM -0700"
+    assert sent["starts_at"] == "2026-05-01T10:00:00-07:00"
+    assert sent["ends_at"] == "2026-05-01T11:00:00-07:00"
 
 
 def test_update_event_no_fields_raises(runner) -> None:

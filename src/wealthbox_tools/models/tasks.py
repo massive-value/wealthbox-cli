@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pydantic import Field, model_validator
 
-from .common import PaginationQuery, RequireAnyFieldModel, WealthboxModel, LinkedToRef
+from .common import DateTimeField, PaginationQuery, RequireAnyFieldModel, WealthboxModel, LinkedToRef
 
 from .enums import TaskType, TaskPriority, TaskFrame, TaskResourceType
 
@@ -14,31 +14,31 @@ def _validate_assignment_target(assigned_to: int | None, assigned_to_team: int |
 
 
 class TaskListQuery(PaginationQuery):
-    resource_id: int | None = None
+    resource_id: int | None = Field(default=None, ge=1)
     resource_type: TaskResourceType | None = None
-    assigned_to: int | None = None
-    assigned_to_team: int | None = None
-    created_by: int | None = None
+    assigned_to: int | None = Field(default=None, ge=1)
+    assigned_to_team: int | None = Field(default=None, ge=1)
+    created_by: int | None = Field(default=None, ge=1)
     completed: bool | None = None
     task_type: TaskType | None = None
-    updated_since: str | None = None
-    updated_before: str | None = None
+    updated_since: DateTimeField = None
+    updated_before: DateTimeField = None
 
 
 class TaskCreateInput(WealthboxModel):
     name: str = Field(min_length=1)
-    due_date: str | None = None
+    due_date: DateTimeField = None
     frame: TaskFrame | None = None
     complete: bool | None = None
-    category: int | None = None
+    category: int | None = Field(default=None, ge=1)
     linked_to: list[LinkedToRef] | None = None
     priority: TaskPriority | None = None
     # visible_to: str | None = None
     # due_later: str | None = None
     # subtasks: SubTaskInput | None = None
     # custom_fields: TaskCustomFieldInput | None = None
-    assigned_to: int | None = None
-    assigned_to_team: int | None = None
+    assigned_to: int | None = Field(default=None, ge=1)
+    assigned_to_team: int | None = Field(default=None, ge=1)
     description: str | None = None
 
     @model_validator(mode="after")
@@ -57,18 +57,18 @@ class TaskCreateInput(WealthboxModel):
 
 class TaskUpdateInput(RequireAnyFieldModel):
     name: str | None = Field(default=None, min_length=1)
-    due_date: str | None = None
+    due_date: DateTimeField = None
     frame: TaskFrame | None = None
     complete: bool | None = None
-    category: int | None = None
+    category: int | None = Field(default=None, ge=1)
     linked_to: list[LinkedToRef] | None = None
     priority: TaskPriority | None = None
     # visible_to: str | None = None
     # due_later: str | None = None
     # subtasks: SubTaskInput | None = None
     # custom_fields: TaskCustomFieldInput | None = None
-    assigned_to: int | None = None
-    assigned_to_team: int | None = None
+    assigned_to: int | None = Field(default=None, ge=1)
+    assigned_to_team: int | None = Field(default=None, ge=1)
     description: str | None = None
 
     @model_validator(mode="after")

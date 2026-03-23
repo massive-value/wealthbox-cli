@@ -1,6 +1,6 @@
 {
   "name": "Return Bill's call",
-  "due_date": "2015-05-24 11:00 AM -0400",
+  "due_date": "2015-05-24T11:00:00-04:00",
   "complete": true,
   "category": 1,
   "linked_to": [

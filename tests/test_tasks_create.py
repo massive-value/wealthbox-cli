@@ -16,7 +16,7 @@ def test_add_task_with_due_date(runner) -> None:
         return_value=httpx.Response(200, json=_TASK_RESPONSE)
     )
     result = runner.invoke(
-        app, ["tasks", "add", "Send proposal", "--due-date", "2026-03-20 09:00 AM -0700"]
+        app, ["tasks", "add", "Send proposal", "--due-date", "2026-03-20T09:00:00-07:00"]
     )
     assert result.exit_code == 0
 
@@ -37,7 +37,7 @@ def test_add_task_with_priority(runner) -> None:
     )
     result = runner.invoke(
         app,
-        ["tasks", "add", "Send proposal", "--due-date", "2026-03-20 09:00 AM -0700", "--priority", "High"],
+        ["tasks", "add", "Send proposal", "--due-date", "2026-03-20T09:00:00-07:00", "--priority", "High"],
     )
     assert result.exit_code == 0
     sent = json.loads(route.calls[0].request.content)
@@ -51,7 +51,7 @@ def test_add_task_with_contact(runner) -> None:
     )
     result = runner.invoke(
         app,
-        ["tasks", "add", "Send proposal", "--due-date", "2026-03-20 09:00 AM -0700", "--contact", "12345"],
+        ["tasks", "add", "Send proposal", "--due-date", "2026-03-20T09:00:00-07:00", "--contact", "12345"],
     )
     assert result.exit_code == 0
     sent = json.loads(route.calls[0].request.content)
@@ -67,7 +67,7 @@ def test_add_task_more_fields_regression(runner) -> None:
         app,
         [
             "tasks", "add", "Send proposal",
-            "--due-date", "2026-03-20 09:00 AM -0700",
+            "--due-date", "2026-03-20T09:00:00-07:00",
             "--more-fields", '{"category": 99}',
         ],
     )
@@ -81,7 +81,7 @@ def test_add_task_priority_in_more_fields_raises(runner) -> None:
         app,
         [
             "tasks", "add", "Send proposal",
-            "--due-date", "2026-03-20 09:00 AM -0700",
+            "--due-date", "2026-03-20T09:00:00-07:00",
             "--more-fields", '{"priority": "High"}',
         ],
     )
@@ -97,6 +97,6 @@ def test_add_task_missing_due_date_and_frame(runner) -> None:
 def test_add_task_both_due_date_and_frame(runner) -> None:
     result = runner.invoke(
         app,
-        ["tasks", "add", "Send proposal", "--due-date", "2026-03-20 09:00 AM -0700", "--frame", "today"],
+        ["tasks", "add", "Send proposal", "--due-date", "2026-03-20T09:00:00-07:00", "--frame", "today"],
     )
     assert result.exit_code != 0

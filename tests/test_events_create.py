@@ -10,13 +10,13 @@ from wealthbox_tools.cli.main import app
 _EVENT_RESPONSE = {
     "id": 1,
     "title": "Annual Review",
-    "starts_at": "2026-04-01 10:00 AM -0700",
-    "ends_at": "2026-04-01 11:00 AM -0700",
+    "starts_at": "2026-04-01T10:00:00-07:00",
+    "ends_at": "2026-04-01T11:00:00-07:00",
     "state": "confirmed",
 }
 
-_STARTS = "2026-04-01 10:00 AM -0700"
-_ENDS = "2026-04-01 11:00 AM -0700"
+_STARTS = "2026-04-01T10:00:00-07:00"
+_ENDS = "2026-04-01T11:00:00-07:00"
 
 
 @respx.mock

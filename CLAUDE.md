@@ -71,6 +71,10 @@ input_model = TaskUpdateInput(**payload)
 
 **Models:** Input models live in `models/` (e.g., `ContactCreateInput`, `TaskListQuery`). List queries use `exclude_none=True`; update inputs use `exclude_unset=True` to preserve explicit nulls. Enums use Python 3.11+ `StrEnum`. `RequireAnyFieldModel` (in `models/common.py`) rejects empty update payloads. `OutputFormat` (in `cli/_util.py`) is a CLI-layer enum — not a model.
 
+**Model validation patterns:** Use `Field(ge=1)` for all positive-int ID fields. Use `DateField` (YYYY-MM-DD) and `DateTimeField` (ISO 8601) `Annotated` type aliases from `models/common.py` for date/datetime string fields — import them explicitly in each model file that uses them (Pydantic evaluates annotation strings against the module's globals; missing imports cause a "not fully defined" error at runtime). `updated_since`/`updated_before`/`deleted_since` filter params are `DateTimeField`, not `DateField`.
+
+**Wealthbox datetime format:** Datetime fields use ISO 8601: `YYYY-MM-DDTHH:MM:SS-07:00` or `YYYY-MM-DDTHH:MM:SSZ`. Date-only fields (birth_date, etc.) use `YYYY-MM-DD`. See `resources/api_examples/` for canonical field examples per record type.
+
 **Output formats:** `output_result` supports `json` (default), `table`, `csv`, `tsv` via the `OutputFormat` enum. Tabular formats flatten nested fields via `_flatten_record` before rendering. `table` uses `tabulate` (simple_grid); `csv`/`tsv` use stdlib `csv`. The total-count footer (`Showing N of M`) goes to stderr so stdout stays pipeable.
 
 **Client-side filtering pattern:** When the API silently ignores a filter param (e.g., `assigned_to` on `/contacts`), add a `list_all_<resource>()` method to the mixin that calls `fetch_all_pages()`, then filter in the CLI layer. Use `err=True` on all progress/warning output so stdout stays clean for piping (applies to all formats, not just JSON).
@@ -96,6 +100,7 @@ input_model = TaskUpdateInput(**payload)
 - `src/wealthbox_tools/client/base.py` — `_WealthboxBase`, `WealthboxAPIError`, `RateLimiter`
   - `fetch_all_pages(path, params, collection_key, on_progress)` — shared full-dataset paginator; all `list_all_*` methods delegate here
 - `src/wealthbox_tools/client/__init__.py` — `WealthboxClient` (combined mixins)
-- `src/wealthbox_tools/models/common.py` — base classes: `WealthboxModel`, `RequireAnyFieldModel`, `PaginationQuery`, `LinkedToRef`
+- `src/wealthbox_tools/models/common.py` — base classes: `WealthboxModel`, `RequireAnyFieldModel`, `PaginationQuery`, `LinkedToRef`; validation helpers: `DateField`, `DateTimeField` (Annotated type aliases), `_DATETIME_ISO_RE`, `_DATETIME_EXAMPLE`
 - `src/wealthbox_tools/models/enums.py` — all enum definitions
+- `resources/api_examples/` — canonical JSON examples for each record type's create/update payloads; use as reference when adding fields or validators
 - `tests/conftest.py` — shared `runner` fixture and `mock_token` autouse fixture

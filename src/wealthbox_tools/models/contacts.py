@@ -1,11 +1,13 @@
 from __future__ import annotations
 
-from pydantic import model_validator
+from pydantic import model_validator, Field
 
 from .custom_fields import CustomFieldValue
 
 from .common import (
     ContactRoleAssignment,
+    DateField,
+    DateTimeField,
     EmailAddress,
     PaginationQuery,
     PhoneNumber,
@@ -23,7 +25,7 @@ from .enums import (
 
 
 class ContactListQuery(PaginationQuery):
-    id: int | None = None
+    id: int | None = Field(default=None, ge=1)
     contact_type: str | None = None
     name: str | None = None
     email: str | None = None
@@ -32,13 +34,12 @@ class ContactListQuery(PaginationQuery):
     active: bool | None = None
     tags: list[str] | None = None
     deleted: bool | None = None
-    deleted_since: str | None = None
+    deleted_since: DateTimeField = None
     household_title: HouseholdTitle | None = None
     type: RecordType | None = None
     order: ContactsOrder | None = None
-    updated_since: str | None = None
-    updated_before: str | None = None
-    
+    updated_since: DateTimeField = None
+    updated_before: DateTimeField = None
 
 
 class ContactCreateInput(WealthboxModel):
@@ -57,20 +58,20 @@ class ContactCreateInput(WealthboxModel):
     company_name: str | None = None
     marital_status: MaritalStatus | None = None
     gender: Gender | None = None
-    birth_date: str | None = None
-    anniversary: str | None = None
-    client_since: str | None = None
-    date_of_death: str | None = None
-    
+    birth_date: DateField = None
+    anniversary: DateField = None
+    client_since: DateField = None
+    date_of_death: DateField = None
+
     contact_type: str | None = None
     contact_source: str | None = None
     status: str | None = None
-    assigned_to: int | None = None
+    assigned_to: int | None = Field(default=None, ge=1)
     visible_to: str | None = None
     external_unique_id: str | None = None
     background_information: str | None = None
     important_information: str | None = None
-    
+
 
     # Nested arrays
     email_addresses: list[EmailAddress] | None = None

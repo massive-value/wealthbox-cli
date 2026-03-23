@@ -1,7 +1,7 @@
 {
   "title": "Client Meeting",
-  "starts_at": "2015-05-24 10:00 AM -0400",
-  "ends_at": "2015-05-24 11:00 AM -0400",
+  "starts_at": "2015-05-24T10:00:00-04:00",
+  "ends_at": "2015-05-24T11:00:00-04:00",
   "repeats": true,
   "event_category": 2,
   "all_day": true,

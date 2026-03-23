@@ -72,11 +72,11 @@ def test_update_task_due_date(runner) -> None:
         return_value=httpx.Response(200, json=_TASK_RESPONSE)
     )
     result = runner.invoke(
-        app, ["tasks", "update", "5", "--due-date", "2026-04-01 09:00 AM -0700"]
+        app, ["tasks", "update", "5", "--due-date", "2026-04-01T09:00:00-07:00"]
     )
     assert result.exit_code == 0
     sent = json.loads(route.calls[0].request.content)
-    assert sent["due_date"] == "2026-04-01 09:00 AM -0700"
+    assert sent["due_date"] == "2026-04-01T09:00:00-07:00"
 
 
 def test_update_task_no_fields_raises(runner) -> None:
