@@ -68,7 +68,7 @@ class ContactCreateInput(WealthboxModel):
     assigned_to: int | None = None
     visible_to: str | None = None
     external_unique_id: str | None = None
-    background_info: str | None = None
+    background_information: str | None = None
     important_information: str | None = None
     
 

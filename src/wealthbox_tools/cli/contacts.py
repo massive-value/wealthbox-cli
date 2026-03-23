@@ -7,22 +7,10 @@ import typer
 
 from wealthbox_tools.models import ContactCreateInput, ContactListQuery, ContactUpdateInput
 
-from wealthbox_tools.models import CategoryType, HouseholdTitle, ContactsOrder, RecordType
+from wealthbox_tools.models import CategoryType, Gender, HouseholdTitle, ContactsOrder, MaritalStatus, RecordType
 
-from ._util import OutputFormat, active_to_status, handle_errors, make_category_command, output_result, run_client
+from ._util import OutputFormat, active_to_status, handle_errors, make_category_command, output_result, parse_more_fields, run_client
 
-
-_RECORD_TYPE_METAVAR = "[" + "|".join(m.value.lower() for m in RecordType) + "]"
-
-
-def _parse_record_type(value: str | None) -> RecordType | None:
-    if value is None:
-        return None
-    for member in RecordType:
-        if member.value.lower() == value.lower():
-            return member
-    valid = ", ".join(m.value for m in RecordType)
-    raise typer.BadParameter(f"Invalid type '{value}'. Choose from: {valid}")
 
 app = typer.Typer(context_settings={"help_option_names": ["-h", "--help"]}, help="Manage Wealthbox contacts.", no_args_is_help=True)
 
@@ -110,17 +98,77 @@ def get_contact(
     output_result(run_client(token, lambda c: c.get_contact(contact_id)), fmt)
 
 
-@app.command("add", help="Create a new contact.")
+# -- add sub-app --------------------------------------------------------------
+add_app = typer.Typer(context_settings={"help_option_names": ["-h", "--help"]}, help="Create a new contact.", no_args_is_help=True)
+app.add_typer(add_app, name="add")
+
+_PERSON_RESERVED = {
+    "type", "first_name", "middle_name", "last_name", "prefix", "suffix", "nickname",
+    "gender", "marital_status", "birth_date", "anniversary", "job_title", "company_name",
+    "contact_type", "contact_source", "status", "assigned_to", "email_addresses", "phone_numbers",
+}
+_HOUSEHOLD_RESERVED = {"type", "name", "contact_type", "contact_source", "status", "assigned_to", "email_addresses"}
+_ORG_TRUST_RESERVED = _HOUSEHOLD_RESERVED | {"phone_numbers"}
+
+
+def _build_contact_entry(value: str | None, kind: str | None) -> list[dict[str, Any]] | None:
+    if not value:
+        return None
+    entry: dict[str, Any] = {"address": value, "principal": True}
+    if kind:
+        entry["kind"] = kind
+    return [entry]
+
+
+def _create_named_contact(
+    record_type: RecordType,
+    reserved: set[str],
+    name: str,
+    contact_type: str | None,
+    contact_source: str | None,
+    active: bool | None,
+    assigned_to: int | None,
+    email: str | None,
+    email_type: str | None,
+    phone: str | None,
+    phone_type: str | None,
+    more_fields: str | None,
+    token: str | None,
+    fmt: OutputFormat,
+) -> None:
+    payload: dict[str, Any] = {k: v for k, v in {
+        "type": record_type,
+        "name": name,
+        "contact_type": contact_type,
+        "contact_source": contact_source,
+        "status": active_to_status(active),
+        "assigned_to": assigned_to,
+    }.items() if v is not None}
+    emails = _build_contact_entry(email, email_type)
+    if emails:
+        payload["email_addresses"] = emails
+    phones = _build_contact_entry(phone, phone_type)
+    if phones:
+        payload["phone_numbers"] = phones
+    if more_fields:
+        payload.update(parse_more_fields(more_fields, reserved))
+    input_model = ContactCreateInput(**payload)
+    output_result(run_client(token, lambda c: c.create_contact(input_model)), fmt)
+
+
+@add_app.command("person", help="Create a Person contact.")
 @handle_errors
-def add_contact(
-    record_type: str | None = typer.Argument(None, metavar=_RECORD_TYPE_METAVAR, help="Contact record type (case-insensitive)"),
-    # Advanced path
-    json_data: str | None = typer.Option(None, "--json", help="Full contact as JSON (for complex/nested fields); must include 'type'"),
-    # Common scalar flags
+def add_person(
     first_name: str | None = typer.Option(None, "--first-name"),
     middle_name: str | None = typer.Option(None, "--middle-name"),
     last_name: str | None = typer.Option(None, "--last-name"),
-    name: str | None = typer.Option(None, "--name", help="Full name (use for Household/Organization/Trust; use --first-name/--last-name for Person)"),
+    prefix: str | None = typer.Option(None, "--prefix"),
+    suffix: str | None = typer.Option(None, "--suffix"),
+    nickname: str | None = typer.Option(None, "--nickname"),
+    gender: Gender | None = typer.Option(None, "--gender"),
+    marital_status: MaritalStatus | None = typer.Option(None, "--marital-status"),
+    birth_date: str | None = typer.Option(None, "--birth-date", help="Format: YYYY-MM-DD"),
+    anniversary: str | None = typer.Option(None, "--anniversary", help="Format: YYYY-MM-DD"),
     job_title: str | None = typer.Option(None, "--job-title"),
     company_name: str | None = typer.Option(None, "--company-name"),
     contact_type: str | None = typer.Option(None, "--contact-type", help="e.g. Client, Prospect"),
@@ -131,51 +179,108 @@ def add_contact(
     email_type: str | None = typer.Option(None, "--email-type", help="Email kind (e.g. Work, Personal) — see: wbox contacts categories email-types"),
     phone: str | None = typer.Option(None, "--phone", help="Primary phone number"),
     phone_type: str | None = typer.Option(None, "--phone-type", help="Phone kind (e.g. Work, Mobile) — see: wbox contacts categories phone-types"),
+    more_fields: str | None = typer.Option(None, "--more-fields", help="Extra fields as JSON object (merged with flags; cannot override explicit flags)"),
     token: str | None = typer.Option(None, envvar="WEALTHBOX_TOKEN", hidden=True),
     fmt: OutputFormat = typer.Option(OutputFormat.JSON, "--format"),
 ) -> None:
-    if json_data is not None:
-        parsed = json.loads(json_data)
-        if "type" not in parsed:
-            raise typer.BadParameter(
-                "--json payload must include a 'type' field (Person, Household, Organization, Trust).",
-                param_hint="--json",
-            )
-        input_model = ContactCreateInput(**parsed)
-    else:
-        if record_type is None:
-            raise typer.BadParameter(
-                "RECORD_TYPE argument is required. Example: wbox contacts add Person --first-name John\n"
-                "To use a full JSON payload instead, pass --json '{...}' with a 'type' field.",
-                param_hint="RECORD_TYPE",
-            )
-        resolved_type = _parse_record_type(record_type)
-        payload: dict[str, Any] = {
-            "type": resolved_type,
-            "first_name": first_name,
-            "middle_name": middle_name,
-            "last_name": last_name,
-            "name": name,
-            "job_title": job_title,
-            "company_name": company_name,
-            "contact_type": contact_type,
-            "contact_source": contact_source,
-            "status": active_to_status(active),
-            "assigned_to": assigned_to,
-        }
-        if email:
-            email_entry: dict[str, Any] = {"address": email, "principal": True}
-            if email_type:
-                email_entry["kind"] = email_type
-            payload["email_addresses"] = [email_entry]
-        if phone:
-            phone_entry: dict[str, Any] = {"address": phone, "principal": True}
-            if phone_type:
-                phone_entry["kind"] = phone_type
-            payload["phone_numbers"] = [phone_entry]
-        input_model = ContactCreateInput(**{k: v for k, v in payload.items() if v is not None})
-
+    payload: dict[str, Any] = {k: v for k, v in {
+        "type": RecordType.PERSON,
+        "first_name": first_name,
+        "middle_name": middle_name,
+        "last_name": last_name,
+        "prefix": prefix,
+        "suffix": suffix,
+        "nickname": nickname,
+        "gender": gender,
+        "marital_status": marital_status,
+        "birth_date": birth_date,
+        "anniversary": anniversary,
+        "job_title": job_title,
+        "company_name": company_name,
+        "contact_type": contact_type,
+        "contact_source": contact_source,
+        "status": active_to_status(active),
+        "assigned_to": assigned_to,
+    }.items() if v is not None}
+    emails = _build_contact_entry(email, email_type)
+    if emails:
+        payload["email_addresses"] = emails
+    phones = _build_contact_entry(phone, phone_type)
+    if phones:
+        payload["phone_numbers"] = phones
+    if more_fields:
+        payload.update(parse_more_fields(more_fields, _PERSON_RESERVED))
+    input_model = ContactCreateInput(**payload)
     output_result(run_client(token, lambda c: c.create_contact(input_model)), fmt)
+
+
+@add_app.command("household", help="Create a Household contact.")
+@handle_errors
+def add_household(
+    name: str = typer.Option(..., "--name", help="Household name (required)"),
+    contact_type: str | None = typer.Option(None, "--contact-type", help="e.g. Client, Prospect"),
+    contact_source: str | None = typer.Option(None, "--contact-source"),
+    active: bool | None = typer.Option(None, "--active/--inactive", help="Set contact status to Active or Inactive"),
+    assigned_to: int | None = typer.Option(None, "--assigned-to", help="Assign to a user by ID"),
+    email: str | None = typer.Option(None, "--email", help="Primary email address"),
+    email_type: str | None = typer.Option(None, "--email-type", help="Email kind (e.g. Work, Personal) — see: wbox contacts categories email-types"),
+    more_fields: str | None = typer.Option(None, "--more-fields", help="Extra fields as JSON object (merged with flags; cannot override explicit flags)"),
+    token: str | None = typer.Option(None, envvar="WEALTHBOX_TOKEN", hidden=True),
+    fmt: OutputFormat = typer.Option(OutputFormat.JSON, "--format"),
+) -> None:
+    payload: dict[str, Any] = {k: v for k, v in {
+        "type": RecordType.HOUSEHOLD,
+        "name": name,
+        "contact_type": contact_type,
+        "contact_source": contact_source,
+        "status": active_to_status(active),
+        "assigned_to": assigned_to,
+    }.items() if v is not None}
+    emails = _build_contact_entry(email, email_type)
+    if emails:
+        payload["email_addresses"] = emails
+    if more_fields:
+        payload.update(parse_more_fields(more_fields, _HOUSEHOLD_RESERVED))
+    input_model = ContactCreateInput(**payload)
+    output_result(run_client(token, lambda c: c.create_contact(input_model)), fmt)
+
+
+@add_app.command("org", help="Create an Organization contact.")
+@handle_errors
+def add_org(
+    name: str = typer.Option(..., "--name", help="Organization name (required)"),
+    contact_type: str | None = typer.Option(None, "--contact-type", help="e.g. Client, Prospect"),
+    contact_source: str | None = typer.Option(None, "--contact-source"),
+    active: bool | None = typer.Option(None, "--active/--inactive", help="Set contact status to Active or Inactive"),
+    assigned_to: int | None = typer.Option(None, "--assigned-to", help="Assign to a user by ID"),
+    email: str | None = typer.Option(None, "--email", help="Primary email address"),
+    email_type: str | None = typer.Option(None, "--email-type", help="Email kind (e.g. Work, Personal) — see: wbox contacts categories email-types"),
+    phone: str | None = typer.Option(None, "--phone", help="Primary phone number"),
+    phone_type: str | None = typer.Option(None, "--phone-type", help="Phone kind (e.g. Work, Mobile) — see: wbox contacts categories phone-types"),
+    more_fields: str | None = typer.Option(None, "--more-fields", help="Extra fields as JSON object (merged with flags; cannot override explicit flags)"),
+    token: str | None = typer.Option(None, envvar="WEALTHBOX_TOKEN", hidden=True),
+    fmt: OutputFormat = typer.Option(OutputFormat.JSON, "--format"),
+) -> None:
+    _create_named_contact(RecordType.ORGANIZATION, _ORG_TRUST_RESERVED, name, contact_type, contact_source, active, assigned_to, email, email_type, phone, phone_type, more_fields, token, fmt)
+
+
+@add_app.command("trust", help="Create a Trust contact.")
+@handle_errors
+def add_trust(
+    name: str = typer.Option(..., "--name", help="Trust name (required)"),
+    contact_type: str | None = typer.Option(None, "--contact-type", help="e.g. Client, Prospect"),
+    contact_source: str | None = typer.Option(None, "--contact-source"),
+    active: bool | None = typer.Option(None, "--active/--inactive", help="Set contact status to Active or Inactive"),
+    assigned_to: int | None = typer.Option(None, "--assigned-to", help="Assign to a user by ID"),
+    email: str | None = typer.Option(None, "--email", help="Primary email address"),
+    email_type: str | None = typer.Option(None, "--email-type", help="Email kind (e.g. Work, Personal) — see: wbox contacts categories email-types"),
+    phone: str | None = typer.Option(None, "--phone", help="Primary phone number"),
+    phone_type: str | None = typer.Option(None, "--phone-type", help="Phone kind (e.g. Work, Mobile) — see: wbox contacts categories phone-types"),
+    more_fields: str | None = typer.Option(None, "--more-fields", help="Extra fields as JSON object (merged with flags; cannot override explicit flags)"),
+    token: str | None = typer.Option(None, envvar="WEALTHBOX_TOKEN", hidden=True),
+    fmt: OutputFormat = typer.Option(OutputFormat.JSON, "--format"),
+) -> None:
+    _create_named_contact(RecordType.TRUST, _ORG_TRUST_RESERVED, name, contact_type, contact_source, active, assigned_to, email, email_type, phone, phone_type, more_fields, token, fmt)
 
 
 @app.command("update", help="Update an existing contact. Pass only the fields you want to change.")

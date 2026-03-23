@@ -1,18 +1,19 @@
 from __future__ import annotations
 
-import json
 from typing import Any
 
 import typer
 
 from wealthbox_tools.models import CategoryType, TaskCreateInput, TaskListQuery, TaskUpdateInput, TaskType, TaskFrame, TaskPriority
 
-from ._util import OutputFormat, build_linked_to, build_resource_filter, handle_errors, make_category_command, output_result, run_client
+from ._util import OutputFormat, build_linked_to, build_resource_filter, handle_errors, make_category_command, output_result, parse_more_fields, run_client
 
 app = typer.Typer(context_settings={"help_option_names": ["-h", "--help"]}, help="Manage Wealthbox tasks.", no_args_is_help=True)
 app.command("categories", help="List task category options.")(make_category_command(CategoryType.TASK_CATEGORIES))
 
 _DEFAULT_FIELDS = ["id", "name", "due_date", "frame", "complete", "category"]
+
+_TASK_CREATE_RESERVED = {"name", "due_date", "frame", "priority", "assigned_to", "linked_to"}
 
 
 @app.command("list", help="Returns a list of tasks, with optional filters. By default, only outstanding tasks are returned; use --include-completed to include completed tasks in the results.")
@@ -92,21 +93,7 @@ def add_task(
     }
 
     if more_fields:
-        try:
-            extra = json.loads(more_fields)
-        except json.JSONDecodeError as e:
-            raise typer.BadParameter(f"--more-fields must be valid JSON: {e.msg}") from e
-
-        if not isinstance(extra, dict):
-            raise typer.BadParameter("--more-fields must be a JSON object (e.g. {...}), not a list or string.")
-
-        # Prevent "shadowing" explicit args
-        reserved = {"name", "due_date", "frame", "priority", "assigned_to", "linked_to"}
-        collision = reserved.intersection(extra.keys())
-        if collision:
-            raise typer.BadParameter(f"--more-fields cannot include {sorted(collision)}; use explicit CLI args instead.")
-
-        payload.update(extra)
+        payload.update(parse_more_fields(more_fields, _TASK_CREATE_RESERVED))
 
     # Strip None before model construction (due_date XOR frame validator needs clean input)
     input_model = TaskCreateInput(**{k: v for k, v in payload.items() if v is not None})
