@@ -89,20 +89,38 @@ wbox contacts list --assigned-to <user_id> | jq '.contacts | length'
 
 ### Add
 
-The record type is a required positional argument (case-insensitive):
+Contact creation is type-specific via subcommands:
 
 ``` bash
-wbox contacts add Person --first-name John --last-name Doe --contact-type Client
-wbox contacts add Person --first-name Jane --email jane@example.com --email-type Work
-wbox contacts add Household --name "Smith Family" --active
-wbox contacts add Organization --name "Acme Corp" --contact-type Prospect
+wbox contacts add person --first-name John --last-name Doe --contact-type Client
+wbox contacts add person --first-name Jane --email jane@example.com --email-type Work
+wbox contacts add household --name "Smith Family" --active
+wbox contacts add org --name "Acme Corp" --contact-type Prospect
+wbox contacts add trust --name "Bullock Family Trust" --contact-type Client
 ```
 
-For complex nested payloads (e.g. multiple email addresses), use `--json`:
+Person contacts also expose person-specific flags:
 
 ``` bash
-wbox contacts add --json '{"type": "Person", "first_name": "Jane", "email_addresses": [{"address": "jane@example.com", "kind": "Work", "principal": true}]}'
+wbox contacts add person \
+  --first-name Jane \
+  --last-name Doe \
+  --prefix Dr. \
+  --nickname Janie \
+  --gender Female \
+  --marital-status Married \
+  --birth-date 1980-01-15 \
+  --anniversary 2005-06-10
 ```
+
+For uncommon fields not covered by direct flags, use `--more-fields` with a JSON object. It is merged with the explicit flags but cannot override them:
+
+``` bash
+wbox contacts add person --first-name Jane --more-fields '{"background_information": "VIP prospect", "client_since": "2020-01-01"}'
+wbox contacts add household --name "Smith Family" --more-fields '{"important_information": "Prefers email"}'
+```
+
+Use `background_information` (not `background_info`) for contact payloads.
 
 ### Get
 
@@ -193,7 +211,7 @@ wbox tasks add "Review documents" --due-date "2026-03-20 09:00 AM -0700" --prior
 wbox tasks add "Team meeting" --frame today --assigned-to <user_id>
 ```
 
-Use `--more-fields` for uncommon fields not covered by direct flags:
+Use `--more-fields` for uncommon fields not covered by direct flags. It must be a JSON object and cannot shadow explicit CLI args like `name`, `due_date`, `frame`, `priority`, `assigned_to`, or resource links:
 
 ``` bash
 wbox tasks add "Quarterly review" --due-date "2026-03-20 09:00 AM -0700" --more-fields '{"category": 123, "description": "Annual review meeting"}'

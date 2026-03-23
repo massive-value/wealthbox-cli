@@ -25,7 +25,8 @@ Official API documentation: https://dev.wealthbox.com
     -   Events
     -   Notes (create, read, update — delete not supported by API)
 -   Structured flag-based `add` and `update` commands — no raw JSON required
--   `--json` escape hatch on contacts for complex nested payloads
+-   Type-specific contact creation subcommands: `contacts add person|household|org|trust`
+-   `--more-fields` escape hatch on contacts/tasks/projects/opportunities/workflows for uncommon JSON fields
 -   Multiple output formats via `--format`: `json` (default), `table`, `csv`, `tsv`
 -   Nested API fields (linked_to, email_addresses, tags, etc.) automatically flattened for tabular output
 -   Category and metadata lookups (resource-scoped and workspace-level)
@@ -101,6 +102,7 @@ For this workspace, the easiest entrypoint is:
 ./run-wbox.sh me --format json
 ./run-wbox.sh users list --format json
 ./run-wbox.sh contacts list --per-page 1 --format json
+./run-wbox.sh contacts add person --first-name Jane --last-name Doe --format json
 ```
 
 The wrapper:
@@ -178,6 +180,9 @@ Some category-constrained writes can silently no-op (return success while leavin
 Verify by inspecting the returned JSON — `add` and `update` commands print the full object on success. Treat unchanged intended fields as a failed write.
 Before category-constrained writes, discover valid values first (e.g. `wbox contacts categories contact-types`).
 
+**`contacts add` examples no longer work if they use `Person`/`Household`/`Organization`/`Trust` as a positional argument** —
+Use the new type-specific subcommands instead: `wbox contacts add person|household|org|trust ...`.
+
 ------------------------------------------------------------------------
 
 ## Disclaimer
@@ -190,6 +195,11 @@ This CLI wraps the Wealthbox API. Behavior depends on API version and your accou
 permissions. Test destructive operations carefully.
 
 ------------------------------------------------------------------------
+
+## License
+
+Apache 2.0 — see [LICENSE](LICENSE).
+----------------------------------------------------------------------
 
 ## License
 

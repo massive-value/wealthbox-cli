@@ -50,7 +50,7 @@ def list_contacts(..., fmt: OutputFormat = typer.Option(OutputFormat.JSON, "--fo
     output_result(result, fmt, fields=None if verbose else _DEFAULT_FIELDS)
 ```
 
-**`add` command pattern:** Create commands are named `add` (not `create`). They take structured flags instead of a raw JSON positional argument. The `contacts add` command also takes a positional record type argument (case-insensitive, validated at the CLI layer). Contacts and tasks expose a `--json` / `--more-fields` escape hatch for complex nested fields.
+**`add` command pattern:** Create commands are named `add` (not `create`). They take structured flags instead of a raw JSON positional argument. `contacts add` is now a subcommand group with type-specific commands: `contacts add person`, `contacts add household`, `contacts add org`, and `contacts add trust`. Contacts/tasks/projects/opportunities/workflows expose a `--more-fields` JSON-object escape hatch for uncommon fields; it may not override fields that already have explicit CLI flags.
 
 **`update` command pattern:** Update commands accept only the fields being changed as flags — they do NOT take a JSON positional argument. Build the payload as a dict-comprehension filtering `None`, then pass to the model. Handle `bool | None` fields (e.g. `complete`, `all_day`) explicitly after the comprehension since `False` is a valid value distinct from "not provided":
 
