@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import typer
 
-from wealthbox_tools.models import CommentListQuery
+from wealthbox_tools.models import CommentListQuery, CommentResourceType
 
 from ._util import OutputFormat, handle_errors, output_result, run_client, truncate_nested_field
 
@@ -16,7 +16,7 @@ _BODY_PREVIEW_LEN = 500
 @handle_errors
 def list_comments(
     resource_id: int | None = typer.Option(None, "--resource-id", help="Filter by resource ID (requires --resource-type)"),
-    resource_type: str | None = typer.Option(None, "--resource-type", help="Filter by resource type (e.g. Contact, Task, Event)"),
+    resource_type: CommentResourceType | None = typer.Option(None, "--resource-type", help="Filter by resource type: Contact, Task, Event"),
     updated_since: str | None = typer.Option(None, "--updated-since", help="Only comments updated on or after this timestamp"),
     updated_before: str | None = typer.Option(None, "--updated-before", help="Only comments updated on or before this timestamp"),
     page: int | None = typer.Option(None),

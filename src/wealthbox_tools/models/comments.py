@@ -1,10 +1,13 @@
 from __future__ import annotations
 
-from .common import PaginationQuery
+from pydantic import Field
+
+from .common import DateTimeField, PaginationQuery
+from .enums import CommentResourceType
 
 
 class CommentListQuery(PaginationQuery):
-    resource_id: int | None = None
-    resource_type: str | None = None
-    updated_since: str | None = None
-    updated_before: str | None = None
+    resource_id: int | None = Field(default=None, ge=1)
+    resource_type: CommentResourceType | None = None
+    updated_since: DateTimeField = None
+    updated_before: DateTimeField = None

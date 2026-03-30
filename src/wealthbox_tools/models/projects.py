@@ -2,13 +2,13 @@ from __future__ import annotations
 
 from pydantic import Field
 
-from .common import PaginationQuery, RequireAnyFieldModel, WealthboxModel
+from .common import DateTimeField, PaginationQuery, RequireAnyFieldModel, WealthboxModel
 from .custom_fields import CustomFieldValue
 
 
 class ProjectListQuery(PaginationQuery):
-    updated_since: str | None = None
-    updated_before: str | None = None
+    updated_since: DateTimeField = None
+    updated_before: DateTimeField = None
 
 
 class ProjectCreateInput(WealthboxModel):

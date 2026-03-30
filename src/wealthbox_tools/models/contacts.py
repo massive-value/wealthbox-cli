@@ -11,6 +11,7 @@ from .common import (
     EmailAddress,
     PaginationQuery,
     PhoneNumber,
+    RequireAnyFieldModel,
     StreetAddress,
     WealthboxModel,
 )
@@ -90,13 +91,43 @@ class ContactCreateInput(WealthboxModel):
         return self
 
 
-class ContactUpdateInput(ContactCreateInput):
-    destroy: bool | None = None
+class ContactUpdateInput(RequireAnyFieldModel):
+    # Core identity
+    type: RecordType | None = None
+    prefix: str | None = None
+    first_name: str | None = None
+    middle_name: str | None = None
+    last_name: str | None = None
+    suffix: str | None = None
+    nickname: str | None = None
+    name: str | None = None
 
-    @model_validator(mode="after")
-    def ensure_non_empty_update(self) -> "ContactUpdateInput":
-        # For updates, allow explicit nulls (field clearing) as long as at least
-        # one field was actually provided by the caller.
-        if not self.model_fields_set:
-            raise ValueError("At least one field must be provided.")
-        return self
+    # Person/company attributes
+    job_title: str | None = None
+    company_name: str | None = None
+    marital_status: MaritalStatus | None = None
+    gender: Gender | None = None
+    birth_date: DateField = None
+    anniversary: DateField = None
+    client_since: DateField = None
+    date_of_death: DateField = None
+
+    contact_type: str | None = None
+    contact_source: str | None = None
+    status: str | None = None
+    assigned_to: int | None = Field(default=None, ge=1)
+    visible_to: str | None = None
+    external_unique_id: str | None = None
+    background_information: str | None = None
+    important_information: str | None = None
+
+    # Nested arrays
+    email_addresses: list[EmailAddress] | None = None
+    phone_numbers: list[PhoneNumber] | None = None
+    street_addresses: list[StreetAddress] | None = None
+    tags: list[str] | None = None
+    custom_fields: list[CustomFieldValue] | None = None
+    contact_roles: list[ContactRoleAssignment] | None = None
+
+    # Update-only fields
+    destroy: bool | None = None

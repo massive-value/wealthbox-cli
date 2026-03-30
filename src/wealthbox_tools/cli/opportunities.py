@@ -9,6 +9,7 @@ from wealthbox_tools.models import (
     OpportunityCreateInput,
     OpportunityListQuery,
     OpportunityOrder,
+    OpportunityResourceType,
     OpportunityUpdateInput,
 )
 
@@ -42,7 +43,7 @@ def _build_amounts(
 @handle_errors
 def list_opportunities(
     resource_id: int | None = typer.Option(None, "--resource-id", help="Filter by linked resource ID (requires --resource-type)"),
-    resource_type: str | None = typer.Option(None, "--resource-type", help="Filter by linked resource type (e.g. Contact, Project)"),
+    resource_type: OpportunityResourceType | None = typer.Option(None, "--resource-type", help="Filter by linked resource type: Contact, Project"),
     order: OpportunityOrder | None = typer.Option(None, "--order", help="Sort order: asc, desc, recent, created"),
     include_closed: bool | None = typer.Option(None, "--include-closed/--no-include-closed", help="Include closed opportunities"),
     updated_since: str | None = typer.Option(None, "--updated-since"),

@@ -7,6 +7,7 @@ import typer
 from wealthbox_tools.models import (
     WorkflowCreateInput,
     WorkflowListQuery,
+    WorkflowResourceType,
     WorkflowStatus,
     WorkflowStepCompleteInput,
     WorkflowTemplateListQuery,
@@ -27,7 +28,7 @@ _TEMPLATE_DEFAULT_FIELDS = ["id", "name", "description", "status"]
 @handle_errors
 def list_workflows(
     resource_id: int | None = typer.Option(None, "--resource-id", help="Filter by linked resource ID (requires --resource-type)"),
-    resource_type: str | None = typer.Option(None, "--resource-type", help="Filter by linked resource type (e.g. Contact, Project)"),
+    resource_type: WorkflowResourceType | None = typer.Option(None, "--resource-type", help="Filter by linked resource type: Contact, Project"),
     status: WorkflowStatus | None = typer.Option(None, "--status", help="active, completed, or scheduled"),
     updated_since: str | None = typer.Option(None, "--updated-since"),
     updated_before: str | None = typer.Option(None, "--updated-before"),
@@ -122,7 +123,7 @@ def revert_workflow_step(
 @handle_errors
 def list_workflow_templates(
     resource_id: int | None = typer.Option(None, "--resource-id"),
-    resource_type: str | None = typer.Option(None, "--resource-type"),
+    resource_type: WorkflowResourceType | None = typer.Option(None, "--resource-type", help="Filter by linked resource type: Contact, Project"),
     status: WorkflowStatus | None = typer.Option(None, "--status", help="active, completed, or scheduled"),
     updated_since: str | None = typer.Option(None, "--updated-since"),
     updated_before: str | None = typer.Option(None, "--updated-before"),

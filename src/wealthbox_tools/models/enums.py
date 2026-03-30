@@ -147,6 +147,22 @@ class NoteResourceType(StrEnum):
     CONTACT = "Contact"
 
 
+class CommentResourceType(StrEnum):
+    CONTACT = "Contact"
+    TASK = "Task"
+    EVENT = "Event"
+
+
+class OpportunityResourceType(StrEnum):
+    CONTACT = "Contact"
+    PROJECT = "Project"
+
+
+class WorkflowResourceType(StrEnum):
+    CONTACT = "Contact"
+    PROJECT = "Project"
+
+
 class TaskType(StrEnum):
     ALL = "all"
     PARENTS = "parents"

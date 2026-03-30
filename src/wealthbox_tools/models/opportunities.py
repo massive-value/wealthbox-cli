@@ -2,9 +2,9 @@ from __future__ import annotations
 
 from pydantic import Field
 
-from .common import LinkedToRef, PaginationQuery, RequireAnyFieldModel, WealthboxModel
+from .common import DateTimeField, LinkedToRef, PaginationQuery, RequireAnyFieldModel, WealthboxModel
 from .custom_fields import CustomFieldValue
-from .enums import OpportunityOrder, OpportunityAmountKind
+from .enums import OpportunityOrder, OpportunityAmountKind, OpportunityResourceType
 
 
 class OpportunityAmount(WealthboxModel):
@@ -14,12 +14,12 @@ class OpportunityAmount(WealthboxModel):
 
 
 class OpportunityListQuery(PaginationQuery):
-    resource_id: int | None = None
-    resource_type: str | None = None
+    resource_id: int | None = Field(default=None, ge=1)
+    resource_type: OpportunityResourceType | None = None
     order: OpportunityOrder | None = None
     include_closed: bool | None = None
-    updated_since: str | None = None
-    updated_before: str | None = None
+    updated_since: DateTimeField = None
+    updated_before: DateTimeField = None
 
 
 class OpportunityCreateInput(WealthboxModel):

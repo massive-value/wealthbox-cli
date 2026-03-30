@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from pydantic import Field
 
-from .common import PaginationQuery, WealthboxModel, LinkedToRef
-from .enums import WorkflowStatus
+from .common import DateTimeField, PaginationQuery, WealthboxModel, LinkedToRef
+from .enums import WorkflowResourceType, WorkflowStatus
 
 
 
@@ -14,11 +14,11 @@ class WorkflowMilestone(WealthboxModel):
 
 
 class WorkflowListQuery(PaginationQuery):
-    resource_id: int | None = None
-    resource_type: str | None = None
+    resource_id: int | None = Field(default=None, ge=1)
+    resource_type: WorkflowResourceType | None = None
     status: WorkflowStatus | None = None
-    updated_since: str | None = None
-    updated_before: str | None = None
+    updated_since: DateTimeField = None
+    updated_before: DateTimeField = None
 
 
 class WorkflowCreateInput(WealthboxModel):
@@ -31,11 +31,11 @@ class WorkflowCreateInput(WealthboxModel):
 
 
 class WorkflowTemplateListQuery(PaginationQuery):
-    resource_id: int | None = None
-    resource_type: str | None = None
+    resource_id: int | None = Field(default=None, ge=1)
+    resource_type: WorkflowResourceType | None = None
     status: WorkflowStatus | None = None
-    updated_since: str | None = None
-    updated_before: str | None = None
+    updated_since: DateTimeField = None
+    updated_before: DateTimeField = None
 
 
 class WorkflowStepCompleteInput(WealthboxModel):
