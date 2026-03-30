@@ -19,11 +19,11 @@ _DEFAULT_FIELDS = ["id", "title", "starts_at", "ends_at", "state", "event_catego
 def list_events(
     resource_id: int | None = typer.Option(None, "--resource-id", help="Filter by resource ID"),
     resource_type: TaskResourceType | None = typer.Option(None, "--resource-type", help="Supports: Contact, Project, Opportunity"),
-    start_date_min: str | None = typer.Option(None, "--start-date-min", help="Format example: '2015-05-24 10:00 AM -0400'"),
-    start_date_max: str | None = typer.Option(None, "--start-date-max", help="Format example: '2015-05-24 10:00 AM -0400'"),
+    start_date_min: str | None = typer.Option(None, "--start-date-min", help="ISO 8601 timestamp, e.g. '2025-01-01T00:00:00Z'"),
+    start_date_max: str | None = typer.Option(None, "--start-date-max", help="ISO 8601 timestamp, e.g. '2025-12-31T23:59:59Z'"),
     order: EventsOrder | None = typer.Option(None, "--order", help="asc, desc, recent, created"),
-    updated_since: str | None = typer.Option(None, "--updated-since", help="Format example: '2015-05-24 10:00 AM -0400'"),
-    updated_before: str | None = typer.Option(None, "--updated-before", help="Format example: '2015-05-24 10:00 AM -0400'"),
+    updated_since: str | None = typer.Option(None, "--updated-since", help="ISO 8601 timestamp, e.g. '2025-01-01T00:00:00Z'"),
+    updated_before: str | None = typer.Option(None, "--updated-before", help="ISO 8601 timestamp, e.g. '2025-01-01T00:00:00Z'"),
     page: int | None = typer.Option(None),
     per_page: int | None = typer.Option(None, "--per-page", help="Results per page (max 100)"),
     verbose: bool = typer.Option(False, "--verbose", "-v", help="Show all fields"),
@@ -60,8 +60,8 @@ def get_event(
 @handle_errors
 def add_event(
     title: str = typer.Argument(..., help="Event title"),
-    starts_at: str = typer.Option(..., "--starts-at", help="Start datetime, e.g. '2026-01-15 10:00 AM -0700'"),
-    ends_at: str = typer.Option(..., "--ends-at", help="End datetime, e.g. '2026-01-15 11:00 AM -0700'"),
+    starts_at: str = typer.Option(..., "--starts-at", help="Start datetime in ISO 8601, e.g. '2026-01-15T10:00:00-07:00'"),
+    ends_at: str = typer.Option(..., "--ends-at", help="End datetime in ISO 8601, e.g. '2026-01-15T11:00:00-07:00'"),
     location: str | None = typer.Option(None, "--location"),
     state: EventsState | None = typer.Option(None, "--state", help="unconfirmed, confirmed, tentative, completed, cancelled"),
     all_day: bool | None = typer.Option(None, "--all-day/--no-all-day"),
@@ -92,8 +92,8 @@ def add_event(
 def update_event(
     event_id: int = typer.Argument(..., help="Event ID"),
     title: str | None = typer.Option(None, "--title", help="Event title"),
-    starts_at: str | None = typer.Option(None, "--starts-at", help="Start datetime, e.g. '2026-01-15 10:00 AM -0700'"),
-    ends_at: str | None = typer.Option(None, "--ends-at", help="End datetime, e.g. '2026-01-15 11:00 AM -0700'"),
+    starts_at: str | None = typer.Option(None, "--starts-at", help="Start datetime in ISO 8601, e.g. '2026-01-15T10:00:00-07:00'"),
+    ends_at: str | None = typer.Option(None, "--ends-at", help="End datetime in ISO 8601, e.g. '2026-01-15T11:00:00-07:00'"),
     location: str | None = typer.Option(None, "--location"),
     state: EventsState | None = typer.Option(None, "--state", help="unconfirmed, confirmed, tentative, completed, cancelled"),
     all_day: bool | None = typer.Option(None, "--all-day/--no-all-day"),
