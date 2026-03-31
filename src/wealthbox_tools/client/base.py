@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import collections
 import json
+import logging
 import os
 import pathlib
 import time
@@ -10,6 +11,8 @@ from collections.abc import Callable
 from typing import Any
 
 import httpx
+
+log = logging.getLogger(__name__)
 
 BASE_URL = "https://api.crmworkspace.com/v1"
 
@@ -134,9 +137,11 @@ class _WealthboxBase:
                     response,
                 )
 
+            raw_retry = response.headers.get("Retry-After", "5")
             try:
-                retry_after = float(response.headers.get("Retry-After", "5"))
+                retry_after = float(raw_retry)
             except ValueError:
+                log.warning("Malformed Retry-After header %r, defaulting to 5s", raw_retry)
                 retry_after = 5.0
 
             await asyncio.sleep(max(retry_after, 0.0))
