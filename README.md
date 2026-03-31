@@ -61,25 +61,34 @@ pip install -e ".[dev]"
 
 ## Configuration
 
-Copy `.env.example` to `.env` and fill in your token:
-
-```
-WEALTHBOX_TOKEN=your_api_token_here
+``` bash
+wbox config set-token
 ```
 
-Or set it as an environment variable:
+This prompts for your Wealthbox API token (input is masked) and stores it in
+`~/.config/wbox/config.json` (Linux/macOS) or `%APPDATA%\wbox\config.json` (Windows).
 
-**macOS/Linux**
+Other configuration commands:
 
 ``` bash
+wbox config show     # display stored config (token masked)
+wbox config clear    # remove stored config
+```
+
+**Alternative methods** (for CI, scripting, or containers):
+
+``` bash
+# Environment variable
 export WEALTHBOX_TOKEN="your_api_token_here"
+
+# .env file in working directory
+echo 'WEALTHBOX_TOKEN=your_api_token_here' > .env
+
+# Per-command flag
+wbox contacts list --token your_api_token_here
 ```
 
-**Windows (PowerShell)**
-
-``` powershell
-setx WEALTHBOX_TOKEN "your_api_token_here"
-```
+Token is resolved in this order: `--token` flag > `WEALTHBOX_TOKEN` env var > config file > `.env` file.
 
 ------------------------------------------------------------------------
 
