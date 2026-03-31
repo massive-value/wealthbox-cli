@@ -61,6 +61,15 @@ pip install -e ".[dev]"
 
 ## Configuration
 
+### Getting your API token
+
+1. Log in to [Wealthbox](https://app.crmworkspace.com)
+2. Click the three dots menu (**...**) in the top right
+3. Go to **Settings** -> **API Access**
+4. Click **Create Access Token**
+
+### Storing your token
+
 ``` bash
 wbox config set-token
 ```
