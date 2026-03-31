@@ -4,7 +4,7 @@ from pydantic import Field
 
 from .common import DateTimeField, LinkedToRef, PaginationQuery, RequireAnyFieldModel, WealthboxModel
 from .custom_fields import CustomFieldValue
-from .enums import OpportunityOrder, OpportunityAmountKind, OpportunityResourceType
+from .enums import OpportunityAmountKind, OpportunityOrder, OpportunityResourceType
 
 
 class OpportunityAmount(WealthboxModel):

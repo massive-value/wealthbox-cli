@@ -4,10 +4,16 @@ import typer
 
 from ._util import OutputFormat, handle_errors, output_result, run_client
 
-app = typer.Typer(context_settings={"help_option_names": ["-h", "--help"]}, help="Show info about the current authenticated user.")
+app = typer.Typer(
+    context_settings={"help_option_names": ["-h", "--help"]},
+    help="Show info about the current authenticated user.",
+)
 
 
-@app.callback(invoke_without_command=True, help="Show info about the current authenticated user. Use subcommands for more specific info.")
+@app.callback(
+    invoke_without_command=True,
+    help="Show info about the current authenticated user. Use subcommands for more specific info.",
+)
 @handle_errors
 def get_me(
     ctx: typer.Context,

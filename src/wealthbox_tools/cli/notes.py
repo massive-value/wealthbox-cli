@@ -4,12 +4,15 @@ from typing import Any
 
 import typer
 
-from wealthbox_tools.models import NoteCreateInput, NoteListQuery, NoteResourceType, NoteUpdateInput
-from wealthbox_tools.models import NotesOrder
+from wealthbox_tools.models import NoteCreateInput, NoteListQuery, NoteResourceType, NotesOrder, NoteUpdateInput
 
 from ._util import OutputFormat, build_linked_to, handle_errors, output_result, run_client, truncate_field
 
-app = typer.Typer(context_settings={"help_option_names": ["-h", "--help"]}, help="Manage Wealthbox notes.", no_args_is_help=True)
+app = typer.Typer(
+    context_settings={"help_option_names": ["-h", "--help"]},
+    help="Manage Wealthbox notes.",
+    no_args_is_help=True,
+)
 
 _DEFAULT_FIELDS = ["id", "content", "linked_to", "creator_id", "updated_at"]
 _CONTENT_PREVIEW_LEN = 500

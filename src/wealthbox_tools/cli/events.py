@@ -4,11 +4,23 @@ from typing import Any
 
 import typer
 
-from wealthbox_tools.models import CategoryType, EventCreateInput, EventListQuery, EventUpdateInput, EventsOrder, EventsState, TaskResourceType
+from wealthbox_tools.models import (
+    CategoryType,
+    EventCreateInput,
+    EventListQuery,
+    EventsOrder,
+    EventsState,
+    EventUpdateInput,
+    TaskResourceType,
+)
 
 from ._util import OutputFormat, build_linked_to, handle_errors, make_category_command, output_result, run_client
 
-app = typer.Typer(context_settings={"help_option_names": ["-h", "--help"]}, help="Manage Wealthbox events.", no_args_is_help=True)
+app = typer.Typer(
+    context_settings={"help_option_names": ["-h", "--help"]},
+    help="Manage Wealthbox events.",
+    no_args_is_help=True,
+)
 app.command("categories", help="List event category options.")(make_category_command(CategoryType.EVENT_CATEGORIES))
 
 _DEFAULT_FIELDS = ["id", "title", "starts_at", "ends_at", "state", "event_category"]
@@ -18,12 +30,22 @@ _DEFAULT_FIELDS = ["id", "title", "starts_at", "ends_at", "state", "event_catego
 @handle_errors
 def list_events(
     resource_id: int | None = typer.Option(None, "--resource-id", help="Filter by resource ID"),
-    resource_type: TaskResourceType | None = typer.Option(None, "--resource-type", help="Supports: Contact, Project, Opportunity"),
-    start_date_min: str | None = typer.Option(None, "--start-date-min", help="Format example: '2015-05-24 10:00 AM -0400'"),
-    start_date_max: str | None = typer.Option(None, "--start-date-max", help="Format example: '2015-05-24 10:00 AM -0400'"),
+    resource_type: TaskResourceType | None = typer.Option(
+        None, "--resource-type", help="Supports: Contact, Project, Opportunity"
+    ),
+    start_date_min: str | None = typer.Option(
+        None, "--start-date-min", help="Format example: '2015-05-24 10:00 AM -0400'"
+    ),
+    start_date_max: str | None = typer.Option(
+        None, "--start-date-max", help="Format example: '2015-05-24 10:00 AM -0400'"
+    ),
     order: EventsOrder | None = typer.Option(None, "--order", help="asc, desc, recent, created"),
-    updated_since: str | None = typer.Option(None, "--updated-since", help="Format example: '2015-05-24 10:00 AM -0400'"),
-    updated_before: str | None = typer.Option(None, "--updated-before", help="Format example: '2015-05-24 10:00 AM -0400'"),
+    updated_since: str | None = typer.Option(
+        None, "--updated-since", help="Format example: '2015-05-24 10:00 AM -0400'"
+    ),
+    updated_before: str | None = typer.Option(
+        None, "--updated-before", help="Format example: '2015-05-24 10:00 AM -0400'"
+    ),
     page: int | None = typer.Option(None),
     per_page: int | None = typer.Option(None, "--per-page", help="Results per page (max 100)"),
     verbose: bool = typer.Option(False, "--verbose", "-v", help="Show all fields"),
@@ -63,7 +85,9 @@ def add_event(
     starts_at: str = typer.Option(..., "--starts-at", help="Start datetime, e.g. '2026-01-15 10:00 AM -0700'"),
     ends_at: str = typer.Option(..., "--ends-at", help="End datetime, e.g. '2026-01-15 11:00 AM -0700'"),
     location: str | None = typer.Option(None, "--location"),
-    state: EventsState | None = typer.Option(None, "--state", help="unconfirmed, confirmed, tentative, completed, cancelled"),
+    state: EventsState | None = typer.Option(
+        None, "--state", help="unconfirmed, confirmed, tentative, completed, cancelled"
+    ),
     all_day: bool | None = typer.Option(None, "--all-day/--no-all-day"),
     description: str | None = typer.Option(None, "--description"),
     event_category: int | None = typer.Option(None, "--category", help="Event category ID"),
@@ -95,7 +119,9 @@ def update_event(
     starts_at: str | None = typer.Option(None, "--starts-at", help="Start datetime, e.g. '2026-01-15 10:00 AM -0700'"),
     ends_at: str | None = typer.Option(None, "--ends-at", help="End datetime, e.g. '2026-01-15 11:00 AM -0700'"),
     location: str | None = typer.Option(None, "--location"),
-    state: EventsState | None = typer.Option(None, "--state", help="unconfirmed, confirmed, tentative, completed, cancelled"),
+    state: EventsState | None = typer.Option(
+        None, "--state", help="unconfirmed, confirmed, tentative, completed, cancelled"
+    ),
     all_day: bool | None = typer.Option(None, "--all-day/--no-all-day"),
     description: str | None = typer.Option(None, "--description"),
     event_category: int | None = typer.Option(None, "--category", help="Event category ID"),

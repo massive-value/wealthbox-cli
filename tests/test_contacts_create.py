@@ -8,6 +8,9 @@ import respx
 from wealthbox_tools.cli.main import app
 
 _CONTACT_RESPONSE = {"id": 1, "name": "John Doe", "type": "Person"}
+_HOUSEHOLD_RESPONSE = {"id": 2, "name": "The Smiths", "type": "Household"}
+_ORG_RESPONSE = {"id": 3, "name": "Acme Co.", "type": "Organization"}
+_TRUST_RESPONSE = {"id": 4, "name": "Conglomerate Trust", "type": "Trust"}
 _API_URL = "https://api.crmworkspace.com/v1/contacts"
 
 
@@ -105,7 +108,8 @@ def test_add_person_email_with_type(runner) -> None:
     route = respx.post(_API_URL).mock(return_value=httpx.Response(200, json=_CONTACT_RESPONSE))
     result = runner.invoke(
         app,
-        ["contacts", "add", "person", "--first-name", "John", "--email", "john@example.com", "--email-type", "Personal"],
+        ["contacts", "add", "person", "--first-name", "John",
+         "--email", "john@example.com", "--email-type", "Personal"],
     )
     assert result.exit_code == 0
     sent = json.loads(route.calls[0].request.content)
@@ -158,7 +162,7 @@ def test_add_person_more_fields_reserved_key_raises(runner) -> None:
 
 @respx.mock
 def test_add_household_happy_path(runner) -> None:
-    route = respx.post(_API_URL).mock(return_value=httpx.Response(200, json={"id": 2, "name": "The Smiths", "type": "Household"}))
+    route = respx.post(_API_URL).mock(return_value=httpx.Response(200, json=_HOUSEHOLD_RESPONSE))
     result = runner.invoke(app, ["contacts", "add", "household", "--name", "The Smiths"])
     assert result.exit_code == 0
     sent = json.loads(route.calls[0].request.content)
@@ -173,7 +177,7 @@ def test_add_household_missing_name_raises(runner) -> None:
 
 @respx.mock
 def test_add_household_type_hardcoded(runner) -> None:
-    route = respx.post(_API_URL).mock(return_value=httpx.Response(200, json={"id": 2, "name": "The Smiths", "type": "Household"}))
+    route = respx.post(_API_URL).mock(return_value=httpx.Response(200, json=_HOUSEHOLD_RESPONSE))
     result = runner.invoke(app, ["contacts", "add", "household", "--name", "The Smiths"])
     assert result.exit_code == 0
     sent = json.loads(route.calls[0].request.content)
@@ -182,7 +186,7 @@ def test_add_household_type_hardcoded(runner) -> None:
 
 @respx.mock
 def test_add_household_active_flag(runner) -> None:
-    route = respx.post(_API_URL).mock(return_value=httpx.Response(200, json={"id": 2, "name": "The Smiths", "type": "Household"}))
+    route = respx.post(_API_URL).mock(return_value=httpx.Response(200, json=_HOUSEHOLD_RESPONSE))
     result = runner.invoke(app, ["contacts", "add", "household", "--name", "The Smiths", "--active"])
     assert result.exit_code == 0
     sent = json.loads(route.calls[0].request.content)
@@ -191,10 +195,11 @@ def test_add_household_active_flag(runner) -> None:
 
 @respx.mock
 def test_add_household_email_with_type(runner) -> None:
-    route = respx.post(_API_URL).mock(return_value=httpx.Response(200, json={"id": 2, "name": "The Smiths", "type": "Household"}))
+    route = respx.post(_API_URL).mock(return_value=httpx.Response(200, json=_HOUSEHOLD_RESPONSE))
     result = runner.invoke(
         app,
-        ["contacts", "add", "household", "--name", "The Smiths", "--email", "smiths@example.com", "--email-type", "Work"],
+        ["contacts", "add", "household", "--name", "The Smiths",
+         "--email", "smiths@example.com", "--email-type", "Work"],
     )
     assert result.exit_code == 0
     sent = json.loads(route.calls[0].request.content)
@@ -203,7 +208,7 @@ def test_add_household_email_with_type(runner) -> None:
 
 @respx.mock
 def test_add_household_more_fields_merges(runner) -> None:
-    route = respx.post(_API_URL).mock(return_value=httpx.Response(200, json={"id": 2, "name": "The Smiths", "type": "Household"}))
+    route = respx.post(_API_URL).mock(return_value=httpx.Response(200, json=_HOUSEHOLD_RESPONSE))
     extra = json.dumps({"background_information": "High net worth"})
     result = runner.invoke(app, ["contacts", "add", "household", "--name", "The Smiths", "--more-fields", extra])
     assert result.exit_code == 0
@@ -223,7 +228,7 @@ def test_add_household_more_fields_reserved_key_raises(runner) -> None:
 
 @respx.mock
 def test_add_org_happy_path(runner) -> None:
-    route = respx.post(_API_URL).mock(return_value=httpx.Response(200, json={"id": 3, "name": "Acme Co.", "type": "Organization"}))
+    route = respx.post(_API_URL).mock(return_value=httpx.Response(200, json=_ORG_RESPONSE))
     result = runner.invoke(app, ["contacts", "add", "org", "--name", "Acme Co."])
     assert result.exit_code == 0
     sent = json.loads(route.calls[0].request.content)
@@ -238,7 +243,7 @@ def test_add_org_missing_name_raises(runner) -> None:
 
 @respx.mock
 def test_add_org_type_hardcoded(runner) -> None:
-    route = respx.post(_API_URL).mock(return_value=httpx.Response(200, json={"id": 3, "name": "Acme Co.", "type": "Organization"}))
+    route = respx.post(_API_URL).mock(return_value=httpx.Response(200, json=_ORG_RESPONSE))
     result = runner.invoke(app, ["contacts", "add", "org", "--name", "Acme Co."])
     assert result.exit_code == 0
     sent = json.loads(route.calls[0].request.content)
@@ -247,7 +252,7 @@ def test_add_org_type_hardcoded(runner) -> None:
 
 @respx.mock
 def test_add_org_phone_with_type(runner) -> None:
-    route = respx.post(_API_URL).mock(return_value=httpx.Response(200, json={"id": 3, "name": "Acme Co.", "type": "Organization"}))
+    route = respx.post(_API_URL).mock(return_value=httpx.Response(200, json=_ORG_RESPONSE))
     result = runner.invoke(
         app,
         ["contacts", "add", "org", "--name", "Acme Co.", "--phone", "800-555-0000", "--phone-type", "Work"],
@@ -259,7 +264,7 @@ def test_add_org_phone_with_type(runner) -> None:
 
 @respx.mock
 def test_add_org_more_fields_merges(runner) -> None:
-    route = respx.post(_API_URL).mock(return_value=httpx.Response(200, json={"id": 3, "name": "Acme Co.", "type": "Organization"}))
+    route = respx.post(_API_URL).mock(return_value=httpx.Response(200, json=_ORG_RESPONSE))
     extra = json.dumps({"background_information": "Fortune 500"})
     result = runner.invoke(app, ["contacts", "add", "org", "--name", "Acme Co.", "--more-fields", extra])
     assert result.exit_code == 0
@@ -279,7 +284,7 @@ def test_add_org_more_fields_reserved_key_raises(runner) -> None:
 
 @respx.mock
 def test_add_trust_happy_path(runner) -> None:
-    route = respx.post(_API_URL).mock(return_value=httpx.Response(200, json={"id": 4, "name": "Conglomerate Trust", "type": "Trust"}))
+    route = respx.post(_API_URL).mock(return_value=httpx.Response(200, json=_TRUST_RESPONSE))
     result = runner.invoke(app, ["contacts", "add", "trust", "--name", "Conglomerate Trust"])
     assert result.exit_code == 0
     sent = json.loads(route.calls[0].request.content)
@@ -294,7 +299,7 @@ def test_add_trust_missing_name_raises(runner) -> None:
 
 @respx.mock
 def test_add_trust_type_hardcoded(runner) -> None:
-    route = respx.post(_API_URL).mock(return_value=httpx.Response(200, json={"id": 4, "name": "Conglomerate Trust", "type": "Trust"}))
+    route = respx.post(_API_URL).mock(return_value=httpx.Response(200, json=_TRUST_RESPONSE))
     result = runner.invoke(app, ["contacts", "add", "trust", "--name", "Conglomerate Trust"])
     assert result.exit_code == 0
     sent = json.loads(route.calls[0].request.content)
@@ -303,7 +308,7 @@ def test_add_trust_type_hardcoded(runner) -> None:
 
 @respx.mock
 def test_add_trust_inactive_flag(runner) -> None:
-    route = respx.post(_API_URL).mock(return_value=httpx.Response(200, json={"id": 4, "name": "Conglomerate Trust", "type": "Trust"}))
+    route = respx.post(_API_URL).mock(return_value=httpx.Response(200, json=_TRUST_RESPONSE))
     result = runner.invoke(app, ["contacts", "add", "trust", "--name", "Conglomerate Trust", "--inactive"])
     assert result.exit_code == 0
     sent = json.loads(route.calls[0].request.content)
@@ -312,7 +317,7 @@ def test_add_trust_inactive_flag(runner) -> None:
 
 @respx.mock
 def test_add_trust_email_no_type(runner) -> None:
-    route = respx.post(_API_URL).mock(return_value=httpx.Response(200, json={"id": 4, "name": "Conglomerate Trust", "type": "Trust"}))
+    route = respx.post(_API_URL).mock(return_value=httpx.Response(200, json=_TRUST_RESPONSE))
     result = runner.invoke(
         app,
         ["contacts", "add", "trust", "--name", "Conglomerate Trust", "--email", "trust@example.com"],
@@ -324,7 +329,7 @@ def test_add_trust_email_no_type(runner) -> None:
 
 @respx.mock
 def test_add_trust_more_fields_merges(runner) -> None:
-    route = respx.post(_API_URL).mock(return_value=httpx.Response(200, json={"id": 4, "name": "Conglomerate Trust", "type": "Trust"}))
+    route = respx.post(_API_URL).mock(return_value=httpx.Response(200, json=_TRUST_RESPONSE))
     extra = json.dumps({"important_information": "Irrevocable"})
     result = runner.invoke(app, ["contacts", "add", "trust", "--name", "Conglomerate Trust", "--more-fields", extra])
     assert result.exit_code == 0

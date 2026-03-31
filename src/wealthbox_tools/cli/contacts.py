@@ -5,46 +5,91 @@ from typing import Any
 
 import typer
 
-from wealthbox_tools.models import ContactCreateInput, ContactListQuery, ContactUpdateInput
+from wealthbox_tools.models import (
+    CategoryType,
+    ContactCreateInput,
+    ContactListQuery,
+    ContactsOrder,
+    ContactUpdateInput,
+    Gender,
+    HouseholdTitle,
+    MaritalStatus,
+    RecordType,
+)
 
-from wealthbox_tools.models import CategoryType, Gender, HouseholdTitle, ContactsOrder, MaritalStatus, RecordType
+from ._util import (
+    OutputFormat,
+    active_to_status,
+    handle_errors,
+    make_category_command,
+    output_result,
+    parse_more_fields,
+    run_client,
+)
 
-from ._util import OutputFormat, active_to_status, handle_errors, make_category_command, output_result, parse_more_fields, run_client
-
-
-app = typer.Typer(context_settings={"help_option_names": ["-h", "--help"]}, help="Manage Wealthbox contacts.", no_args_is_help=True)
+app = typer.Typer(
+    context_settings={"help_option_names": ["-h", "--help"]},
+    help="Manage Wealthbox contacts.",
+    no_args_is_help=True,
+)
 
 _DEFAULT_FIELDS = ["id", "name", "type", "contact_type", "assigned_to", "status"]
 
 # -- categories sub-app -------------------------------------------------------
-categories_app = typer.Typer(context_settings={"help_option_names": ["-h", "--help"]}, help="List available category values for contact fields.", no_args_is_help=True)
-categories_app.command("contact-types", help="List contact type options.")(make_category_command(CategoryType.CONTACT_TYPES))
-categories_app.command("contact-sources", help="List contact source options.")(make_category_command(CategoryType.CONTACT_SOURCES))
+categories_app = typer.Typer(
+    context_settings={"help_option_names": ["-h", "--help"]},
+    help="List available category values for contact fields.",
+    no_args_is_help=True,
+)
+categories_app.command("contact-types", help="List contact type options.")(
+    make_category_command(CategoryType.CONTACT_TYPES)
+)
+categories_app.command("contact-sources", help="List contact source options.")(
+    make_category_command(CategoryType.CONTACT_SOURCES)
+)
 categories_app.command("email-types", help="List email type options.")(make_category_command(CategoryType.EMAIL_TYPES))
 categories_app.command("phone-types", help="List phone type options.")(make_category_command(CategoryType.PHONE_TYPES))
-categories_app.command("address-types", help="List address type options.")(make_category_command(CategoryType.ADDRESS_TYPES))
-categories_app.command("website-types", help="List website type options.")(make_category_command(CategoryType.WEBSITE_TYPES))
-categories_app.command("contact-roles", help="List contact role options.")(make_category_command(CategoryType.CONTACT_ROLES))
+categories_app.command("address-types", help="List address type options.")(
+    make_category_command(CategoryType.ADDRESS_TYPES)
+)
+categories_app.command("website-types", help="List website type options.")(
+    make_category_command(CategoryType.WEBSITE_TYPES)
+)
+categories_app.command("contact-roles", help="List contact role options.")(
+    make_category_command(CategoryType.CONTACT_ROLES)
+)
 app.add_typer(categories_app, name="categories")
 
 
 @app.command("list", help="List contacts with optional filters.")
 @handle_errors
 def list_contacts(
-    type_: RecordType | None = typer.Option(None, "--type", help="Record Type - Person, Household, Organization, or Trust"),
+    type_: RecordType | None = typer.Option(
+        None, "--type", help="Record Type - Person, Household, Organization, or Trust"
+    ),
     name: str | None = typer.Option(None, help="Filter by name - Contains"),
     email: str | None = typer.Option(None, help="Filter by email - Full Match"),
     phone: str | None = typer.Option(None, help="Filter by phone - Full Match - Parsing handled by Wealthbox"),
-    contact_type: str | None = typer.Option(None, "--contact-type", help="Client, Prospect, Vendor, etc. - see wbox contacts categories contact-types"),
+    contact_type: str | None = typer.Option(
+        None, "--contact-type", help="Client, Prospect, Vendor, etc. - see wbox contacts categories contact-types"
+    ),
     active: bool | None = typer.Option(None, "--active/--inactive", help="Filter by active status"),
-    deleted: bool | None = typer.Option(None, "--deleted", help="Filter to deleted contacts only (omit to see non-deleted, which is the API default)"),
-    household_title: HouseholdTitle | None = typer.Option(None, help="The household title you wish to filter the household title"),
+    deleted: bool | None = typer.Option(
+        None, "--deleted", help="Filter to deleted contacts only (omit to see non-deleted, which is the API default)"
+    ),
+    household_title: HouseholdTitle | None = typer.Option(
+        None, help="The household title you wish to filter the household title"
+    ),
     tags: str | None = typer.Option(None, help="Comma-separated tags"),
     order: ContactsOrder = typer.Option(ContactsOrder.ASC, help="The order that the contacts should be returned in"),
     updated_since: str | None = typer.Option(None, "--updated-since", help="Format of 'YYYY-MM-DD 07:00 AM -0700'"),
     updated_before: str | None = typer.Option(None, "--updated-before", help="Format of 'YYYY-MM-DD 07:00 AM -0700'"),
-    deleted_since: str | None = typer.Option(None, help="Only returns deleted contacts that were deleted on or after this timestamp"),
-    assigned_to: int | None = typer.Option(None, "--assigned-to", help="Filter by assigned user ID (client-side scan — fetches all pages)."),
+    deleted_since: str | None = typer.Option(
+        None, help="Only returns deleted contacts that were deleted on or after this timestamp"
+    ),
+    assigned_to: int | None = typer.Option(
+        None, "--assigned-to", help="Filter by assigned user ID (client-side scan — fetches all pages)."
+    ),
     page: int | None = typer.Option(None, help="Page number"),
     per_page: int | None = typer.Option(None, "--per-page", help="Results per page (max 100)"),
     verbose: bool = typer.Option(False, "--verbose", "-v", help="Show all fields"),
@@ -99,7 +144,11 @@ def get_contact(
 
 
 # -- add sub-app --------------------------------------------------------------
-add_app = typer.Typer(context_settings={"help_option_names": ["-h", "--help"]}, help="Create a new contact.", no_args_is_help=True)
+add_app = typer.Typer(
+    context_settings={"help_option_names": ["-h", "--help"]},
+    help="Create a new contact.",
+    no_args_is_help=True,
+)
 app.add_typer(add_app, name="add")
 
 _PERSON_RESERVED = {
@@ -176,10 +225,16 @@ def add_person(
     active: bool | None = typer.Option(None, "--active/--inactive", help="Set contact status to Active or Inactive"),
     assigned_to: int | None = typer.Option(None, "--assigned-to", help="Assign to a user by ID"),
     email: str | None = typer.Option(None, "--email", help="Primary email address"),
-    email_type: str | None = typer.Option(None, "--email-type", help="Email kind (e.g. Work, Personal) — see: wbox contacts categories email-types"),
+    email_type: str | None = typer.Option(
+        None, "--email-type", help="Email kind (e.g. Work, Personal) — see: wbox contacts categories email-types"
+    ),
     phone: str | None = typer.Option(None, "--phone", help="Primary phone number"),
-    phone_type: str | None = typer.Option(None, "--phone-type", help="Phone kind (e.g. Work, Mobile) — see: wbox contacts categories phone-types"),
-    more_fields: str | None = typer.Option(None, "--more-fields", help="Extra fields as JSON object (merged with flags; cannot override explicit flags)"),
+    phone_type: str | None = typer.Option(
+        None, "--phone-type", help="Phone kind (e.g. Work, Mobile) — see: wbox contacts categories phone-types"
+    ),
+    more_fields: str | None = typer.Option(
+        None, "--more-fields", help="Extra fields as JSON object (merged with flags; cannot override explicit flags)"
+    ),
     token: str | None = typer.Option(None, envvar="WEALTHBOX_TOKEN", hidden=True),
     fmt: OutputFormat = typer.Option(OutputFormat.JSON, "--format"),
 ) -> None:
@@ -223,8 +278,12 @@ def add_household(
     active: bool | None = typer.Option(None, "--active/--inactive", help="Set contact status to Active or Inactive"),
     assigned_to: int | None = typer.Option(None, "--assigned-to", help="Assign to a user by ID"),
     email: str | None = typer.Option(None, "--email", help="Primary email address"),
-    email_type: str | None = typer.Option(None, "--email-type", help="Email kind (e.g. Work, Personal) — see: wbox contacts categories email-types"),
-    more_fields: str | None = typer.Option(None, "--more-fields", help="Extra fields as JSON object (merged with flags; cannot override explicit flags)"),
+    email_type: str | None = typer.Option(
+        None, "--email-type", help="Email kind (e.g. Work, Personal) — see: wbox contacts categories email-types"
+    ),
+    more_fields: str | None = typer.Option(
+        None, "--more-fields", help="Extra fields as JSON object (merged with flags; cannot override explicit flags)"
+    ),
     token: str | None = typer.Option(None, envvar="WEALTHBOX_TOKEN", hidden=True),
     fmt: OutputFormat = typer.Option(OutputFormat.JSON, "--format"),
 ) -> None:
@@ -254,14 +313,23 @@ def add_org(
     active: bool | None = typer.Option(None, "--active/--inactive", help="Set contact status to Active or Inactive"),
     assigned_to: int | None = typer.Option(None, "--assigned-to", help="Assign to a user by ID"),
     email: str | None = typer.Option(None, "--email", help="Primary email address"),
-    email_type: str | None = typer.Option(None, "--email-type", help="Email kind (e.g. Work, Personal) — see: wbox contacts categories email-types"),
+    email_type: str | None = typer.Option(
+        None, "--email-type", help="Email kind (e.g. Work, Personal) — see: wbox contacts categories email-types"
+    ),
     phone: str | None = typer.Option(None, "--phone", help="Primary phone number"),
-    phone_type: str | None = typer.Option(None, "--phone-type", help="Phone kind (e.g. Work, Mobile) — see: wbox contacts categories phone-types"),
-    more_fields: str | None = typer.Option(None, "--more-fields", help="Extra fields as JSON object (merged with flags; cannot override explicit flags)"),
+    phone_type: str | None = typer.Option(
+        None, "--phone-type", help="Phone kind (e.g. Work, Mobile) — see: wbox contacts categories phone-types"
+    ),
+    more_fields: str | None = typer.Option(
+        None, "--more-fields", help="Extra fields as JSON object (merged with flags; cannot override explicit flags)"
+    ),
     token: str | None = typer.Option(None, envvar="WEALTHBOX_TOKEN", hidden=True),
     fmt: OutputFormat = typer.Option(OutputFormat.JSON, "--format"),
 ) -> None:
-    _create_named_contact(RecordType.ORGANIZATION, _ORG_TRUST_RESERVED, name, contact_type, contact_source, active, assigned_to, email, email_type, phone, phone_type, more_fields, token, fmt)
+    _create_named_contact(
+        RecordType.ORGANIZATION, _ORG_TRUST_RESERVED, name, contact_type, contact_source,
+        active, assigned_to, email, email_type, phone, phone_type, more_fields, token, fmt,
+    )
 
 
 @add_app.command("trust", help="Create a Trust contact.")
@@ -273,14 +341,23 @@ def add_trust(
     active: bool | None = typer.Option(None, "--active/--inactive", help="Set contact status to Active or Inactive"),
     assigned_to: int | None = typer.Option(None, "--assigned-to", help="Assign to a user by ID"),
     email: str | None = typer.Option(None, "--email", help="Primary email address"),
-    email_type: str | None = typer.Option(None, "--email-type", help="Email kind (e.g. Work, Personal) — see: wbox contacts categories email-types"),
+    email_type: str | None = typer.Option(
+        None, "--email-type", help="Email kind (e.g. Work, Personal) — see: wbox contacts categories email-types"
+    ),
     phone: str | None = typer.Option(None, "--phone", help="Primary phone number"),
-    phone_type: str | None = typer.Option(None, "--phone-type", help="Phone kind (e.g. Work, Mobile) — see: wbox contacts categories phone-types"),
-    more_fields: str | None = typer.Option(None, "--more-fields", help="Extra fields as JSON object (merged with flags; cannot override explicit flags)"),
+    phone_type: str | None = typer.Option(
+        None, "--phone-type", help="Phone kind (e.g. Work, Mobile) — see: wbox contacts categories phone-types"
+    ),
+    more_fields: str | None = typer.Option(
+        None, "--more-fields", help="Extra fields as JSON object (merged with flags; cannot override explicit flags)"
+    ),
     token: str | None = typer.Option(None, envvar="WEALTHBOX_TOKEN", hidden=True),
     fmt: OutputFormat = typer.Option(OutputFormat.JSON, "--format"),
 ) -> None:
-    _create_named_contact(RecordType.TRUST, _ORG_TRUST_RESERVED, name, contact_type, contact_source, active, assigned_to, email, email_type, phone, phone_type, more_fields, token, fmt)
+    _create_named_contact(
+        RecordType.TRUST, _ORG_TRUST_RESERVED, name, contact_type, contact_source,
+        active, assigned_to, email, email_type, phone, phone_type, more_fields, token, fmt,
+    )
 
 
 @app.command("update", help="Update an existing contact. Pass only the fields you want to change.")
@@ -288,7 +365,9 @@ def add_trust(
 def update_contact(
     contact_id: int = typer.Argument(..., help="Contact ID"),
     # Advanced path for nested arrays (email_addresses, phone_numbers, etc.)
-    json_data: str | None = typer.Option(None, "--json", help="Full update as JSON (for nested fields like email_addresses)"),
+    json_data: str | None = typer.Option(
+        None, "--json", help="Full update as JSON (for nested fields like email_addresses)"
+    ),
     # Scalar flags
     first_name: str | None = typer.Option(None, "--first-name"),
     middle_name: str | None = typer.Option(None, "--middle-name"),

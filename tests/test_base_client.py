@@ -3,7 +3,7 @@ from __future__ import annotations
 import httpx
 import pytest
 
-from wealthbox_tools.client.base import _WealthboxBase, WealthboxAPIError
+from wealthbox_tools.client.base import WealthboxAPIError, _WealthboxBase
 
 
 @pytest.mark.asyncio

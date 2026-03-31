@@ -15,7 +15,11 @@ from wealthbox_tools.models import (
 
 from ._util import OutputFormat, build_linked_to, handle_errors, output_result, parse_more_fields, run_client
 
-app = typer.Typer(context_settings={"help_option_names": ["-h", "--help"]}, help="Manage Wealthbox opportunities.", no_args_is_help=True)
+app = typer.Typer(
+    context_settings={"help_option_names": ["-h", "--help"]},
+    help="Manage Wealthbox opportunities.",
+    no_args_is_help=True,
+)
 
 _DEFAULT_FIELDS = ["id", "name", "stage", "probability", "target_close", "manager", "linked_to"]
 
@@ -42,10 +46,16 @@ def _build_amounts(
 @app.command("list", help="List opportunities with optional filters.")
 @handle_errors
 def list_opportunities(
-    resource_id: int | None = typer.Option(None, "--resource-id", help="Filter by linked resource ID (requires --resource-type)"),
-    resource_type: OpportunityResourceType | None = typer.Option(None, "--resource-type", help="Filter by linked resource type: Contact, Project"),
+    resource_id: int | None = typer.Option(
+        None, "--resource-id", help="Filter by linked resource ID (requires --resource-type)"
+    ),
+    resource_type: OpportunityResourceType | None = typer.Option(
+        None, "--resource-type", help="Filter by linked resource type: Contact, Project"
+    ),
     order: OpportunityOrder | None = typer.Option(None, "--order", help="Sort order: asc, desc, recent, created"),
-    include_closed: bool | None = typer.Option(None, "--include-closed/--no-include-closed", help="Include closed opportunities"),
+    include_closed: bool | None = typer.Option(
+        None, "--include-closed/--no-include-closed", help="Include closed opportunities"
+    ),
     updated_since: str | None = typer.Option(None, "--updated-since"),
     updated_before: str | None = typer.Option(None, "--updated-before"),
     page: int | None = typer.Option(None),
@@ -64,7 +74,9 @@ def list_opportunities(
         page=page,
         per_page=per_page,
     )
-    output_result(run_client(token, lambda c: c.list_opportunities(query)), fmt, fields=None if verbose else _DEFAULT_FIELDS)
+    output_result(
+        run_client(token, lambda c: c.list_opportunities(query)), fmt, fields=None if verbose else _DEFAULT_FIELDS
+    )
 
 
 @app.command("get", help="Get a single opportunity by ID.")
@@ -94,7 +106,9 @@ def add_opportunity(
     aum: float | None = typer.Option(None, "--aum", help="AUM amount"),
     other_amount: float | None = typer.Option(None, "--other-amount", help="Other amount"),
     currency: str = typer.Option("USD", "--currency", help="Currency code for all amounts (default: USD)"),
-    more_fields: str | None = typer.Option(None, "--more-fields", help='JSON object for additional fields (e.g. custom_fields)'),
+    more_fields: str | None = typer.Option(
+        None, "--more-fields", help="JSON object for additional fields (e.g. custom_fields)"
+    ),
     token: str | None = typer.Option(None, envvar="WEALTHBOX_TOKEN", hidden=True),
     fmt: OutputFormat = typer.Option(OutputFormat.JSON, "--format"),
 ) -> None:
@@ -111,7 +125,11 @@ def add_opportunity(
     }
 
     if more_fields:
-        payload.update(parse_more_fields(more_fields, {"name", "target_close", "probability", "stage", "description", "manager", "visible_to", "linked_to", "amounts"}))
+        _reserved = {
+            "name", "target_close", "probability", "stage", "description",
+            "manager", "visible_to", "linked_to", "amounts",
+        }
+        payload.update(parse_more_fields(more_fields, _reserved))
 
     input_model = OpportunityCreateInput(**{k: v for k, v in payload.items() if v is not None})
     output_result(run_client(token, lambda c: c.create_opportunity(input_model)), fmt)
@@ -135,7 +153,9 @@ def update_opportunity(
     aum: float | None = typer.Option(None, "--aum", help="AUM amount"),
     other_amount: float | None = typer.Option(None, "--other-amount", help="Other amount"),
     currency: str = typer.Option("USD", "--currency", help="Currency code for all amounts (default: USD)"),
-    more_fields: str | None = typer.Option(None, "--more-fields", help='JSON object for additional fields (e.g. custom_fields)'),
+    more_fields: str | None = typer.Option(
+        None, "--more-fields", help="JSON object for additional fields (e.g. custom_fields)"
+    ),
     token: str | None = typer.Option(None, envvar="WEALTHBOX_TOKEN", hidden=True),
     fmt: OutputFormat = typer.Option(OutputFormat.JSON, "--format"),
 ) -> None:
@@ -158,7 +178,11 @@ def update_opportunity(
         payload["amounts"] = amounts
 
     if more_fields:
-        payload.update(parse_more_fields(more_fields, {"name", "target_close", "probability", "stage", "description", "manager", "visible_to", "linked_to", "amounts"}))
+        _update_reserved = {
+            "name", "target_close", "probability", "stage", "description",
+            "manager", "visible_to", "linked_to", "amounts",
+        }
+        payload.update(parse_more_fields(more_fields, _update_reserved))
 
     input_model = OpportunityUpdateInput(**payload)
     output_result(run_client(token, lambda c: c.update_opportunity(opportunity_id, input_model)), fmt)

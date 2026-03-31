@@ -4,11 +4,32 @@ from typing import Any
 
 import typer
 
-from wealthbox_tools.models import CategoryType, TaskCreateInput, TaskListQuery, TaskUpdateInput, TaskType, TaskFrame, TaskPriority
+from wealthbox_tools.models import (
+    CategoryType,
+    TaskCreateInput,
+    TaskFrame,
+    TaskListQuery,
+    TaskPriority,
+    TaskType,
+    TaskUpdateInput,
+)
 
-from ._util import OutputFormat, build_linked_to, build_resource_filter, handle_errors, make_category_command, output_result, parse_more_fields, run_client
+from ._util import (
+    OutputFormat,
+    build_linked_to,
+    build_resource_filter,
+    handle_errors,
+    make_category_command,
+    output_result,
+    parse_more_fields,
+    run_client,
+)
 
-app = typer.Typer(context_settings={"help_option_names": ["-h", "--help"]}, help="Manage Wealthbox tasks.", no_args_is_help=True)
+app = typer.Typer(
+    context_settings={"help_option_names": ["-h", "--help"]},
+    help="Manage Wealthbox tasks.",
+    no_args_is_help=True,
+)
 app.command("categories", help="List task category options.")(make_category_command(CategoryType.TASK_CATEGORIES))
 
 _DEFAULT_FIELDS = ["id", "name", "due_date", "frame", "complete", "category"]
@@ -16,7 +37,13 @@ _DEFAULT_FIELDS = ["id", "name", "due_date", "frame", "complete", "category"]
 _TASK_CREATE_RESERVED = {"name", "due_date", "frame", "priority", "assigned_to", "linked_to"}
 
 
-@app.command("list", help="Returns a list of tasks, with optional filters. By default, only outstanding tasks are returned; use --include-completed to include completed tasks in the results.")
+@app.command(
+    "list",
+    help=(
+        "Returns a list of tasks, with optional filters. By default, only outstanding tasks are returned; "
+        "use --include-completed to include completed tasks in the results."
+    ),
+)
 @handle_errors
 def list_tasks(
     contact: int | None = typer.Option(None, "--contact", help="Filter tasks linked to a Contact (by ID)"),
@@ -25,7 +52,9 @@ def list_tasks(
     assigned_to: int | None = typer.Option(None, "--assigned-to"),
     assigned_to_team: int | None = typer.Option(None, "--assigned-to-team"),
     created_by: int | None = typer.Option(None, "--created-by", help="user id"),
-    include_completed: bool = typer.Option(False, "--include-completed", help="Include completed tasks (default returns outstanding tasks only)"),
+    include_completed: bool = typer.Option(
+        False, "--include-completed", help="Include completed tasks (default returns outstanding tasks only)"
+    ),
     task_type: TaskType | None = typer.Option(None, "--type", help="all, parents, subtasks"),
     updated_since: str | None = typer.Option(None, "--updated-since"),
     updated_before: str | None = typer.Option(None, "--updated-before"),
@@ -68,14 +97,19 @@ def get_task(
 @handle_errors
 def add_task(
     name: str = typer.Argument(..., help="Task title/name"),
-    due_date: str | None = typer.Option(None, "--due-date", help="Example: '2025-05-24 10:00 AM -0700' (must match Wealthbox format)"),
+    due_date: str | None = typer.Option(
+        None, "--due-date", help="Example: '2025-05-24 10:00 AM -0700' (must match Wealthbox format)"
+    ),
     frame: TaskFrame | None = typer.Option(None, "--frame", help="friendly due timeframe"),
     priority: TaskPriority | None = typer.Option(None, "--priority", help="Low, Medium, or High"),
     assigned_to: int | None = typer.Option(None, "--assigned-to", help="Assign to a user by ID"),
     contact: int | None = typer.Option(None, "--contact", help="Link to a Contact by ID"),
     project: int | None = typer.Option(None, "--project", help="Link to a Project by ID"),
     opportunity: int | None = typer.Option(None, "--opportunity", help="Link to an Opportunity by ID"),
-    more_fields: str | None = typer.Option(None, "--more-fields", help='JSON: {"category": 123, "complete": false, "assigned_to_team": 456, "description": "..."}'),
+    more_fields: str | None = typer.Option(
+        None, "--more-fields",
+        help='JSON: {"category": 123, "complete": false, "assigned_to_team": 456, "description": "..."}',
+    ),
     token: str | None = typer.Option(None, envvar="WEALTHBOX_TOKEN", hidden=True),
     fmt: OutputFormat = typer.Option(OutputFormat.JSON, "--format"),
 ) -> None:

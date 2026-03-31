@@ -4,7 +4,11 @@ import typer
 
 from ._util import OutputFormat, handle_errors, output_result, run_client
 
-app = typer.Typer(context_settings={"help_option_names": ["-h", "--help"]}, help="Manage Wealthbox users.", no_args_is_help=True)
+app = typer.Typer(
+    context_settings={"help_option_names": ["-h", "--help"]},
+    help="Manage Wealthbox users.",
+    no_args_is_help=True,
+)
 
 
 _DEFAULT_FIELDS = ["id", "name", "email"]

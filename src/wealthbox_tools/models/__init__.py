@@ -2,30 +2,6 @@
 
 from .activity import ActivityListQuery
 from .comments import CommentListQuery
-from .enums import (
-    RecordType,
-    Gender,
-    MaritalStatus,
-    EventsOrder,
-    EventsState,
-    HouseholdTitle,
-    DocumentType,
-    ContactsOrder,
-    ActivityType,
-    CategoryType,
-    CommentResourceType,
-    NotesOrder,
-    NoteResourceType,
-    OpportunityAmountKind,
-    OpportunityOrder,
-    OpportunityResourceType,
-    TaskResourceType,
-    TaskFrame,
-    TaskPriority,
-    TaskType,
-    WorkflowResourceType,
-    WorkflowStatus,
-)
 from .common import (
     ContactRoleAssignment,
     EmailAddress,
@@ -34,9 +10,33 @@ from .common import (
     StreetAddress,
 )
 from .contacts import ContactCreateInput, ContactListQuery, ContactUpdateInput
+from .custom_fields import CategoryListQuery, CustomFieldValue
+from .enums import (
+    ActivityType,
+    CategoryType,
+    CommentResourceType,
+    ContactsOrder,
+    DocumentType,
+    EventsOrder,
+    EventsState,
+    Gender,
+    HouseholdTitle,
+    MaritalStatus,
+    NoteResourceType,
+    NotesOrder,
+    OpportunityAmountKind,
+    OpportunityOrder,
+    OpportunityResourceType,
+    RecordType,
+    TaskFrame,
+    TaskPriority,
+    TaskResourceType,
+    TaskType,
+    WorkflowResourceType,
+    WorkflowStatus,
+)
 from .events import EventCreateInput, EventListQuery, EventUpdateInput
 from .households import HouseholdMemberInput
-from .custom_fields import CategoryListQuery, CustomFieldValue
 from .notes import NoteCreateInput, NoteListQuery, NoteUpdateInput
 from .opportunities import OpportunityAmount, OpportunityCreateInput, OpportunityListQuery, OpportunityUpdateInput
 from .projects import ProjectCreateInput, ProjectListQuery, ProjectUpdateInput
@@ -49,7 +49,6 @@ from .workflows import (
     WorkflowStepRevertInput,
     WorkflowTemplateListQuery,
 )
-
 
 __all__ = [
     # Enums

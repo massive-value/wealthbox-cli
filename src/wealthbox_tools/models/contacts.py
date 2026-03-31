@@ -1,8 +1,6 @@
 from __future__ import annotations
 
-from pydantic import model_validator, Field
-
-from .custom_fields import CustomFieldValue
+from pydantic import Field, model_validator
 
 from .common import (
     ContactRoleAssignment,
@@ -15,13 +13,13 @@ from .common import (
     StreetAddress,
     WealthboxModel,
 )
-
+from .custom_fields import CustomFieldValue
 from .enums import (
-    RecordType,
-    Gender,
-    MaritalStatus,
-    HouseholdTitle,
     ContactsOrder,
+    Gender,
+    HouseholdTitle,
+    MaritalStatus,
+    RecordType,
 )
 
 

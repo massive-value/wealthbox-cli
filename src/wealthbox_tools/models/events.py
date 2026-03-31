@@ -2,8 +2,16 @@ from __future__ import annotations
 
 from pydantic import Field
 
-from .common import DateField, DateTimeField, NonNullDateTimeField, PaginationQuery, RequireAnyFieldModel, WealthboxModel, LinkedToRef
-from .enums import EventsOrder, EventsState, EmailInviteeType, TaskResourceType
+from .common import (
+    DateField,
+    DateTimeField,
+    LinkedToRef,
+    NonNullDateTimeField,
+    PaginationQuery,
+    RequireAnyFieldModel,
+    WealthboxModel,
+)
+from .enums import EmailInviteeType, EventsOrder, EventsState, TaskResourceType
 
 
 class EmailInvitees(WealthboxModel):

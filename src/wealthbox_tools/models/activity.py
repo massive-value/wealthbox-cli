@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from .common import DateTimeField, WealthboxModel
-
 from .enums import ActivityType
 
 

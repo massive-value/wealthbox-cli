@@ -263,7 +263,11 @@ def build_resource_filter(
     Returns (None, None) if none are provided.
     """
     result: tuple[int | None, TaskResourceType | None] = (None, None)
-    for id_, rtype in ((contact, TaskResourceType.CONTACT), (project, TaskResourceType.PROJECT), (opportunity, TaskResourceType.OPPORTUNITY)):
+    for id_, rtype in (
+        (contact, TaskResourceType.CONTACT),
+        (project, TaskResourceType.PROJECT),
+        (opportunity, TaskResourceType.OPPORTUNITY),
+    ):
         if id_ is not None:
             if result[0] is not None:
                 raise typer.BadParameter("Provide only one of --contact, --project, or --opportunity.")

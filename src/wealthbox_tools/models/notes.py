@@ -2,9 +2,8 @@ from __future__ import annotations
 
 from pydantic import Field
 
-from .common import DateField, DateTimeField, LinkedToRef, PaginationQuery, RequireAnyFieldModel, WealthboxModel
-
-from .enums import NotesOrder, NoteResourceType
+from .common import DateTimeField, LinkedToRef, PaginationQuery, RequireAnyFieldModel, WealthboxModel
+from .enums import NoteResourceType, NotesOrder
 
 
 class NoteListQuery(PaginationQuery):

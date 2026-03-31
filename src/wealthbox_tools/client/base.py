@@ -197,7 +197,7 @@ class _WealthboxBase:
             self._rate_limiter._save_state()
         await self._http.aclose()
 
-    async def __aenter__(self) -> "WealthboxClient":  # type: ignore[name-defined]
+    async def __aenter__(self) -> "_WealthboxBase":  # type: ignore[return-value]
         return self  # type: ignore[return-value]
 
     async def __aexit__(self, *args: object) -> None:

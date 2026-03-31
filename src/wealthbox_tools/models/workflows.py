@@ -2,9 +2,8 @@ from __future__ import annotations
 
 from pydantic import Field
 
-from .common import DateTimeField, PaginationQuery, WealthboxModel, LinkedToRef
+from .common import DateTimeField, LinkedToRef, PaginationQuery, WealthboxModel
 from .enums import WorkflowResourceType, WorkflowStatus
-
 
 
 class WorkflowMilestone(WealthboxModel):
@@ -41,7 +40,9 @@ class WorkflowTemplateListQuery(PaginationQuery):
 class WorkflowStepCompleteInput(WealthboxModel):
     complete: bool = Field(default=True)
     workflow_outcome_id: int | None = None
-    due_date_set: bool = Field(default=False) # When selecting an outcome with the “Restart Step” action, this indicates whether the restarted step will have a due date
+    # When selecting an outcome with the “Restart Step” action, this indicates
+    # whether the restarted step will have a due date.
+    due_date_set: bool = Field(default=False)
     due_date: str | None = None
 
 

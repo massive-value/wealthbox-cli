@@ -15,9 +15,17 @@ from wealthbox_tools.models import (
 
 from ._util import OutputFormat, build_linked_to, handle_errors, output_result, parse_more_fields, run_client
 
-app = typer.Typer(context_settings={"help_option_names": ["-h", "--help"]}, help="Manage Wealthbox workflows.", no_args_is_help=True)
+app = typer.Typer(
+    context_settings={"help_option_names": ["-h", "--help"]},
+    help="Manage Wealthbox workflows.",
+    no_args_is_help=True,
+)
 
-templates_app = typer.Typer(context_settings={"help_option_names": ["-h", "--help"]}, help="List workflow templates.", no_args_is_help=True)
+templates_app = typer.Typer(
+    context_settings={"help_option_names": ["-h", "--help"]},
+    help="List workflow templates.",
+    no_args_is_help=True,
+)
 app.add_typer(templates_app, name="templates")
 
 _DEFAULT_FIELDS = ["id", "label", "status", "workflow_template", "linked_to", "created_at"]
@@ -27,8 +35,12 @@ _TEMPLATE_DEFAULT_FIELDS = ["id", "name", "description", "status"]
 @app.command("list", help="List workflows with optional filters.")
 @handle_errors
 def list_workflows(
-    resource_id: int | None = typer.Option(None, "--resource-id", help="Filter by linked resource ID (requires --resource-type)"),
-    resource_type: WorkflowResourceType | None = typer.Option(None, "--resource-type", help="Filter by linked resource type: Contact, Project"),
+    resource_id: int | None = typer.Option(
+        None, "--resource-id", help="Filter by linked resource ID (requires --resource-type)"
+    ),
+    resource_type: WorkflowResourceType | None = typer.Option(
+        None, "--resource-type", help="Filter by linked resource type: Contact, Project"
+    ),
     status: WorkflowStatus | None = typer.Option(None, "--status", help="active, completed, or scheduled"),
     updated_since: str | None = typer.Option(None, "--updated-since"),
     updated_before: str | None = typer.Option(None, "--updated-before"),
@@ -47,7 +59,9 @@ def list_workflows(
         page=page,
         per_page=per_page,
     )
-    output_result(run_client(token, lambda c: c.list_workflows(query)), fmt, fields=None if verbose else _DEFAULT_FIELDS)
+    output_result(
+        run_client(token, lambda c: c.list_workflows(query)), fmt, fields=None if verbose else _DEFAULT_FIELDS
+    )
 
 
 @app.command("get", help="Get a single workflow by ID.")
@@ -70,7 +84,9 @@ def add_workflow(
     opportunity: int | None = typer.Option(None, "--opportunity", help="Link to an Opportunity by ID"),
     visible_to: str | None = typer.Option(None, "--visible-to"),
     starts_at: str | None = typer.Option(None, "--starts-at", help="Start date (e.g. 2026-06-01)"),
-    more_fields: str | None = typer.Option(None, "--more-fields", help='JSON object for additional fields (e.g. workflow_milestones)'),
+    more_fields: str | None = typer.Option(
+        None, "--more-fields", help="JSON object for additional fields (e.g. workflow_milestones)"
+    ),
     token: str | None = typer.Option(None, envvar="WEALTHBOX_TOKEN", hidden=True),
     fmt: OutputFormat = typer.Option(OutputFormat.JSON, "--format"),
 ) -> None:
@@ -83,7 +99,8 @@ def add_workflow(
     }
 
     if more_fields:
-        payload.update(parse_more_fields(more_fields, {"workflow_template", "label", "visible_to", "starts_at", "linked_to"}))
+        _reserved = {"workflow_template", "label", "visible_to", "starts_at", "linked_to"}
+        payload.update(parse_more_fields(more_fields, _reserved))
 
     input_model = WorkflowCreateInput(**{k: v for k, v in payload.items() if v is not None})
     output_result(run_client(token, lambda c: c.create_workflow(input_model)), fmt)
@@ -94,8 +111,12 @@ def add_workflow(
 def complete_workflow_step(
     workflow_id: int = typer.Argument(..., help="Workflow ID"),
     step_id: int = typer.Argument(..., help="Step ID"),
-    outcome_id: int | None = typer.Option(None, "--outcome-id", help="Workflow outcome ID (if step has multiple outcomes)"),
-    due_date: str | None = typer.Option(None, "--due-date", help="Due date when restarting a step (requires --due-date-set)"),
+    outcome_id: int | None = typer.Option(
+        None, "--outcome-id", help="Workflow outcome ID (if step has multiple outcomes)"
+    ),
+    due_date: str | None = typer.Option(
+        None, "--due-date", help="Due date when restarting a step (requires --due-date-set)"
+    ),
     due_date_set: bool = typer.Option(False, "--due-date-set", help="Whether the restarted step has a due date"),
     token: str | None = typer.Option(None, envvar="WEALTHBOX_TOKEN", hidden=True),
     fmt: OutputFormat = typer.Option(OutputFormat.JSON, "--format"),
@@ -123,7 +144,9 @@ def revert_workflow_step(
 @handle_errors
 def list_workflow_templates(
     resource_id: int | None = typer.Option(None, "--resource-id"),
-    resource_type: WorkflowResourceType | None = typer.Option(None, "--resource-type", help="Filter by linked resource type: Contact, Project"),
+    resource_type: WorkflowResourceType | None = typer.Option(
+        None, "--resource-type", help="Filter by linked resource type: Contact, Project"
+    ),
     status: WorkflowStatus | None = typer.Option(None, "--status", help="active, completed, or scheduled"),
     updated_since: str | None = typer.Option(None, "--updated-since"),
     updated_before: str | None = typer.Option(None, "--updated-before"),

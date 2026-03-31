@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from .base import WealthboxAPIError, _WealthboxBase
 from .activity import ActivityMixin
+from .base import WealthboxAPIError, _WealthboxBase
 from .categories import CategoriesMixin
 from .comments import CommentsMixin
 from .contacts import ContactsMixin

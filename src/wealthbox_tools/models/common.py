@@ -3,8 +3,7 @@ from __future__ import annotations
 import re
 from typing import Annotated
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator, AfterValidator
-
+from pydantic import AfterValidator, BaseModel, ConfigDict, Field, field_validator, model_validator
 
 # ---------------------------------------------------------------------------
 # Reusable date / datetime validators

@@ -2,9 +2,8 @@ from __future__ import annotations
 
 from pydantic import Field, model_validator
 
-from .common import DateTimeField, PaginationQuery, RequireAnyFieldModel, WealthboxModel, LinkedToRef
-
-from .enums import TaskType, TaskPriority, TaskFrame, TaskResourceType
+from .common import DateTimeField, LinkedToRef, PaginationQuery, RequireAnyFieldModel, WealthboxModel
+from .enums import TaskFrame, TaskPriority, TaskResourceType, TaskType
 
 
 def _validate_assignment_target(assigned_to: int | None, assigned_to_team: int | None) -> None:

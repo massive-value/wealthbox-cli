@@ -8,7 +8,11 @@ from wealthbox_tools.models import ProjectCreateInput, ProjectListQuery, Project
 
 from ._util import OutputFormat, handle_errors, output_result, parse_more_fields, run_client
 
-app = typer.Typer(context_settings={"help_option_names": ["-h", "--help"]}, help="Manage Wealthbox projects.", no_args_is_help=True)
+app = typer.Typer(
+    context_settings={"help_option_names": ["-h", "--help"]},
+    help="Manage Wealthbox projects.",
+    no_args_is_help=True,
+)
 
 _DEFAULT_FIELDS = ["id", "name", "description", "organizer", "updated_at"]
 
@@ -50,7 +54,9 @@ def add_project(
     description: str = typer.Option(..., "--description", help="Project description"),
     organizer: int | None = typer.Option(None, "--organizer", help="Organizer user ID"),
     visible_to: str | None = typer.Option(None, "--visible-to"),
-    more_fields: str | None = typer.Option(None, "--more-fields", help='JSON object for additional fields (e.g. custom_fields)'),
+    more_fields: str | None = typer.Option(
+        None, "--more-fields", help="JSON object for additional fields (e.g. custom_fields)"
+    ),
     token: str | None = typer.Option(None, envvar="WEALTHBOX_TOKEN", hidden=True),
     fmt: OutputFormat = typer.Option(OutputFormat.JSON, "--format"),
 ) -> None:
@@ -76,7 +82,9 @@ def update_project(
     description: str | None = typer.Option(None, "--description"),
     organizer: int | None = typer.Option(None, "--organizer", help="Organizer user ID"),
     visible_to: str | None = typer.Option(None, "--visible-to"),
-    more_fields: str | None = typer.Option(None, "--more-fields", help='JSON object for additional fields (e.g. custom_fields)'),
+    more_fields: str | None = typer.Option(
+        None, "--more-fields", help="JSON object for additional fields (e.g. custom_fields)"
+    ),
     token: str | None = typer.Option(None, envvar="WEALTHBOX_TOKEN", hidden=True),
     fmt: OutputFormat = typer.Option(OutputFormat.JSON, "--format"),
 ) -> None:

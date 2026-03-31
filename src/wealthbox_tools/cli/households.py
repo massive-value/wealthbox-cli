@@ -6,10 +6,17 @@ from wealthbox_tools.models import HouseholdMemberInput, HouseholdTitle
 
 from ._util import OutputFormat, handle_errors, output_result, run_client
 
-app = typer.Typer(context_settings={"help_option_names": ["-h", "--help"]}, help="Manage household members.", no_args_is_help=True)
+app = typer.Typer(
+    context_settings={"help_option_names": ["-h", "--help"]},
+    help="Manage household members.",
+    no_args_is_help=True,
+)
 
 
-@app.command("add-member", help="Add a member to a household. Usage: add-member <household_id> <member_id> --title <title>")
+@app.command(
+    "add-member",
+    help="Add a member to a household. Usage: add-member <household_id> <member_id> --title <title>",
+)
 @handle_errors
 def add_member(
     household_id: int = typer.Argument(..., help="Household contact ID"),

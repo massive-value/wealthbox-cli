@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from wealthbox_tools.cli._util import build_linked_to
-from wealthbox_tools.models.common import LinkedToRef
 
 
 def _as_dicts(refs):
