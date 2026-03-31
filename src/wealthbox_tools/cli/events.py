@@ -82,8 +82,8 @@ def get_event(
 @handle_errors
 def add_event(
     title: str = typer.Argument(..., help="Event title"),
-    starts_at: str = typer.Option(..., "--starts-at", help="Start datetime, e.g. '2026-01-15 10:00 AM -0700'"),
-    ends_at: str = typer.Option(..., "--ends-at", help="End datetime, e.g. '2026-01-15 11:00 AM -0700'"),
+    starts_at: str = typer.Option(..., "--starts-at", help="Start datetime in ISO 8601, e.g. '2026-01-15T10:00:00-07:00'"),
+    ends_at: str = typer.Option(..., "--ends-at", help="End datetime in ISO 8601, e.g. '2026-01-15T11:00:00-07:00'"),
     location: str | None = typer.Option(None, "--location"),
     state: EventsState | None = typer.Option(
         None, "--state", help="unconfirmed, confirmed, tentative, completed, cancelled"
@@ -116,8 +116,8 @@ def add_event(
 def update_event(
     event_id: int = typer.Argument(..., help="Event ID"),
     title: str | None = typer.Option(None, "--title", help="Event title"),
-    starts_at: str | None = typer.Option(None, "--starts-at", help="Start datetime, e.g. '2026-01-15 10:00 AM -0700'"),
-    ends_at: str | None = typer.Option(None, "--ends-at", help="End datetime, e.g. '2026-01-15 11:00 AM -0700'"),
+    starts_at: str | None = typer.Option(None, "--starts-at", help="Start datetime in ISO 8601, e.g. '2026-01-15T10:00:00-07:00'"),
+    ends_at: str | None = typer.Option(None, "--ends-at", help="End datetime in ISO 8601, e.g. '2026-01-15T11:00:00-07:00'"),
     location: str | None = typer.Option(None, "--location"),
     state: EventsState | None = typer.Option(
         None, "--state", help="unconfirmed, confirmed, tentative, completed, cancelled"

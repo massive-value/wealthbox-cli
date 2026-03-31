@@ -140,7 +140,7 @@ def add_task(
 def update_task(
     task_id: int = typer.Argument(..., help="Task ID"),
     name: str | None = typer.Option(None, "--name", help="Task name"),
-    due_date: str | None = typer.Option(None, "--due-date", help="Example: '2025-05-24 10:00 AM -0700'"),
+    due_date: str | None = typer.Option(None, "--due-date", help="ISO 8601 datetime, e.g. '2026-04-01T09:00:00-07:00'"),
     frame: TaskFrame | None = typer.Option(None, "--frame", help="Friendly due timeframe"),
     priority: TaskPriority | None = typer.Option(None, "--priority", help="Low, Medium, or High"),
     assigned_to: int | None = typer.Option(None, "--assigned-to", help="Reassign to a user by ID"),
