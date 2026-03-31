@@ -7,6 +7,7 @@ import typer
 from .activity import app as activity_app
 from .categories import app as categories_app
 from .comments import app as comments_app
+from .config import app as config_app
 from .contacts import app as contacts_app
 from .events import app as events_app
 from .households import app as households_app
@@ -36,6 +37,7 @@ def _main(
 
 app.add_typer(activity_app, name="activity")
 app.add_typer(categories_app, name="categories")
+app.add_typer(config_app, name="config")
 app.add_typer(comments_app, name="comments")
 app.add_typer(contacts_app, name="contacts")
 app.add_typer(events_app, name="events")

@@ -17,12 +17,20 @@ from wealthbox_tools.models import CategoryListQuery, CategoryType, LinkedToRef,
 
 
 def get_client(token: str | None = None) -> WealthboxClient:
-    """Create a WealthboxClient, auto-loading .env if python-dotenv is available."""
-    try:
-        from dotenv import load_dotenv
-        load_dotenv()
-    except ImportError:
-        pass
+    """Create a WealthboxClient with token resolution: --token flag > env var > config file > .env."""
+    import os
+    if token is None:
+        token = os.environ.get("WEALTHBOX_TOKEN")
+    if token is None:
+        from ._config import get_stored_token
+        token = get_stored_token()
+    if token is None:
+        try:
+            from dotenv import load_dotenv
+            load_dotenv()
+            token = os.environ.get("WEALTHBOX_TOKEN")
+        except ImportError:
+            pass
     return WealthboxClient(token=token)
 
 
