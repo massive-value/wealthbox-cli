@@ -1,5 +1,7 @@
 # Wealthbox CLI
 
+[![PyPI version](https://img.shields.io/pypi/v/wealthbox-cli)](https://pypi.org/project/wealthbox-cli/)
+[![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue)](https://www.python.org/downloads/)
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
 
 A command-line interface for interacting with the Wealthbox CRM API.
@@ -37,26 +39,22 @@ Official API documentation: https://dev.wealthbox.com
 
 ## Installation
 
-### 1. Clone the Repository
+### From PyPI (recommended)
+
+``` bash
+pip install wealthbox-cli
+```
+
+### From source (development)
 
 ``` bash
 git clone https://github.com/massive-value/wealthbox-cli
 cd wealthbox-cli
-```
-
-### 2. Install (Recommended: Virtual Environment)
-
-``` bash
 python -m venv .venv
 source .venv/bin/activate  # macOS/Linux
 # OR
 .venv\Scripts\activate     # Windows
-```
-
-Then install:
-
-``` bash
-pip install -e .
+pip install -e ".[dev]"
 ```
 
 ------------------------------------------------------------------------
