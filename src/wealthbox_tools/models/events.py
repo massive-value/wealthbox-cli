@@ -31,8 +31,8 @@ class EventListQuery(PaginationQuery):
 
 class EventCreateInput(WealthboxModel):
     title: str = Field(min_length=1)
-    starts_at: NonNullDateTimeField = Field(min_length=1)
-    ends_at: NonNullDateTimeField = Field(min_length=1)
+    starts_at: NonNullDateTimeField
+    ends_at: NonNullDateTimeField
     repeats: bool | None = None
     event_category: int | None = Field(default=None, ge=1)
     all_day: bool | None = None

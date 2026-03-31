@@ -80,3 +80,12 @@ def test_add_event_missing_starts_at(runner) -> None:
 def test_add_event_missing_ends_at(runner) -> None:
     result = runner.invoke(app, ["events", "add", "Annual Review", "--starts-at", _STARTS])
     assert result.exit_code != 0
+
+
+def test_add_event_empty_starts_at_rejected(runner) -> None:
+    """Empty starts_at should fail validation."""
+    result = runner.invoke(
+        app,
+        ["events", "add", "Meeting", "--starts-at", "", "--ends-at", "2026-04-01T11:00:00-07:00"],
+    )
+    assert result.exit_code != 0
