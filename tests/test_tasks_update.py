@@ -82,3 +82,15 @@ def test_update_task_due_date(runner) -> None:
 def test_update_task_no_fields_raises(runner) -> None:
     result = runner.invoke(app, ["tasks", "update", "5"])
     assert result.exit_code != 0
+
+
+@respx.mock
+def test_update_task_name_only_no_date_required(runner) -> None:
+    """Updating just the name should succeed — no due_date or frame needed."""
+    route = respx.put("https://api.crmworkspace.com/v1/tasks/5").mock(
+        return_value=httpx.Response(200, json=_TASK_RESPONSE)
+    )
+    result = runner.invoke(app, ["tasks", "update", "5", "--name", "New name"])
+    assert result.exit_code == 0
+    sent = json.loads(route.calls[0].request.content)
+    assert sent == {"name": "New name"}
