@@ -30,7 +30,7 @@ def _main(
     version: bool = typer.Option(False, "--version", "-v", is_eager=True, help="Show version and exit."),
 ) -> None:
     if version:
-        typer.echo(_pkg_version("wealthbox-tools"))
+        typer.echo(_pkg_version("wealthbox-cli"))
         raise typer.Exit()
 
 

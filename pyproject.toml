@@ -3,7 +3,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "wealthbox-tools"
+name = "wealthbox-cli"
 version = "0.8.6"
 description = "CLI and client library for the Wealthbox CRM API"
 readme = "README.md"
@@ -17,6 +17,9 @@ classifiers = [
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
 ]
 dependencies = [
     "pydantic>=2.0,<3.0",
@@ -29,6 +32,7 @@ dependencies = [
 [project.urls]
 Homepage = "https://github.com/massive-value/wealthbox-cli"
 Issues = "https://github.com/massive-value/wealthbox-cli/issues"
+Repository = "https://github.com/massive-value/wealthbox-cli"
 
 [project.optional-dependencies]
 dev = [
@@ -45,6 +49,17 @@ wb = "wealthbox_tools.cli.main:app"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/wealthbox_tools"]
+
+[tool.hatch.build.targets.sdist]
+exclude = [
+    "tests/",
+    "resources/",
+    "scripts/",
+    "run-wbox.sh",
+    "smoke_test.sh",
+    ".python-version",
+    "docs/superpowers/",
+]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
