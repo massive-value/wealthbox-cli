@@ -11,9 +11,40 @@ from typing import Any
 
 import typer
 from pydantic import ValidationError
+from typer.core import TyperGroup
 
 from wealthbox_tools.client import WealthboxAPIError, WealthboxClient
 from wealthbox_tools.models import CategoryListQuery, CategoryType, LinkedToRef, TaskResourceType
+
+
+class _GetShortcutGroup(TyperGroup):
+    """Typer Group that routes numeric first arguments to the ``get`` subcommand."""
+
+    def resolve_command(self, ctx: typer.Context, args: list[str]) -> tuple:  # type: ignore[type-arg]
+        if args and args[0].isdigit() and args[0] not in self.commands:
+            args.insert(0, "get")
+        return super().resolve_command(ctx, args)
+
+
+def make_resource_app(*, help: str) -> typer.Typer:
+    """Create a Typer app that supports ``wbox <resource> <id>`` as shorthand for ``get <id>``."""
+    return typer.Typer(
+        cls=_GetShortcutGroup,
+        context_settings={"help_option_names": ["-h", "--help"]},
+        help=help,
+        no_args_is_help=True,
+    )
+
+
+# Maps CLI resource names to the CommentResourceType string expected by GET /comments
+COMMENT_RESOURCE_TYPES: dict[str, str] = {
+    "tasks": "Task",
+    "events": "Event",
+    "notes": "StatusUpdates",
+    "opportunities": "Opportunity",
+    "projects": "Project",
+    "workflows": "Workflow",
+}
 
 
 def get_client(token: str | None = None) -> WealthboxClient:
@@ -40,6 +71,95 @@ def run_client(token: str | None, fn: Callable[[WealthboxClient], Awaitable[Any]
         async with get_client(token) as client:
             return await fn(client)
     return asyncio.run(_execute())
+
+
+def run_client_with_comments(
+    token: str | None,
+    fn: Callable[[WealthboxClient], Awaitable[Any]],
+    resource_type: str,
+    resource_id: int,
+    include_comments: bool = True,
+) -> Any:
+    """Run an async client operation and optionally fetch + merge comments concurrently."""
+    async def _with_comments(client: WealthboxClient) -> Any:
+        if include_comments:
+            result, comments = await asyncio.gather(
+                fn(client),
+                client.get_comments_for_resource(resource_type, resource_id),
+            )
+            if isinstance(result, dict):
+                result["comments"] = comments
+        else:
+            result = await fn(client)
+        return result
+    return run_client(token, _with_comments)
+
+
+_COMMENT_PREVIEW_LEN = 50
+_SLIM_COMMENT_FIELDS = ("updated_at", "created_at", "creator")
+
+
+def _strip_html(text: str) -> str:
+    """Remove HTML tags and decode common HTML entities."""
+    import html
+    import re
+    return html.unescape(re.sub(r"<[^>]+>", "", text)).strip()
+
+
+def clean_comments(data: dict[str, Any]) -> dict[str, Any]:
+    """Strip HTML from body.text in each comment, keeping full structure (for verbose output)."""
+    comments = data.get("comments")
+    if not isinstance(comments, list):
+        return data
+    cleaned = []
+    for c in comments:
+        body = c.get("body")
+        if isinstance(body, dict) and "text" in body:
+            c = {**c, "body": {**body, "text": _strip_html(body["text"])}}
+        cleaned.append(c)
+    return {**data, "comments": cleaned}
+
+
+def slim_comments(data: dict[str, Any]) -> dict[str, Any]:
+    """Strip HTML, trim to essential fields, and unnest body.text → text (single pass)."""
+    comments = data.get("comments")
+    if not isinstance(comments, list):
+        return data
+    slimmed = []
+    for c in comments:
+        entry = {k: c[k] for k in _SLIM_COMMENT_FIELDS if k in c}
+        body = c.get("body")
+        raw = body.get("text", "") if isinstance(body, dict) else str(body or "")
+        entry["text"] = _strip_html(raw)
+        slimmed.append(entry)
+    return {**data, "comments": slimmed}
+
+
+def summarize_comments(data: dict[str, Any]) -> dict[str, Any]:
+    """Replace a ``comments`` list with ``comment_count`` and ``latest_comment`` summary fields."""
+    comments = data.get("comments")
+    if comments is None:
+        return data
+    data = {k: v for k, v in data.items() if k != "comments"}
+    data["comment_count"] = len(comments)
+    if comments:
+        newest = max(comments, key=lambda c: c.get("created_at", c.get("updated_at", "")))
+        text = newest.get("text", "")
+        preview = text[:_COMMENT_PREVIEW_LEN] + "..." if len(text) > _COMMENT_PREVIEW_LEN else text
+        data["latest_comment"] = preview
+    else:
+        data["latest_comment"] = ""
+    return data
+
+
+def output_get_result(
+    result: dict[str, Any], fmt: OutputFormat, fields: list[str] | None = None
+) -> None:
+    """Standard output pipeline for get commands with comments: slim → summarize → output."""
+    result = slim_comments(result)
+    if fmt != OutputFormat.JSON:
+        result = summarize_comments(result)
+    output_result(result, fmt, fields=fields)
 
 
 class OutputFormat(StrEnum):
@@ -118,8 +238,12 @@ def _flatten_value(value: Any) -> Any:
                         return item["address"]
                 return first["address"]
             if "id" in first and "type" in first:
-                # e.g. linked_to, invitees
-                return f"{first['type']}:{first['id']}"
+                # e.g. linked_to, invitees — prefer name if available
+                parts = []
+                for item in value:
+                    name = item.get("name")
+                    parts.append(name if name else f"{item['type']}:{item['id']}")
+                return ", ".join(parts)
             return f"[{len(value)} items]"
     if isinstance(value, dict):
         return json.dumps(value)
@@ -143,10 +267,13 @@ def _extract_collection(data: Any) -> tuple[list[dict] | None, int | None]:  # t
                     break
             total = data["meta"].get("total_count") or data["meta"].get("total_entries")
             return rows, total
-        # Check if any value is a list (collection without meta)
-        for v in data.values():
-            if isinstance(v, list) and v and isinstance(v[0], dict):
-                return v, None
+        # Check if any value is a list (collection without meta).
+        # Skip when the dict looks like a single resource (has an "id" key) —
+        # nested lists like linked_to, subtasks, comments are not collections.
+        if "id" not in data:
+            for v in data.values():
+                if isinstance(v, list) and v and isinstance(v[0], dict):
+                    return v, None
     return None, None
 
 

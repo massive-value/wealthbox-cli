@@ -12,3 +12,11 @@ class CommentsMixin:
         params = query.model_dump(exclude_none=True) if query else None
         resp = await self._request("GET", "/comments", params=params)  # type: ignore[attr-defined]
         return resp.json()
+
+    async def get_comments_for_resource(
+        self, resource_type: str, resource_id: int
+    ) -> list[dict[str, Any]]:
+        """Fetch all comments for a specific resource."""
+        params = {"resource_type": resource_type, "resource_id": resource_id}
+        resp = await self._request("GET", "/comments", params=params)  # type: ignore[attr-defined]
+        return resp.json().get("comments", [])

@@ -15,24 +15,37 @@ from wealthbox_tools.models import (
 )
 
 from ._util import (
+    COMMENT_RESOURCE_TYPES,
     OutputFormat,
     build_linked_to,
     build_resource_filter,
+    clean_comments,
     handle_errors,
     make_category_command,
+    make_resource_app,
     output_result,
     parse_more_fields,
     run_client,
+    run_client_with_comments,
+    slim_comments,
+    summarize_comments,
 )
 
-app = typer.Typer(
-    context_settings={"help_option_names": ["-h", "--help"]},
-    help="Manage Wealthbox tasks.",
-    no_args_is_help=True,
-)
+app = make_resource_app(help="Manage Wealthbox tasks.")
 app.command("categories", help="List task category options.")(make_category_command(CategoryType.TASK_CATEGORIES))
 
 _DEFAULT_FIELDS = ["id", "name", "due_date", "frame", "complete", "category"]
+_GET_FIELDS = [
+    "id", "name", "description", "due_date", "created_at", "complete",
+    "priority", "assigned_to", "category", "linked_to",
+    "comment_count", "latest_comment",
+]
+_GET_JSON_FIELDS = [
+    "id", "name", "description", "due_date", "created_at", "updated_at",
+    "frame", "complete", "repeats", "priority",
+    "assigned_to", "assigned_to_team", "creator", "completer",
+    "category", "linked_to", "comments",
+]
 
 _TASK_CREATE_RESERVED = {"name", "due_date", "frame", "priority", "assigned_to", "linked_to"}
 
@@ -87,10 +100,25 @@ def list_tasks(
 @handle_errors
 def get_task(
     task_id: int = typer.Argument(..., help="Task ID"),
+    no_comments: bool = typer.Option(False, "--no-comments", help="Omit comments from output"),
+    verbose: bool = typer.Option(False, "--verbose", "-v", help="Show all fields"),
     token: str | None = typer.Option(None, envvar="WEALTHBOX_TOKEN", hidden=True),
     fmt: OutputFormat = typer.Option(OutputFormat.JSON, "--format"),
 ) -> None:
-    output_result(run_client(token, lambda c: c.get_task(task_id)), fmt)
+    result = run_client_with_comments(
+        token, lambda c: c.get_task(task_id),
+        COMMENT_RESOURCE_TYPES["tasks"], task_id, include_comments=not no_comments,
+    )
+    result = clean_comments(result)
+    if not verbose:
+        result = {k: result[k] for k in _GET_JSON_FIELDS if k in result}
+        result = slim_comments(result)
+    if fmt != OutputFormat.JSON:
+        result = summarize_comments(result)
+        desc = result.get("description", "")
+        if isinstance(desc, str) and len(desc) > 50:
+            result = {**result, "description": desc[:50] + "..."}
+    output_result(result, fmt, fields=None if (verbose or fmt == OutputFormat.JSON) else _GET_FIELDS)
 
 
 @app.command("add", help="Create a new task. Required: name, and either due_date or frame.")

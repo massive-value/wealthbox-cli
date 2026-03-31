@@ -13,15 +13,26 @@ from wealthbox_tools.models import (
     OpportunityUpdateInput,
 )
 
-from ._util import OutputFormat, build_linked_to, handle_errors, output_result, parse_more_fields, run_client
-
-app = typer.Typer(
-    context_settings={"help_option_names": ["-h", "--help"]},
-    help="Manage Wealthbox opportunities.",
-    no_args_is_help=True,
+from ._util import (
+    COMMENT_RESOURCE_TYPES,
+    OutputFormat,
+    build_linked_to,
+    handle_errors,
+    make_resource_app,
+    output_get_result,
+    output_result,
+    parse_more_fields,
+    run_client,
+    run_client_with_comments,
 )
 
+app = make_resource_app(help="Manage Wealthbox opportunities.")
+
 _DEFAULT_FIELDS = ["id", "name", "stage", "probability", "target_close", "manager", "linked_to"]
+_MORE_FIELDS_RESERVED = {
+    "name", "target_close", "probability", "stage", "description",
+    "manager", "visible_to", "linked_to", "amounts",
+}
 
 
 def _build_amounts(
@@ -83,10 +94,15 @@ def list_opportunities(
 @handle_errors
 def get_opportunity(
     opportunity_id: int = typer.Argument(..., help="Opportunity ID"),
+    no_comments: bool = typer.Option(False, "--no-comments", help="Omit comments from output"),
     token: str | None = typer.Option(None, envvar="WEALTHBOX_TOKEN", hidden=True),
     fmt: OutputFormat = typer.Option(OutputFormat.JSON, "--format"),
 ) -> None:
-    output_result(run_client(token, lambda c: c.get_opportunity(opportunity_id)), fmt)
+    result = run_client_with_comments(
+        token, lambda c: c.get_opportunity(opportunity_id),
+        COMMENT_RESOURCE_TYPES["opportunities"], opportunity_id, include_comments=not no_comments,
+    )
+    output_get_result(result, fmt)
 
 
 @app.command("add", help="Create a new opportunity.")
@@ -125,11 +141,7 @@ def add_opportunity(
     }
 
     if more_fields:
-        _reserved = {
-            "name", "target_close", "probability", "stage", "description",
-            "manager", "visible_to", "linked_to", "amounts",
-        }
-        payload.update(parse_more_fields(more_fields, _reserved))
+        payload.update(parse_more_fields(more_fields, _MORE_FIELDS_RESERVED))
 
     input_model = OpportunityCreateInput(**{k: v for k, v in payload.items() if v is not None})
     output_result(run_client(token, lambda c: c.create_opportunity(input_model)), fmt)
@@ -178,11 +190,7 @@ def update_opportunity(
         payload["amounts"] = amounts
 
     if more_fields:
-        _update_reserved = {
-            "name", "target_close", "probability", "stage", "description",
-            "manager", "visible_to", "linked_to", "amounts",
-        }
-        payload.update(parse_more_fields(more_fields, _update_reserved))
+        payload.update(parse_more_fields(more_fields, _MORE_FIELDS_RESERVED))
 
     input_model = OpportunityUpdateInput(**payload)
     output_result(run_client(token, lambda c: c.update_opportunity(opportunity_id, input_model)), fmt)

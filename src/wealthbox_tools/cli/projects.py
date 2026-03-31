@@ -6,13 +6,19 @@ import typer
 
 from wealthbox_tools.models import ProjectCreateInput, ProjectListQuery, ProjectUpdateInput
 
-from ._util import OutputFormat, handle_errors, output_result, parse_more_fields, run_client
-
-app = typer.Typer(
-    context_settings={"help_option_names": ["-h", "--help"]},
-    help="Manage Wealthbox projects.",
-    no_args_is_help=True,
+from ._util import (
+    COMMENT_RESOURCE_TYPES,
+    OutputFormat,
+    handle_errors,
+    make_resource_app,
+    output_get_result,
+    output_result,
+    parse_more_fields,
+    run_client,
+    run_client_with_comments,
 )
+
+app = make_resource_app(help="Manage Wealthbox projects.")
 
 _DEFAULT_FIELDS = ["id", "name", "description", "organizer", "updated_at"]
 
@@ -41,10 +47,15 @@ def list_projects(
 @handle_errors
 def get_project(
     project_id: int = typer.Argument(..., help="Project ID"),
+    no_comments: bool = typer.Option(False, "--no-comments", help="Omit comments from output"),
     token: str | None = typer.Option(None, envvar="WEALTHBOX_TOKEN", hidden=True),
     fmt: OutputFormat = typer.Option(OutputFormat.JSON, "--format"),
 ) -> None:
-    output_result(run_client(token, lambda c: c.get_project(project_id)), fmt)
+    result = run_client_with_comments(
+        token, lambda c: c.get_project(project_id),
+        COMMENT_RESOURCE_TYPES["projects"], project_id, include_comments=not no_comments,
+    )
+    output_get_result(result, fmt)
 
 
 @app.command("add", help="Create a new project.")

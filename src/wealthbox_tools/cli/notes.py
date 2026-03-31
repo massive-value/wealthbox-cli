@@ -6,15 +6,25 @@ import typer
 
 from wealthbox_tools.models import NoteCreateInput, NoteListQuery, NoteResourceType, NotesOrder, NoteUpdateInput
 
-from ._util import OutputFormat, build_linked_to, handle_errors, output_result, run_client, truncate_field
-
-app = typer.Typer(
-    context_settings={"help_option_names": ["-h", "--help"]},
-    help="Manage Wealthbox notes.",
-    no_args_is_help=True,
+from ._util import (
+    COMMENT_RESOURCE_TYPES,
+    OutputFormat,
+    build_linked_to,
+    handle_errors,
+    make_resource_app,
+    output_get_result,
+    output_result,
+    run_client,
+    run_client_with_comments,
+    truncate_field,
 )
 
-_DEFAULT_FIELDS = ["id", "content", "linked_to", "creator_id", "updated_at"]
+app = make_resource_app(help="Manage Wealthbox notes.")
+
+_DEFAULT_FIELDS = [
+    "id", "content", "linked_to", "creator_id", "updated_at",
+    "comments", "comment_count", "latest_comment",
+]
 _CONTENT_PREVIEW_LEN = 500
 
 
@@ -51,11 +61,16 @@ def list_notes(
 @handle_errors
 def get_note(
     note_id: int = typer.Argument(..., help="Note ID"),
+    no_comments: bool = typer.Option(False, "--no-comments", help="Omit comments from output"),
     verbose: bool = typer.Option(False, "--verbose", "-v", help="Show all fields"),
     token: str | None = typer.Option(None, envvar="WEALTHBOX_TOKEN", hidden=True),
     fmt: OutputFormat = typer.Option(OutputFormat.JSON, "--format"),
 ) -> None:
-    output_result(run_client(token, lambda c: c.get_note(note_id)), fmt, fields=None if verbose else _DEFAULT_FIELDS)
+    result = run_client_with_comments(
+        token, lambda c: c.get_note(note_id),
+        COMMENT_RESOURCE_TYPES["notes"], note_id, include_comments=not no_comments,
+    )
+    output_get_result(result, fmt, fields=None if verbose else _DEFAULT_FIELDS)
 
 
 @app.command("add", help="Create a new note.")

@@ -22,16 +22,13 @@ from ._util import (
     active_to_status,
     handle_errors,
     make_category_command,
+    make_resource_app,
     output_result,
     parse_more_fields,
     run_client,
 )
 
-app = typer.Typer(
-    context_settings={"help_option_names": ["-h", "--help"]},
-    help="Manage Wealthbox contacts.",
-    no_args_is_help=True,
-)
+app = make_resource_app(help="Manage Wealthbox contacts.")
 
 _DEFAULT_FIELDS = ["id", "name", "type", "contact_type", "assigned_to", "status"]
 
