@@ -172,7 +172,14 @@ class _WealthboxBase:
         while True:
             base_params["page"] = page
             resp = await self._request("GET", path, params=base_params)
-            data = resp.json()
+            try:
+                data = resp.json()
+            except Exception:
+                raise WealthboxAPIError(
+                    resp.status_code,
+                    f"Invalid JSON in response from {path} (page {page})",
+                    resp,
+                )
 
             items = data.get(collection_key, [])
             all_items.extend(items)
