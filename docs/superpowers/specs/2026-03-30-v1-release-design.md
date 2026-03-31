@@ -135,8 +135,11 @@ Configure hatch build excludes in pyproject.toml:
 
 ---
 
-## Manual Step Required
+## Completed 2026-03-31
 
-Before the first tag push, configure PyPI trusted publishing:
-1. Go to pypi.org → create project `wealthbox-cli`
-2. Add trusted publisher: GitHub, owner `massive-value`, repo `wealthbox-cli`, workflow `ci.yml`, environment (blank)
+All items shipped as v1.0.0 (then v1.0.1 docs patch). Additional work beyond original spec:
+
+- **`wbox config` command** — `set-token`, `show`, `clear` for token management. Stores in platform config dir. Token resolution: flag > env var > config file > .env.
+- **README updates** — API token setup instructions, PyPI badges, config command docs.
+- **CLAUDE.md / CONTRIBUTING.md** — deploy workflow, CI info, config command docs.
+- **PyPI trusted publisher** — configured with environment `pypi` (not blank).
