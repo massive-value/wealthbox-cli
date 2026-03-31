@@ -45,6 +45,18 @@ Official API documentation: https://dev.wealthbox.com
 pip install wealthbox-cli
 ```
 
+### With pipx (recommended for Ubuntu/Debian)
+
+On systems where the system Python is externally managed (Ubuntu 23.04+, Debian 12+),
+`pip install` outside a virtual environment is blocked by [PEP 668](https://peps.python.org/pep-0668/).
+Use [pipx](https://pipx.pypa.io/) to install CLI tools in isolated environments:
+
+``` bash
+pipx install wealthbox-cli
+```
+
+This puts `wbox` and `wb` on your PATH without touching system Python.
+
 ### From source (development)
 
 ``` bash

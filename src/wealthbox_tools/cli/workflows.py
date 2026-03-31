@@ -13,13 +13,20 @@ from wealthbox_tools.models import (
     WorkflowTemplateListQuery,
 )
 
-from ._util import OutputFormat, build_linked_to, handle_errors, output_result, parse_more_fields, run_client
-
-app = typer.Typer(
-    context_settings={"help_option_names": ["-h", "--help"]},
-    help="Manage Wealthbox workflows.",
-    no_args_is_help=True,
+from ._util import (
+    COMMENT_RESOURCE_TYPES,
+    OutputFormat,
+    build_linked_to,
+    handle_errors,
+    make_resource_app,
+    output_get_result,
+    output_result,
+    parse_more_fields,
+    run_client,
+    run_client_with_comments,
 )
+
+app = make_resource_app(help="Manage Wealthbox workflows.")
 
 templates_app = typer.Typer(
     context_settings={"help_option_names": ["-h", "--help"]},
@@ -68,10 +75,15 @@ def list_workflows(
 @handle_errors
 def get_workflow(
     workflow_id: int = typer.Argument(..., help="Workflow ID"),
+    no_comments: bool = typer.Option(False, "--no-comments", help="Omit comments from output"),
     token: str | None = typer.Option(None, envvar="WEALTHBOX_TOKEN", hidden=True),
     fmt: OutputFormat = typer.Option(OutputFormat.JSON, "--format"),
 ) -> None:
-    output_result(run_client(token, lambda c: c.get_workflow(workflow_id)), fmt)
+    result = run_client_with_comments(
+        token, lambda c: c.get_workflow(workflow_id),
+        COMMENT_RESOURCE_TYPES["workflows"], workflow_id, include_comments=not no_comments,
+    )
+    output_get_result(result, fmt)
 
 
 @app.command("add", help="Create a new workflow from a template.")

@@ -148,9 +148,16 @@ class NoteResourceType(StrEnum):
 
 
 class CommentResourceType(StrEnum):
-    CONTACT = "Contact"
     TASK = "Task"
     EVENT = "Event"
+    STATUS_UPDATES = "StatusUpdates" # Notes
+    # CONTACT = "Contact"
+    OPPORTUNITY = "Opportunity"
+    PROJECT = "Project"
+    WORKFLOW = "Workflow"
+    WORKFLOW_STEP = "WorkflowStep"
+    SELECTED_OUTCOME = "SelectedOutcome"
+    MEETING = "Meeting"
 
 
 class OpportunityResourceType(StrEnum):

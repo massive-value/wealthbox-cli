@@ -14,16 +14,26 @@ from wealthbox_tools.models import (
     TaskResourceType,
 )
 
-from ._util import OutputFormat, build_linked_to, handle_errors, make_category_command, output_result, run_client
-
-app = typer.Typer(
-    context_settings={"help_option_names": ["-h", "--help"]},
-    help="Manage Wealthbox events.",
-    no_args_is_help=True,
+from ._util import (
+    COMMENT_RESOURCE_TYPES,
+    OutputFormat,
+    build_linked_to,
+    handle_errors,
+    make_category_command,
+    make_resource_app,
+    output_get_result,
+    output_result,
+    run_client,
+    run_client_with_comments,
 )
+
+app = make_resource_app(help="Manage Wealthbox events.")
 app.command("categories", help="List event category options.")(make_category_command(CategoryType.EVENT_CATEGORIES))
 
-_DEFAULT_FIELDS = ["id", "title", "starts_at", "ends_at", "state", "event_category"]
+_DEFAULT_FIELDS = [
+    "id", "title", "starts_at", "ends_at", "state", "event_category",
+    "comments", "comment_count", "latest_comment",
+]
 
 
 @app.command("list", help="List events with optional filters.")
@@ -71,11 +81,16 @@ def list_events(
 @handle_errors
 def get_event(
     event_id: int = typer.Argument(..., help="Event ID"),
+    no_comments: bool = typer.Option(False, "--no-comments", help="Omit comments from output"),
     verbose: bool = typer.Option(False, "--verbose", "-v", help="Show all fields"),
     token: str | None = typer.Option(None, envvar="WEALTHBOX_TOKEN", hidden=True),
     fmt: OutputFormat = typer.Option(OutputFormat.JSON, "--format"),
 ) -> None:
-    output_result(run_client(token, lambda c: c.get_event(event_id)), fmt, fields=None if verbose else _DEFAULT_FIELDS)
+    result = run_client_with_comments(
+        token, lambda c: c.get_event(event_id),
+        COMMENT_RESOURCE_TYPES["events"], event_id, include_comments=not no_comments,
+    )
+    output_get_result(result, fmt, fields=None if verbose else _DEFAULT_FIELDS)
 
 
 @app.command("add", help="Create a new event.")
