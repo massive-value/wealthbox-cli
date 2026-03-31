@@ -15,7 +15,13 @@ source .venv/bin/activate  # macOS/Linux
 pip install -e ".[dev]"
 ```
 
-Copy `.env.example` to `.env` and add your Wealthbox API token.
+Configure your Wealthbox API token:
+
+```bash
+wbox config set-token
+```
+
+Or copy `.env.example` to `.env` and add your token there.
 
 ## Running Tests
 
@@ -32,8 +38,8 @@ ruff check src/
 mypy src/
 ```
 
-- **ruff** for linting (E, F, I rules; 100-char line length)
-- **mypy** in strict mode
+- **ruff** for linting (E, F, I rules; 120-char line length)
+- **mypy** in strict mode (has known `untyped-decorator` warnings from Typer — not currently enforced in CI)
 
 ## Project Architecture
 
@@ -55,11 +61,20 @@ Three layers under `src/wealthbox_tools/`:
 6. If the resource has category types, add them via `make_category_command()` in the resource's `categories` sub-app
 7. Add tests in `tests/test_<resource>_create.py` and `tests/test_<resource>_update.py`
 
+## CI
+
+Pull requests and pushes to `main` run GitHub Actions CI:
+
+- **Lint:** `ruff check src/ tests/`
+- **Test:** `pytest` across Python 3.11, 3.12, 3.13
+
+Both must pass before merging.
+
 ## Pull Requests
 
 - Keep PRs focused — one feature or fix per PR
 - All tests must pass (`pytest`)
-- No ruff or mypy errors
+- No ruff errors
 - Update the CLI reference docs if commands change
 
 ## Reporting Issues

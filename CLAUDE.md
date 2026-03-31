@@ -6,9 +6,16 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Wealthbox CLI (`wbox`) is a command-line tool for the Wealthbox CRM API. It provides CRUD access for contacts, tasks, events, and notes, household member management commands, and read/list access for users, activity, `me`, and categories. The API base URL is `https://api.crmworkspace.com/v1`. Official docs: https://dev.wealthbox.com
 
+## Package
+
+Published to PyPI as `wealthbox-cli` (import path: `wealthbox_tools`). Both `wbox` and `wb` are registered as CLI entry points.
+
 ## Commands
 
 ```bash
+# Install from PyPI
+pip install wealthbox-cli
+
 # Install (editable with dev deps)
 pip install -e ".[dev]"
 
@@ -18,7 +25,10 @@ pytest
 # Run a single test
 pytest tests/path/to/test_file.py::test_name
 
-# Use the CLI (requires WEALTHBOX_TOKEN env var or .env file)
+# Lint
+ruff check src/ tests/
+
+# Use the CLI
 wbox <resource> <command> [options]
 ```
 
@@ -26,7 +36,13 @@ wbox <resource> <command> [options]
 
 **Activity pagination note:** `/activity` is cursor-based. Use `--cursor` for subsequent pages; do not add `page`/`per_page` parameters for activity queries.
 
-**Authentication:** Set `WEALTHBOX_TOKEN` in `.env` or as an env var. All CLI commands also accept `--token` (hidden option, not shown in `--help`).
+**Authentication:** Token is resolved in this order (first wins):
+1. `--token` flag (hidden, not shown in `--help`)
+2. `WEALTHBOX_TOKEN` environment variable
+3. Config file via `wbox config set-token` (~/.config/wbox/config.json or %APPDATA%\wbox\config.json)
+4. `.env` file in working directory (auto-loaded via python-dotenv)
+
+**Config commands:** `wbox config set-token` (prompt + store), `wbox config show` (display masked), `wbox config clear` (remove). Implementation: `cli/_config.py` (storage helper) and `cli/config.py` (Typer commands).
 
 ## Architecture
 
@@ -67,7 +83,7 @@ if linked is not None:
 input_model = TaskUpdateInput(**payload)
 ```
 
-**Authentication:** Token is read from `WEALTHBOX_TOKEN` env var (`.env` auto-loaded via python-dotenv). Passed as `ACCESS_TOKEN` HTTP header. Rate limiting is sliding-window (300 req / 5-min window); state persists across processes via `~/.wbox_rate_limit.json`. 429 responses trigger automatic retry.
+**Authentication:** Token resolution is handled in `get_client()` in `cli/_util.py`: flag > env var > config file > .env. The resolved token is passed as `ACCESS_TOKEN` HTTP header. Rate limiting is sliding-window (300 req / 5-min window); state persists across processes via `~/.wbox_rate_limit.json`. 429 responses trigger automatic retry with logging on malformed `Retry-After` headers.
 
 **Models:** Input models live in `models/` (e.g., `ContactCreateInput`, `TaskListQuery`). List queries use `exclude_none=True`; update inputs use `exclude_unset=True` to preserve explicit nulls. Enums use Python 3.11+ `StrEnum`. `RequireAnyFieldModel` (in `models/common.py`) rejects empty update payloads. `OutputFormat` (in `cli/_util.py`) is a CLI-layer enum — not a model.
 
@@ -93,10 +109,32 @@ input_model = TaskUpdateInput(**payload)
 6. If the resource has category types, add them via `make_category_command()` in the resource's `categories` sub-app
 7. Add tests in `tests/test_<resource>_create.py` and `tests/test_<resource>_update.py`
 
+## CI/CD and Releasing
+
+**CI:** `.github/workflows/ci.yml` — single workflow with three jobs:
+- `lint` — `ruff check src/ tests/` (Python 3.12)
+- `test` — `pytest` across Python 3.11, 3.12, 3.13
+- `publish` — builds and publishes to PyPI via trusted publishers (OIDC), runs only on `v*` tags after lint + test pass
+
+**To release a new version:**
+1. Bump `version` in `pyproject.toml`
+2. `pip install -e ".[dev]"` and verify `wbox --version`
+3. Run `ruff check src/ tests/` and `pytest` — both must pass
+4. Commit: `vX.Y.Z: <description>`
+5. Tag: `git tag vX.Y.Z`
+6. Push: `git push origin main --tags`
+7. CI auto-publishes to PyPI
+
+**PyPI project:** `wealthbox-cli` on pypi.org. Trusted publisher is configured for `massive-value/wealthbox-cli` workflow `ci.yml` with environment `pypi`. Do not change the workflow filename or the `environment: pypi` line without updating PyPI's trusted publisher config.
+
+**Version convention:** Semantic versioning. Bump patch for fixes, minor for features, major for breaking changes.
+
 ## Key Files
 
-- `src/wealthbox_tools/cli/main.py` — registers all sub-apps
-- `src/wealthbox_tools/cli/_util.py` — `run_client`, `handle_errors`, `output_result`, `make_category_command`, `build_linked_to`, `active_to_status`, `OutputFormat` (StrEnum: json/table/csv/tsv); tabular helpers: `_flatten_record`, `_extract_collection`, `_render_table`, `_render_kv_table`, `_render_dsv`
+- `src/wealthbox_tools/cli/main.py` — registers all sub-apps (including `config`)
+- `src/wealthbox_tools/cli/_util.py` — `get_client` (token resolution), `run_client`, `handle_errors`, `output_result`, `make_category_command`, `build_linked_to`, `active_to_status`, `OutputFormat` (StrEnum: json/table/csv/tsv); tabular helpers: `_flatten_record`, `_extract_collection`, `_render_table`, `_render_kv_table`, `_render_dsv`
+- `src/wealthbox_tools/cli/_config.py` — config file helpers: `load_config`, `save_config`, `get_stored_token`, `_config_dir`, `_config_path`
+- `src/wealthbox_tools/cli/config.py` — `wbox config` commands: `set-token`, `show`, `clear`
 - `src/wealthbox_tools/client/base.py` — `_WealthboxBase`, `WealthboxAPIError`, `RateLimiter`
   - `fetch_all_pages(path, params, collection_key, on_progress)` — shared full-dataset paginator; all `list_all_*` methods delegate here
 - `src/wealthbox_tools/client/__init__.py` — `WealthboxClient` (combined mixins)
