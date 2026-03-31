@@ -22,7 +22,7 @@ _CONTENT_PREVIEW_LEN = 500
 @handle_errors
 def list_notes(
     contact: int | None = typer.Option(None, "--contact", help="Filter notes linked to a Contact (by ID)"),
-    order: NotesOrder | None = typer.Option("updated"),
+    order: NotesOrder | None = typer.Option("updated", help="Sort order: updated or created"),
     updated_since: str | None = typer.Option(None, "--updated-since"),
     updated_before: str | None = typer.Option(None, "--updated-before"),
     page: int | None = typer.Option(None),

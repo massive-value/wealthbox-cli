@@ -39,14 +39,14 @@ def list_events(
     start_date_max: str | None = typer.Option(
         None, "--start-date-max", help="Format example: '2015-05-24 10:00 AM -0400'"
     ),
-    order: EventsOrder | None = typer.Option(None, "--order", help="asc, desc, recent, created"),
+    order: EventsOrder | None = typer.Option(None, "--order", help="Sort order: asc, desc, recent, created"),
     updated_since: str | None = typer.Option(
         None, "--updated-since", help="Format example: '2015-05-24 10:00 AM -0400'"
     ),
     updated_before: str | None = typer.Option(
         None, "--updated-before", help="Format example: '2015-05-24 10:00 AM -0400'"
     ),
-    page: int | None = typer.Option(None),
+    page: int | None = typer.Option(None, help="Page number"),
     per_page: int | None = typer.Option(None, "--per-page", help="Results per page (max 100)"),
     verbose: bool = typer.Option(False, "--verbose", "-v", help="Show all fields"),
     token: str | None = typer.Option(None, envvar="WEALTHBOX_TOKEN", hidden=True),

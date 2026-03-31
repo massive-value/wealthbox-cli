@@ -40,8 +40,8 @@ _TASK_CREATE_RESERVED = {"name", "due_date", "frame", "priority", "assigned_to",
 @app.command(
     "list",
     help=(
-        "Returns a list of tasks, with optional filters. By default, only outstanding tasks are returned; "
-        "use --include-completed to include completed tasks in the results."
+        "List tasks with optional filters. By default only outstanding tasks are returned; "
+        "use --include-completed to include completed tasks"
     ),
 )
 @handle_errors
@@ -49,9 +49,9 @@ def list_tasks(
     contact: int | None = typer.Option(None, "--contact", help="Filter tasks linked to a Contact (by ID)"),
     project: int | None = typer.Option(None, "--project", help="Filter tasks linked to a Project (by ID)"),
     opportunity: int | None = typer.Option(None, "--opportunity", help="Filter tasks linked to an Opportunity (by ID)"),
-    assigned_to: int | None = typer.Option(None, "--assigned-to"),
-    assigned_to_team: int | None = typer.Option(None, "--assigned-to-team"),
-    created_by: int | None = typer.Option(None, "--created-by", help="user id"),
+    assigned_to: int | None = typer.Option(None, "--assigned-to", help="Filter by assigned user ID"),
+    assigned_to_team: int | None = typer.Option(None, "--assigned-to-team", help="Filter by assigned team ID"),
+    created_by: int | None = typer.Option(None, "--created-by", help="Filter by creator user ID"),
     include_completed: bool = typer.Option(
         False, "--include-completed", help="Include completed tasks (default returns outstanding tasks only)"
     ),
@@ -100,7 +100,7 @@ def add_task(
     due_date: str | None = typer.Option(
         None, "--due-date", help="Example: '2025-05-24 10:00 AM -0700' (must match Wealthbox format)"
     ),
-    frame: TaskFrame | None = typer.Option(None, "--frame", help="friendly due timeframe"),
+    frame: TaskFrame | None = typer.Option(None, "--frame", help="Friendly due timeframe"),
     priority: TaskPriority | None = typer.Option(None, "--priority", help="Low, Medium, or High"),
     assigned_to: int | None = typer.Option(None, "--assigned-to", help="Assign to a user by ID"),
     contact: int | None = typer.Option(None, "--contact", help="Link to a Contact by ID"),

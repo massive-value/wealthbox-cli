@@ -143,7 +143,7 @@ def revert_workflow_step(
 @templates_app.command("list", help="List available workflow templates.")
 @handle_errors
 def list_workflow_templates(
-    resource_id: int | None = typer.Option(None, "--resource-id"),
+    resource_id: int | None = typer.Option(None, "--resource-id", help="Filter by linked resource ID"),
     resource_type: WorkflowResourceType | None = typer.Option(
         None, "--resource-type", help="Filter by linked resource type: Contact, Project"
     ),
