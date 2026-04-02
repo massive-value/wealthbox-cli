@@ -197,6 +197,43 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for the full contributor guide.
 
 ------------------------------------------------------------------------
 
+## Claude Code Skill
+
+A `/wealthbox-crm` skill is included for [Claude Code](https://claude.ai/download) users. It provides natural-language access to all `wbox` commands with progressive disclosure and optional firm-specific conventions.
+
+### Install the skill
+
+```bash
+# Copy the skill to your user-level Claude Code skills directory
+# macOS/Linux
+cp -r dist/skills/wealthbox-crm ~/.claude/skills/wealthbox-crm
+
+# Windows (PowerShell)
+Copy-Item -Recurse dist\skills\wealthbox-crm $env:USERPROFILE\.claude\skills\wealthbox-crm
+```
+
+### Usage
+
+In any Claude Code conversation:
+
+```
+/wealthbox-crm create a contact for Jane Doe, she's a new prospect
+/wealthbox-crm list my tasks due this week
+/wealthbox-crm add a note to contact 123 about today's meeting
+```
+
+### Firm-specific configuration (optional)
+
+To customize the skill for your firm's conventions:
+
+```bash
+cp ~/.claude/skills/wealthbox-crm/firm-config.example.md ~/.claude/skills/wealthbox-crm/firm-config.md
+```
+
+Edit `firm-config.md` with your firm's required fields, defaults, naming conventions, and multi-step workflows. See the example file for all available options.
+
+------------------------------------------------------------------------
+
 ## Troubleshooting
 
 **401 Unauthorized** — Check your API token.
