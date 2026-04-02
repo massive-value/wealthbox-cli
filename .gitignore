@@ -214,3 +214,8 @@ scripts/testing.py
 .claude/
 **/.claude/
 CLAUDE.md
+
+# Track skills even though dist/ is otherwise ignored
+!dist/
+!dist/skills/
+!dist/skills/**
