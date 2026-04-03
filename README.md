@@ -3,11 +3,12 @@
 [![PyPI version](https://img.shields.io/pypi/v/wealthbox-cli)](https://pypi.org/project/wealthbox-cli/)
 [![Downloads](https://img.shields.io/pypi/dm/wealthbox-cli)](https://pypi.org/project/wealthbox-cli/)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue)](https://www.python.org/downloads/)
+[![CI](https://img.shields.io/github/actions/workflow/status/massive-value/wealthbox-cli/ci.yml?label=CI)](https://github.com/massive-value/wealthbox-cli/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
 
 **wealthbox-cli** (`wbox`) is a command-line tool and Python client library for the [Wealthbox CRM](https://www.wealthbox.com/) API. It gives financial advisors, developers, and RIA firms full CRUD access to contacts, tasks, events, notes, households, and more — directly from the terminal. Automate your CRM workflows, export data, and integrate Wealthbox into scripts and CI pipelines.
 
-[Documentation](https://massive-value.github.io/wealthbox-cli/) | [PyPI](https://pypi.org/project/wealthbox-cli/) | [API Reference](https://dev.wealthbox.com)
+[Documentation](https://massive-value.github.io/wealthbox-cli/) | [PyPI](https://pypi.org/project/wealthbox-cli/) | [Changelog](https://massive-value.github.io/wealthbox-cli/changelog/) | [Wealthbox API Docs](https://dev.wealthbox.com)
 
 > **Disclaimer:** This is an unofficial, community-built tool. It is not affiliated with,
 > endorsed by, or supported by Wealthbox or its parent company. "Wealthbox" is a trademark
@@ -21,241 +22,193 @@
 - **Automate CRM workflows** — script bulk updates, data exports, and scheduled tasks
 - **Multiple output formats** — pipe JSON, CSV, or TSV directly to files or other tools
 - **Built for financial advisors and developers** — covers contacts, households, tasks, events, notes, categories, and custom fields
+- **AI-agent ready** — pair with [Claude Code](https://claude.ai/download) or other coding agents for natural-language CRM automation
 - **Open source** — Apache 2.0 licensed, community-driven, and extensible
 
 ------------------------------------------------------------------------
 
-## Features
+## Quick Start
 
--   Full CRUD support for:
-    -   Contacts (Person, Household, Organization, Trust)
-    -   Households (member management)
-    -   Tasks
-    -   Events
-    -   Notes (create, read, update — delete not supported by API)
--   Structured flag-based `add` and `update` commands — no raw JSON required
--   Type-specific contact creation subcommands: `contacts add person|household|org|trust`
--   `--more-fields` escape hatch on contacts/tasks/projects/opportunities/workflows for uncommon JSON fields
--   Multiple output formats via `--format`: `json` (default), `table`, `csv`, `tsv`
--   Nested API fields (linked_to, email_addresses, tags, etc.) automatically flattened for tabular output
--   Category and metadata lookups (resource-scoped and workspace-level)
--   Client-side filters for fields the API doesn't support server-side (e.g. `--assigned-to` on contacts)
--   Modular CLI structure with extensible client + model architecture
-
-------------------------------------------------------------------------
-
-## Installation
-
-### From PyPI (recommended)
-
-``` bash
+```bash
 pip install wealthbox-cli
+wbox config set-token        # paste your Wealthbox API token (masked)
+wbox me                      # verify connection
 ```
 
-### With pipx (recommended for Ubuntu/Debian)
-
-On systems where the system Python is externally managed (Ubuntu 23.04+, Debian 12+),
-`pip install` outside a virtual environment is blocked by [PEP 668](https://peps.python.org/pep-0668/).
-Use [pipx](https://pipx.pypa.io/) to install CLI tools in isolated environments:
-
-``` bash
-pipx install wealthbox-cli
-```
-
-This puts `wbox` and `wb` on your PATH without touching system Python.
-
-### From source (development)
-
-``` bash
-git clone https://github.com/massive-value/wealthbox-cli
-cd wealthbox-cli
-python -m venv .venv
-source .venv/bin/activate  # macOS/Linux
-# OR
-.venv\Scripts\activate     # Windows
-pip install -e ".[dev]"
-```
+See the [Getting Started](https://massive-value.github.io/wealthbox-cli/getting-started/) guide for pipx install, environment variable auth, and other options.
 
 ------------------------------------------------------------------------
 
-## Configuration
-
-### Getting your API token
-
-1. Log in to [Wealthbox](https://app.crmworkspace.com)
-2. Click the three dots menu (**...**) in the top right
-3. Go to **Settings** -> **API Access**
-4. Click **Create Access Token**
-
-### Storing your token
-
-``` bash
-wbox config set-token
-```
-
-This prompts for your Wealthbox API token (input is masked) and stores it in
-`~/.config/wbox/config.json` (Linux/macOS) or `%APPDATA%\wbox\config.json` (Windows).
-
-Other configuration commands:
-
-``` bash
-wbox config show     # display stored config (token masked)
-wbox config clear    # remove stored config
-```
-
-**Alternative methods** (for CI, scripting, or containers):
-
-``` bash
-# Environment variable
-export WEALTHBOX_TOKEN="your_api_token_here"
-
-# .env file in working directory
-echo 'WEALTHBOX_TOKEN=your_api_token_here' > .env
-
-# Per-command flag
-wbox contacts list --token your_api_token_here
-```
-
-Token is resolved in this order: `--token` flag > `WEALTHBOX_TOKEN` env var > config file > `.env` file.
-
-------------------------------------------------------------------------
-
-## Usage
-
-``` bash
-wbox <resource> <command> [options]
-wb <resource> <command> [options]
-```
-
-For the full command reference see [docs/cli-reference.md](docs/cli-reference.md).
-
-### Local wrapper
-
-For this workspace, the easiest entrypoint is:
+## Usage Examples
 
 ```bash
-scripts/run-wbox.sh me --format json
-scripts/run-wbox.sh users list --format json
-scripts/run-wbox.sh contacts list --per-page 1 --format json
-scripts/run-wbox.sh contacts add person --first-name Jane --last-name Doe --format json
+# List contacts as a table
+wbox contacts list --format table
+
+# Create a new client contact
+wbox contacts add person --first-name Jane --last-name Doe --contact-type Client
+
+# Export tasks to CSV
+wbox tasks list --format csv > tasks.csv
+
+# Create a task linked to a contact
+wbox tasks add "Follow up call" --due-date "2026-04-10T09:00:00-07:00" --contact 12345
+
+# Add a meeting note
+wbox notes add "Discussed retirement plan" --contact 12345
+
+# Schedule an event
+wbox events add "Annual Review" --starts-at "2026-05-01T10:00:00-07:00" --ends-at "2026-05-01T11:00:00-07:00"
 ```
 
-The wrapper:
-- loads `.env`
-- uses the repo-local `.venv`
-- runs the installed `wbox` CLI
+For the full command list, see the [CLI Reference](https://massive-value.github.io/wealthbox-cli/cli-reference/).
 
 ------------------------------------------------------------------------
 
-## Architecture and Project Structure
+## Supported Resources
 
-    src/
-      wealthbox_tools/
-        cli/        # Typer commands — user-facing, delegates to client
-        client/     # Async HTTP client built from mixins
-        models/     # Pydantic v2 models for input validation
-    tests/          # pytest integration tests (respx mocks)
-
-Built with [Typer](https://typer.tiangolo.com/), [httpx](https://www.python-httpx.org/), and [Pydantic v2](https://docs.pydantic.dev/).
-
-**Client mixin pattern:** `WealthboxClient` inherits from resource mixins (`ContactsMixin`, `TasksMixin`, `EventsMixin`, etc.) plus `_WealthboxBase` (core HTTP, rate limiting, error handling). To add a new resource, create a mixin and register it in `client/__init__.py`.
-
-**Rate limiting:** Sliding-window (300 req / 5-min window); state persists across processes via `~/.wbox_rate_limit.json`. 429 responses trigger automatic retry.
+| Resource | List | Get | Create | Update | Delete |
+|----------|:----:|:---:|:------:|:------:|:------:|
+| Contacts | Yes | Yes | Yes | Yes | Yes |
+| Households | Yes | Yes | Yes | Yes | Yes |
+| Tasks | Yes | Yes | Yes | Yes | Yes |
+| Events | Yes | Yes | Yes | Yes | Yes |
+| Notes | Yes | Yes | Yes | Yes | — |
+| Users | Yes | — | — | — | — |
+| Activity | Yes | — | — | — | — |
+| Categories | Yes | — | — | — | — |
 
 ------------------------------------------------------------------------
 
-## Development
+## Use with AI Coding Agents
 
-``` bash
-# Install with dev dependencies
-pip install -e ".[dev]"
-
-# Run tests
-pytest
-
-# Run a single test
-pytest tests/path/to/test_file.py::test_name
-```
-
-### Recommended local workflow
-
-```bash
-cd ~/.openclaw/workspace/integrations/wealthbox-cli
-
-# Sync latest code
-git pull
-
-# Refresh editable install
-.venv/bin/pip install -e .
-
-# Run the read-only smoke test
-scripts/smoke_test.sh
-```
-
-Smoke test coverage:
-- `wbox me`
-- `wbox users list`
-- `wbox contacts list --per-page 1`
-
-This is intentionally read-only and meant to catch:
-- token/config issues
-- CLI install issues
-- basic Wealthbox API access issues
-
-See [CONTRIBUTING.md](CONTRIBUTING.md) for the full contributor guide.
-
-------------------------------------------------------------------------
-
-## Claude Code Skill
-
-A `/wealthbox-crm` skill is included for [Claude Code](https://claude.ai/download) users. It provides natural-language access to all `wbox` commands with progressive disclosure and optional firm-specific conventions.
-
-### Install the skill
-
-```bash
-# Copy the skill to your user-level Claude Code skills directory
-# macOS/Linux
-cp -r docs/skills/wealthbox-crm ~/.claude/skills/wealthbox-crm
-
-# Windows (PowerShell)
-Copy-Item -Recurse docs\skills\wealthbox-crm $env:USERPROFILE\.claude\skills\wealthbox-crm
-```
-
-### Usage
-
-In any Claude Code conversation:
+wealthbox-cli ships with a [Claude Code](https://claude.ai/download) skill that lets AI agents manage your CRM through natural language. Instead of memorizing CLI flags, just describe what you want:
 
 ```
 /wealthbox-crm create a contact for Jane Doe, she's a new prospect
 /wealthbox-crm list my tasks due this week
 /wealthbox-crm add a note to contact 123 about today's meeting
+/wealthbox-crm find all contacts tagged "VIP" and export to CSV
 ```
 
-### Firm-specific configuration (optional)
+The skill translates your intent into the correct `wbox` commands, handles flag construction, and validates inputs — making it ideal for advisors who want CRM automation without learning CLI syntax.
 
-To customize the skill for your firm's conventions:
+### Install the skill
 
+Download the skill directly from GitHub into your Claude Code skills directory:
+
+**macOS/Linux:**
+```bash
+git clone --depth 1 https://github.com/massive-value/wealthbox-cli.git /tmp/wealthbox-cli \
+  && cp -r /tmp/wealthbox-cli/docs/skills/wealthbox-crm ~/.claude/skills/wealthbox-crm \
+  && rm -rf /tmp/wealthbox-cli
+```
+
+**Windows (PowerShell):**
+```powershell
+git clone --depth 1 https://github.com/massive-value/wealthbox-cli.git $env:TEMP\wealthbox-cli
+Copy-Item -Recurse $env:TEMP\wealthbox-cli\docs\skills\wealthbox-crm $env:USERPROFILE\.claude\skills\wealthbox-crm
+Remove-Item -Recurse -Force $env:TEMP\wealthbox-cli
+```
+
+**Windows (Command Prompt):**
+```cmd
+git clone --depth 1 https://github.com/massive-value/wealthbox-cli.git %TEMP%\wealthbox-cli
+xcopy /E /I %TEMP%\wealthbox-cli\docs\skills\wealthbox-crm %USERPROFILE%\.claude\skills\wealthbox-crm
+rmdir /S /Q %TEMP%\wealthbox-cli
+```
+
+If you already have the repo cloned, just copy from your local checkout:
+
+**macOS/Linux:**
+```bash
+cp -r docs/skills/wealthbox-crm ~/.claude/skills/wealthbox-crm
+```
+
+**Windows (PowerShell):**
+```powershell
+Copy-Item -Recurse docs\skills\wealthbox-crm $env:USERPROFILE\.claude\skills\wealthbox-crm
+```
+
+**Windows (Command Prompt):**
+```cmd
+xcopy /E /I docs\skills\wealthbox-crm %USERPROFILE%\.claude\skills\wealthbox-crm
+```
+
+### Firm-specific configuration
+
+Customize the skill for your firm's defaults, required fields, and naming conventions:
+
+**macOS/Linux:**
 ```bash
 cp ~/.claude/skills/wealthbox-crm/firm-config.example.md ~/.claude/skills/wealthbox-crm/firm-config.md
 ```
 
-Edit `firm-config.md` with your firm's required fields, defaults, naming conventions, and multi-step workflows. See the example file for all available options.
+**Windows (PowerShell):**
+```powershell
+Copy-Item $env:USERPROFILE\.claude\skills\wealthbox-crm\firm-config.example.md $env:USERPROFILE\.claude\skills\wealthbox-crm\firm-config.md
+```
+
+**Windows (Command Prompt):**
+```cmd
+copy %USERPROFILE%\.claude\skills\wealthbox-crm\firm-config.example.md %USERPROFILE%\.claude\skills\wealthbox-crm\firm-config.md
+```
+
+Edit `firm-config.md` with your firm's conventions. The agent will then apply them automatically — for example, always tagging new contacts with your firm name, setting default contact types, or running multi-step onboarding workflows.
+
+### Works with other agents too
+
+The `wbox` CLI is a standard command-line tool. Any AI coding agent that can execute shell commands — [Claude Code](https://claude.ai/download), [GitHub Copilot CLI](https://githubnext.com/projects/copilot-cli), [Cursor](https://cursor.sh/), or custom agent frameworks — can use it to read and write Wealthbox data. The included skill just makes Claude Code aware of the full command surface.
+
+------------------------------------------------------------------------
+
+## Architecture
+
+```
+src/wealthbox_tools/
+    cli/        # Typer commands — user-facing, delegates to client
+    client/     # Async HTTP client built from mixins
+    models/     # Pydantic v2 models for input validation
+```
+
+Built with [Typer](https://typer.tiangolo.com/), [httpx](https://www.python-httpx.org/), and [Pydantic v2](https://docs.pydantic.dev/). See [Contributing](https://massive-value.github.io/wealthbox-cli/contributing/) for the full architecture guide and how to add new resources.
+
+------------------------------------------------------------------------
+
+## Contributing
+
+```bash
+git clone https://github.com/massive-value/wealthbox-cli
+cd wealthbox-cli
+python -m venv .venv
+```
+
+Activate the virtual environment:
+
+| Platform | Command |
+|----------|---------|
+| macOS/Linux | `source .venv/bin/activate` |
+| Windows (PowerShell) | `.venv\Scripts\Activate.ps1` |
+| Windows (Command Prompt) | `.venv\Scripts\activate.bat` |
+
+Then install and test:
+
+```bash
+pip install -e ".[dev]"
+pytest
+```
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the full guide.
 
 ------------------------------------------------------------------------
 
 ## Troubleshooting
 
-**401 Unauthorized** — Check your API token.
+**401 Unauthorized** — Check your API token. Run `wbox config show` to verify.
 
-**Date format errors** — Datetime fields expect ISO 8601 format: `"YYYY-MM-DDTHH:MM:SS±HH:MM"` or `"YYYY-MM-DDTHH:MM:SSZ"` (e.g. `"2026-04-01T10:00:00-07:00"`). Date-only fields (birth dates, etc.) use `"YYYY-MM-DD"`.
+**Date format errors** — Use ISO 8601: `"2026-04-01T10:00:00-07:00"` or `"2026-04-01T10:00:00Z"`. Date-only fields use `"YYYY-MM-DD"`.
 
-**Add/Update appears to succeed but nothing changed** —
-Some category-constrained writes can silently no-op (return success while leaving fields unchanged).
-Verify by inspecting the returned JSON — `add` and `update` commands print the full object on success. Treat unchanged intended fields as a failed write.
-Before category-constrained writes, discover valid values first (e.g. `wbox contacts categories contact-types`).
-
-**`contacts add` examples no longer work if they use `Person`/`Household`/`Organization`/`Trust` as a positional argument** —
-Use the new type-specific subcommands instead: `wbox contacts add person|household|org|trust ...`.
+**Writes appear to succeed but nothing changed** — Some category-constrained writes silently no-op. Check valid values first with `wbox contacts categories contact-types`.
 
 ------------------------------------------------------------------------
 
@@ -264,9 +217,6 @@ Use the new type-specific subcommands instead: `wbox contacts add person|househo
 This is an **unofficial, community-built** tool. It is not affiliated with, endorsed by,
 or supported by Wealthbox or its parent company. "Wealthbox" is a trademark of its
 respective owner. Use of this tool is subject to the [Wealthbox API Terms of Service](https://dev.wealthbox.com).
-
-This CLI wraps the Wealthbox API. Behavior depends on API version and your account
-permissions. Test destructive operations carefully.
 
 ------------------------------------------------------------------------
 
