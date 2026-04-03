@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-cd "$SCRIPT_DIR"
+REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$REPO_DIR"
 
 if [[ -f .env ]]; then
   set -a
@@ -11,4 +11,4 @@ if [[ -f .env ]]; then
   set +a
 fi
 
-exec "$SCRIPT_DIR/.venv/bin/wbox" "$@"
+exec "$REPO_DIR/.venv/bin/wbox" "$@"

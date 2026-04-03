@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-cd "$SCRIPT_DIR"
+REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$REPO_DIR"
 
 if [[ -f .env ]]; then
   set -a
@@ -18,13 +18,13 @@ fi
 
 echo "PASS: token loaded"
 
-"$SCRIPT_DIR/.venv/bin/wbox" me --format json >/tmp/wealthbox-smoke-me.json
+"$REPO_DIR/.venv/bin/wbox" me --format json >/tmp/wealthbox-smoke-me.json
 echo "PASS: wbox me"
 
-"$SCRIPT_DIR/.venv/bin/wbox" users list --format json >/tmp/wealthbox-smoke-users.json
+"$REPO_DIR/.venv/bin/wbox" users list --format json >/tmp/wealthbox-smoke-users.json
 echo "PASS: wbox users list"
 
-"$SCRIPT_DIR/.venv/bin/wbox" contacts list --per-page 1 --format json >/tmp/wealthbox-smoke-contacts.json
+"$REPO_DIR/.venv/bin/wbox" contacts list --per-page 1 --format json >/tmp/wealthbox-smoke-contacts.json
 echo "PASS: wbox contacts list --per-page 1"
 
 echo "SMOKE_TEST_OK"

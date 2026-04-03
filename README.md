@@ -127,10 +127,10 @@ For the full command reference see [docs/cli-reference.md](docs/cli-reference.md
 For this workspace, the easiest entrypoint is:
 
 ```bash
-./run-wbox.sh me --format json
-./run-wbox.sh users list --format json
-./run-wbox.sh contacts list --per-page 1 --format json
-./run-wbox.sh contacts add person --first-name Jane --last-name Doe --format json
+scripts/run-wbox.sh me --format json
+scripts/run-wbox.sh users list --format json
+scripts/run-wbox.sh contacts list --per-page 1 --format json
+scripts/run-wbox.sh contacts add person --first-name Jane --last-name Doe --format json
 ```
 
 The wrapper:
@@ -180,7 +180,7 @@ git pull
 .venv/bin/pip install -e .
 
 # Run the read-only smoke test
-./smoke_test.sh
+scripts/smoke_test.sh
 ```
 
 Smoke test coverage:
@@ -206,10 +206,10 @@ A `/wealthbox-crm` skill is included for [Claude Code](https://claude.ai/downloa
 ```bash
 # Copy the skill to your user-level Claude Code skills directory
 # macOS/Linux
-cp -r dist/skills/wealthbox-crm ~/.claude/skills/wealthbox-crm
+cp -r docs/skills/wealthbox-crm ~/.claude/skills/wealthbox-crm
 
 # Windows (PowerShell)
-Copy-Item -Recurse dist\skills\wealthbox-crm $env:USERPROFILE\.claude\skills\wealthbox-crm
+Copy-Item -Recurse docs\skills\wealthbox-crm $env:USERPROFILE\.claude\skills\wealthbox-crm
 ```
 
 ### Usage

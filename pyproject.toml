@@ -55,8 +55,7 @@ exclude = [
     "tests/",
     "resources/",
     "scripts/",
-    "run-wbox.sh",
-    "smoke_test.sh",
+    "dev/",
     ".python-version",
     "docs/superpowers/",
 ]
