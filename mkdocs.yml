@@ -39,6 +39,7 @@ plugins:
 
 exclude_docs: |
   promotion.md
+  skills/
 
 markdown_extensions:
   - admonition

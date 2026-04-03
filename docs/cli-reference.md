@@ -1,6 +1,6 @@
 # CLI Command Reference
 
-Full command reference for the `wbox` CLI. For project overview, installation, and configuration see the [root README](../README.md).
+Full command reference for the `wbox` CLI. For project overview, installation, and configuration see the [Getting Started](getting-started.md) guide.
 
 ------------------------------------------------------------------------
 
