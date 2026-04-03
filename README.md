@@ -1,20 +1,27 @@
-# Wealthbox CLI
+# Wealthbox CLI — Command-Line Client for the Wealthbox CRM API
 
 [![PyPI version](https://img.shields.io/pypi/v/wealthbox-cli)](https://pypi.org/project/wealthbox-cli/)
+[![Downloads](https://img.shields.io/pypi/dm/wealthbox-cli)](https://pypi.org/project/wealthbox-cli/)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue)](https://www.python.org/downloads/)
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
 
-A command-line interface for interacting with the Wealthbox CRM API.
+**wealthbox-cli** (`wbox`) is a command-line tool and Python client library for the [Wealthbox CRM](https://www.wealthbox.com/) API. It gives financial advisors, developers, and RIA firms full CRUD access to contacts, tasks, events, notes, households, and more — directly from the terminal. Automate your CRM workflows, export data, and integrate Wealthbox into scripts and CI pipelines.
 
-This tool provides structured access to contacts, households, tasks,
-events, notes, users, categories, and more — directly from your
-terminal.
-
-Official API documentation: https://dev.wealthbox.com
+[Documentation](https://massive-value.github.io/wealthbox-cli/) | [PyPI](https://pypi.org/project/wealthbox-cli/) | [API Reference](https://dev.wealthbox.com)
 
 > **Disclaimer:** This is an unofficial, community-built tool. It is not affiliated with,
 > endorsed by, or supported by Wealthbox or its parent company. "Wealthbox" is a trademark
 > of its respective owner.
+
+------------------------------------------------------------------------
+
+## Why Use wealthbox-cli?
+
+- **No coding required** — structured CLI flags replace raw JSON and cURL commands
+- **Automate CRM workflows** — script bulk updates, data exports, and scheduled tasks
+- **Multiple output formats** — pipe JSON, CSV, or TSV directly to files or other tools
+- **Built for financial advisors and developers** — covers contacts, households, tasks, events, notes, categories, and custom fields
+- **Open source** — Apache 2.0 licensed, community-driven, and extensible
 
 ------------------------------------------------------------------------
 
@@ -140,7 +147,7 @@ The wrapper:
 
 ------------------------------------------------------------------------
 
-## Project Structure
+## Architecture and Project Structure
 
     src/
       wealthbox_tools/
@@ -148,6 +155,8 @@ The wrapper:
         client/     # Async HTTP client built from mixins
         models/     # Pydantic v2 models for input validation
     tests/          # pytest integration tests (respx mocks)
+
+Built with [Typer](https://typer.tiangolo.com/), [httpx](https://www.python-httpx.org/), and [Pydantic v2](https://docs.pydantic.dev/).
 
 **Client mixin pattern:** `WealthboxClient` inherits from resource mixins (`ContactsMixin`, `TasksMixin`, `EventsMixin`, etc.) plus `_WealthboxBase` (core HTTP, rate limiting, error handling). To add a new resource, create a mixin and register it in `client/__init__.py`.
 

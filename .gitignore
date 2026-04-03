@@ -40,6 +40,9 @@ coverage.xml
 .idea/
 .vscode/
 
+# MkDocs build output
+site/
+
 # Project-specific
 dev/
 .claude/

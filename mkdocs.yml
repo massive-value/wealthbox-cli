@@ -1,0 +1,67 @@
+site_name: Wealthbox CLI Documentation
+site_url: https://massive-value.github.io/wealthbox-cli/
+site_description: >-
+  Command-line interface and Python client library for the Wealthbox CRM API.
+  Manage contacts, tasks, events, notes, and households from your terminal.
+site_author: Kadin Bullock
+repo_url: https://github.com/massive-value/wealthbox-cli
+repo_name: massive-value/wealthbox-cli
+edit_uri: edit/main/docs/
+
+theme:
+  name: material
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - navigation.instant
+    - navigation.tracking
+    - navigation.sections
+    - navigation.top
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+
+plugins:
+  - search
+
+exclude_docs: |
+  promotion.md
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.tabbed:
+      alternate_style: true
+  - toc:
+      permalink: true
+
+nav:
+  - Home: index.md
+  - Getting Started: getting-started.md
+  - CLI Reference: cli-reference.md
+  - Contributing: contributing.md
+  - Changelog: changelog.md
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/massive-value/wealthbox-cli
+    - icon: fontawesome/brands/python
+      link: https://pypi.org/project/wealthbox-cli/
