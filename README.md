@@ -8,7 +8,7 @@
 
 **wealthbox-cli** (`wbox`) is a command-line tool and Python client library for the [Wealthbox CRM](https://www.wealthbox.com/) API. It gives financial advisors, developers, and RIA firms full CRUD access to contacts, tasks, events, notes, households, and more — directly from the terminal. Automate your CRM workflows, export data, and integrate Wealthbox into scripts and CI pipelines.
 
-[Documentation](https://massive-value.github.io/wealthbox-cli/) | [PyPI](https://pypi.org/project/wealthbox-cli/) | [Changelog](https://massive-value.github.io/wealthbox-cli/changelog/) | [Wealthbox API Docs](https://dev.wealthbox.com)
+[Documentation](https://massive-value.github.io/wealthbox-cli/) | [PyPI](https://pypi.org/project/wealthbox-cli/) | [Changelog](https://massive-value.github.io/wealthbox-cli/changelog/) | [Wealthbox CRM](https://www.wealthbox.com/) | [Wealthbox API Docs](https://dev.wealthbox.com)
 
 > **Disclaimer:** This is an unofficial, community-built tool. It is not affiliated with,
 > endorsed by, or supported by Wealthbox or its parent company. "Wealthbox" is a trademark
