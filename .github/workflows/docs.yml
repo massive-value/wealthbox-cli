@@ -23,6 +23,7 @@ jobs:
         with:
           python-version: "3.12"
       - run: pip install mkdocs-material
+      - run: cp CONTRIBUTING.md docs/contributing.md
       - run: mkdocs build --strict
       - uses: actions/upload-pages-artifact@v3
         with:
