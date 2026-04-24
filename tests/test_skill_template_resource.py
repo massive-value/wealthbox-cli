@@ -25,3 +25,19 @@ def test_bootstrap_md_is_packaged():
         content = path.read_text(encoding="utf-8")
     assert "wbox skills bootstrap" in content
     assert "delete" in content.lower() or "self-trim" in content.lower()
+
+
+def test_firm_examples_directory_has_all_resource_files():
+    resource = files("wealthbox_tools").joinpath("skills/wealthbox-crm/firm-examples")
+    with as_file(resource) as path:
+        names = sorted(p.name for p in path.iterdir())
+    assert names == [
+        "contacts.md", "events.md", "notes.md",
+        "opportunities.md", "projects.md", "tasks.md", "workflows.md",
+    ]
+
+
+def test_old_firm_config_example_removed():
+    resource = files("wealthbox_tools").joinpath("skills/wealthbox-crm")
+    with as_file(resource) as path:
+        assert not (path / "firm-config.example.md").exists()
