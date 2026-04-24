@@ -67,8 +67,7 @@ def test_list_table_format_has_grid_chars(runner) -> None:
     )
     result = runner.invoke(app, ["contacts", "list", "--format", "table"])
     assert result.exit_code == 0
-    # simple_grid uses ┼ characters
-    assert "┼" in result.output or "+" in result.output
+    assert "+" in result.output
     assert "name" in result.output
     assert "Alice Smith" in result.output
 

@@ -280,14 +280,14 @@ def _extract_collection(data: Any) -> tuple[list[dict] | None, int | None]:  # t
 def _render_table(rows: list[dict], headers: list[str], total_count: int | None) -> tuple[str, str | None]:  # type: ignore[type-arg]
     from tabulate import tabulate
     table_data = [[row.get(h, "") for h in headers] for row in rows]
-    rendered = tabulate(table_data, headers=headers, tablefmt="simple_grid")
+    rendered = tabulate(table_data, headers=headers, tablefmt="grid")
     footer = f"Showing {len(rows)} of {total_count} results" if total_count is not None else None
     return rendered, footer
 
 
 def _render_kv_table(record: dict) -> str:  # type: ignore[type-arg]
     from tabulate import tabulate
-    return tabulate(list(record.items()), headers=["Field", "Value"], tablefmt="simple_grid")
+    return tabulate(list(record.items()), headers=["Field", "Value"], tablefmt="grid")
 
 
 def _render_dsv(rows: list[dict], headers: list[str], sep: str) -> str:  # type: ignore[type-arg]
