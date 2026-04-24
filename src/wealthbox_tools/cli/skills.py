@@ -208,3 +208,33 @@ def refresh_cmd(
 
         bootstrap_skill_dir(skill_dir(t), token=token, generated_only=True)
         typer.echo(f"✓ refreshed {t.id}")
+
+
+@app.command("doctor", help="Diagnose install state and token.")
+def doctor_cmd(
+    token: str | None = typer.Option(None, envvar="WEALTHBOX_TOKEN", hidden=True),
+) -> None:
+    from wealthbox_tools.client import WealthboxAPIError
+
+    from ._util import run_client
+
+    typer.echo("# Skill install state")
+    for p in detect_platforms():
+        status = "installed" if is_installed(p) else "not installed"
+        meta_path = skill_dir(p) / "firm" / "_meta.json"
+        bootstrapped = "bootstrapped" if meta_path.exists() else "not bootstrapped"
+        typer.echo(
+            f"  {p.id:<22} {status:<16} {bootstrapped:<18} {skill_dir(p)}"
+        )
+
+    typer.echo("\n# Token")
+    try:
+        me = run_client(token, lambda c: c.get_me())
+        typer.echo(
+            f"  token ok — authenticated as {me.get('name')} "
+            f"({me.get('account')}, id={me.get('id')})"
+        )
+    except WealthboxAPIError as e:
+        typer.echo(f"  token failed: {e}")
+    except Exception as e:  # network, config, etc.
+        typer.echo(f"  token check failed: {e}")
