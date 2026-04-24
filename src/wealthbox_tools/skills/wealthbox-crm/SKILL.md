@@ -8,6 +8,15 @@ description: Use when the user wants to interact with Wealthbox CRM — creating
 Execute Wealthbox CRM operations via the `wbox` CLI. Supports contacts, tasks, notes, events,
 opportunities, projects, workflows, households, and read-only lookups (categories, users, activity, me).
 
+## First Run (self-delete after completion)
+
+If `firm/_meta.json` does not exist in this skill's directory, this is the
+first invocation on this machine. Before handling the user's request:
+
+1. Read `bootstrap.md` in this skill's directory.
+2. Follow it end-to-end.
+3. When done, this section and `bootstrap.md` will have been deleted.
+
 ## Prerequisites
 
 - `wbox` CLI installed (`pip install wealthbox-cli`)
@@ -40,15 +49,15 @@ Verify with: `wbox me`
 
 1. **Parse intent** — identify which resource(s) and action(s) the user needs
 2. **Load reference** — read ONLY the relevant `references/<resource>.md` file(s) from this skill's directory
-3. **Check firm config** — if `firm-config.md` exists in this skill's directory, read it and apply the relevant section's requirements (required fields, defaults, naming conventions)
+3. **Check firm config** — read `firm/<resource>.md` for the resource(s) you're touching. Also read `firm/categories.md` and `firm/custom-fields.md` when you need valid values for category-constrained flags (avoid repeat API probes).
 4. **Fill gaps** — if required information is missing, ask the user. Prefer multiple-choice when options are known (e.g., contact type, priority level). If the user is unfamiliar with Wealthbox, explain what the field means.
 5. **Execute** — run the `wbox` command(s) via Bash
 6. **Report** — show the result. For create/update, confirm what was created with the record ID.
 
 ## Multi-Step Workflows
 
-When firm-config.md defines named workflows (e.g., "onboarding", "meeting followup"):
-1. Read the workflow definition from firm-config.md
+When `firm/workflows.md` defines named workflows (e.g., "onboarding", "meeting followup"):
+1. Read the workflow definition from `firm/workflows.md`
 2. Load all referenced resource reference files
 3. Walk through each step, gathering input as needed
 4. Execute commands in sequence, passing IDs forward (e.g., new contact ID → linked note/task)

@@ -11,13 +11,25 @@ app = typer.Typer(
 )
 
 
-@app.command("set-token", help="Store your Wealthbox API token.")
+@app.command(
+    "set-token",
+    help=(
+        "Store your Wealthbox API token. Get one at https://dev.wealthbox.com "
+        "(Settings -> API Access -> Access Tokens)."
+    ),
+)
 def set_token(
-    token: str = typer.Option(
-        ..., prompt="Wealthbox API token", hide_input=True,
+    token: str | None = typer.Option(
+        None, "--token",
         help="API token (will prompt if not provided)",
     ),
 ) -> None:
+    if token is None:
+        typer.echo(
+            "Find your token at https://dev.wealthbox.com "
+            "(Settings -> API Access -> Access Tokens)"
+        )
+        token = typer.prompt("Wealthbox API token", hide_input=True)
     config = load_config()
     config["token"] = token
     save_config(config)
