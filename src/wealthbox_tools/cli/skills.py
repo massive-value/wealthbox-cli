@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from datetime import datetime, timezone
 from importlib.resources import as_file, files
 from pathlib import Path
 
@@ -164,3 +165,46 @@ def bootstrap_cmd(
             f"✓ bootstrapped {t.id}: wrote {len(result.wrote_generated)} generated files, "
             f"{result.wrote_stubs} stubs (firm: {result.firm_identity.get('name')})"
         )
+
+
+@app.command("refresh", help="Re-fetch generated firm files. Hand-edited files are preserved.")
+def refresh_cmd(
+    platforms_flag: list[str] = typer.Option([], "--platform", "-p"),
+    staleness_days: int = typer.Option(
+        30, "--staleness-days", help="Warn if _meta.json older than N days."
+    ),
+    token: str | None = typer.Option(None, envvar="WEALTHBOX_TOKEN", hidden=True),
+) -> None:
+    from ._skill_bootstrap import bootstrap_skill_dir
+
+    if platforms_flag:
+        targets = _resolve_platforms(platforms_flag)
+    else:
+        targets = [p for p in detect_platforms() if is_installed(p)]
+
+    if not targets:
+        typer.echo(
+            "No installed platforms found. Run 'wbox skills install' first.",
+            err=True,
+        )
+        raise typer.Exit(code=2)
+
+    for t in targets:
+        meta_path = skill_dir(t) / "firm" / "_meta.json"
+        if meta_path.exists():
+            try:
+                meta = json.loads(meta_path.read_text())
+                ts_values = list(meta.get("files", {}).values())
+                if ts_values:
+                    oldest = min(datetime.fromisoformat(ts) for ts in ts_values)
+                    age_days = (datetime.now(timezone.utc) - oldest).days
+                    if age_days > staleness_days:
+                        typer.echo(
+                            f"! {t.id}: generated files were {age_days} days stale — refreshing now",
+                            err=True,
+                        )
+            except (json.JSONDecodeError, OSError, ValueError):
+                pass
+
+        bootstrap_skill_dir(skill_dir(t), token=token, generated_only=True)
+        typer.echo(f"✓ refreshed {t.id}")
