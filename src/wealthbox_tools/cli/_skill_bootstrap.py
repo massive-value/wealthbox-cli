@@ -154,3 +154,96 @@ def write_meta_json(
     (firm_dir / "_meta.json").write_text(
         json.dumps(meta, indent=2) + "\n", encoding="utf-8"
     )
+
+
+# --------------------------------------------------------------------------- #
+# Orchestrator                                                                 #
+# --------------------------------------------------------------------------- #
+
+import asyncio  # noqa: E402
+from dataclasses import dataclass  # noqa: E402
+from importlib.metadata import version as _pkg_version  # noqa: E402
+
+from wealthbox_tools.client import WealthboxClient  # noqa: E402
+from wealthbox_tools.models import CategoryListQuery, CategoryType, DocumentType  # noqa: E402
+
+
+@dataclass
+class BootstrapResult:
+    skill_dir: Path
+    wrote_generated: list[str]
+    wrote_stubs: int
+    firm_identity: dict[str, Any]
+
+
+async def _fetch_all(
+    client: WealthboxClient,
+) -> tuple[dict[str, list[dict[str, Any]]], dict[str, list[dict[str, Any]]], list[dict[str, Any]], dict[str, Any]]:
+    categories: dict[str, list[dict[str, Any]]] = {}
+    for ct in CategoryType:
+        if ct is CategoryType.CUSTOM_FIELDS:
+            continue
+        resp = await client.list_categories(ct)
+        categories[ct.value] = resp.get(ct.value, [])
+
+    custom_fields: dict[str, list[dict[str, Any]]] = {}
+    for dt in DocumentType:
+        resp = await client.list_categories(
+            CategoryType.CUSTOM_FIELDS,
+            CategoryListQuery(document_type=dt),
+        )
+        custom_fields[dt.value] = resp.get("custom_fields", [])
+
+    users_resp = await client.list_users()
+    users = users_resp.get("users", [])
+
+    me = await client.get_me()
+    firm = {
+        "id": me.get("id"),
+        "name": me.get("name"),
+        "account": me.get("account"),
+    }
+    return categories, custom_fields, users, firm
+
+
+def bootstrap_skill_dir(
+    skill_dir: Path,
+    *,
+    token: str | None,
+    generated_only: bool,
+) -> BootstrapResult:
+    firm_dir = skill_dir / "firm"
+    firm_dir.mkdir(parents=True, exist_ok=True)
+
+    async def _run() -> tuple[dict, dict, list, dict]:
+        async with WealthboxClient(token=token) as client:
+            return await _fetch_all(client)
+
+    categories, custom_fields, users, firm_identity = asyncio.run(_run())
+
+    (firm_dir / "categories.md").write_text(render_categories_md(categories), encoding="utf-8")
+    (firm_dir / "custom-fields.md").write_text(render_custom_fields_md(custom_fields), encoding="utf-8")
+    (firm_dir / "users.md").write_text(render_users_md(users), encoding="utf-8")
+
+    generated = ["categories.md", "custom-fields.md", "users.md"]
+    write_meta_json(
+        firm_dir,
+        generated_files=generated,
+        firm_identity=firm_identity,
+        cli_version=_pkg_version("wealthbox-cli"),
+    )
+
+    wrote_stubs = 0
+    if not generated_only:
+        wrote_stubs = len(write_stubs(firm_dir))
+    else:
+        readme = firm_dir / "_README.md"
+        if not readme.exists():
+            readme.write_text(FIRM_README, encoding="utf-8")
+
+    return BootstrapResult(
+        skill_dir=skill_dir,
+        wrote_generated=generated,
+        wrote_stubs=wrote_stubs,
+        firm_identity=firm_identity,
+    )
