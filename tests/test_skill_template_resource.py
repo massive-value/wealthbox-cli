@@ -41,3 +41,20 @@ def test_old_firm_config_example_removed():
     resource = files("wealthbox_tools").joinpath("skills/wealthbox-crm")
     with as_file(resource) as path:
         assert not (path / "firm-config.example.md").exists()
+
+
+def test_skill_md_has_first_run_section():
+    resource = files("wealthbox_tools").joinpath("skills/wealthbox-crm/SKILL.md")
+    with as_file(resource) as path:
+        content = path.read_text(encoding="utf-8")
+    assert "## First Run (self-delete after completion)" in content
+    assert "firm/_meta.json" in content
+    assert "bootstrap.md" in content
+
+
+def test_skill_md_workflow_mentions_firm_folder():
+    resource = files("wealthbox_tools").joinpath("skills/wealthbox-crm/SKILL.md")
+    with as_file(resource) as path:
+        content = path.read_text(encoding="utf-8")
+    assert "firm/" in content
+    assert "firm-config.md" not in content
