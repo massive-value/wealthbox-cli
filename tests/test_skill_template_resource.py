@@ -17,3 +17,11 @@ def test_skill_md_frontmatter_has_name():
         content = path.read_text(encoding="utf-8")
     assert content.startswith("---\n")
     assert "name: wealthbox-crm" in content
+
+
+def test_bootstrap_md_is_packaged():
+    resource = files("wealthbox_tools").joinpath("skills/wealthbox-crm/bootstrap.md")
+    with as_file(resource) as path:
+        content = path.read_text(encoding="utf-8")
+    assert "wbox skills bootstrap" in content
+    assert "delete" in content.lower() or "self-trim" in content.lower()
