@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import json
+from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any
 
 
@@ -73,3 +76,81 @@ def render_users_md(users: list[dict[str, Any]]) -> str:
     else:
         sections.append(_md_table(["id", "name", "email"], rows))
     return "\n".join(sections)
+
+
+# --------------------------------------------------------------------------- #
+# Stubs + meta.json                                                            #
+# --------------------------------------------------------------------------- #
+
+FIRM_README = """# firm/ — Firm Customizations
+
+This folder holds everything the agent needs to know about your firm's
+Wealthbox conventions.
+
+## Generated files (overwritten by `wbox skills refresh`)
+
+- `_meta.json` — refresh timestamps, firm identity, CLI version
+- `categories.md` — every category type + valid values
+- `custom-fields.md` — custom fields per document type + valid values
+- `users.md` — user id → name → email
+
+## Hand-edited files (never overwritten)
+
+- `contacts.md`, `tasks.md`, `notes.md`, `events.md`,
+  `opportunities.md`, `projects.md`, `workflows.md`
+
+Each hand-edited file has a matching example at `../firm-examples/<name>`.
+"""
+
+
+def _stub(resource: str) -> str:
+    return (
+        f"# firm/{resource} — Firm Policy\n\n"
+        f"_Stub — first-run bootstrap will populate this via the agent._\n\n"
+        f"See `firm-examples/{resource}` for a filled-in reference.\n\n"
+        f"TODO: capture firm policy for {resource[:-3]} here.\n"
+    )
+
+
+STUB_CONTENTS: dict[str, str] = {
+    "contacts.md": _stub("contacts.md"),
+    "tasks.md": _stub("tasks.md"),
+    "notes.md": _stub("notes.md"),
+    "events.md": _stub("events.md"),
+    "opportunities.md": _stub("opportunities.md"),
+    "projects.md": _stub("projects.md"),
+    "workflows.md": _stub("workflows.md"),
+}
+
+
+def write_stubs(firm_dir: Path) -> list[str]:
+    """Write stub files that don't already exist. Returns list of names written."""
+    written: list[str] = []
+    for name, body in STUB_CONTENTS.items():
+        path = firm_dir / name
+        if path.exists():
+            continue
+        path.write_text(body, encoding="utf-8")
+        written.append(name)
+    readme = firm_dir / "_README.md"
+    if not readme.exists():
+        readme.write_text(FIRM_README, encoding="utf-8")
+    return written
+
+
+def write_meta_json(
+    firm_dir: Path,
+    *,
+    generated_files: list[str],
+    firm_identity: dict[str, Any],
+    cli_version: str,
+) -> None:
+    now = datetime.now(timezone.utc).isoformat()
+    meta = {
+        "firm": firm_identity,
+        "cli_version": cli_version,
+        "files": {name: now for name in generated_files},
+    }
+    (firm_dir / "_meta.json").write_text(
+        json.dumps(meta, indent=2) + "\n", encoding="utf-8"
+    )

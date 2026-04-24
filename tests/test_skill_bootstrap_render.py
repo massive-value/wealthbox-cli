@@ -69,3 +69,69 @@ def test_render_users_writes_table():
 def test_render_users_empty_list():
     md = render_users_md([])
     assert "(no users)" in md.lower()
+
+
+# --------------------------------------------------------------------------- #
+# Stubs + meta.json                                                            #
+# --------------------------------------------------------------------------- #
+
+import json  # noqa: E402
+
+from wealthbox_tools.cli._skill_bootstrap import (  # noqa: E402
+    FIRM_README,
+    STUB_CONTENTS,
+    write_meta_json,
+    write_stubs,
+)
+
+
+def test_stub_contents_has_every_resource():
+    assert set(STUB_CONTENTS) == {
+        "contacts.md", "tasks.md", "notes.md", "events.md",
+        "opportunities.md", "projects.md", "workflows.md",
+    }
+
+
+def test_each_stub_mentions_firm_examples():
+    for name, body in STUB_CONTENTS.items():
+        assert "firm-examples/" + name in body, f"stub {name} missing example pointer"
+
+
+def test_write_stubs_creates_files_first_time(tmp_path):
+    firm = tmp_path / "firm"
+    firm.mkdir()
+    written = write_stubs(firm)
+    for name in STUB_CONTENTS:
+        assert (firm / name).exists()
+    assert set(written) == set(STUB_CONTENTS)
+
+
+def test_write_stubs_never_overwrites(tmp_path):
+    firm = tmp_path / "firm"
+    firm.mkdir()
+    (firm / "contacts.md").write_text("MY EDITS\n")
+    written = write_stubs(firm)
+    assert (firm / "contacts.md").read_text() == "MY EDITS\n"
+    assert "contacts.md" not in written
+
+
+def test_write_meta_json_records_timestamps(tmp_path):
+    firm = tmp_path / "firm"
+    firm.mkdir()
+    write_meta_json(
+        firm,
+        generated_files=["categories.md", "custom-fields.md", "users.md"],
+        firm_identity={"id": 99, "name": "Test Firm"},
+        cli_version="1.1.0",
+    )
+    meta = json.loads((firm / "_meta.json").read_text())
+    assert meta["firm"]["id"] == 99
+    assert meta["cli_version"] == "1.1.0"
+    assert set(meta["files"]) == {"categories.md", "custom-fields.md", "users.md"}
+    for ts in meta["files"].values():
+        assert "T" in ts  # ISO 8601
+
+
+def test_firm_readme_constant_mentions_generated_and_hand_edited():
+    assert "generated" in FIRM_README.lower()
+    assert "hand-edited" in FIRM_README.lower()
