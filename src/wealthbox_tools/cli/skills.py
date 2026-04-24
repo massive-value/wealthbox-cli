@@ -118,3 +118,49 @@ def install_cmd(
             for target in targets:
                 bootstrap_skill_dir(skill_dir(target), token=None, generated_only=False)
                 typer.echo(f"✓ bootstrapped {target.id}")
+
+
+@app.command("bootstrap", help="Populate firm/ files from the Wealthbox API.")
+def bootstrap_cmd(
+    platforms_flag: list[str] = typer.Option(
+        [], "--platform", "-p",
+        help="Platform id. Default: every installed platform.",
+    ),
+    generated_only: bool = typer.Option(
+        False, "--generated-only",
+        help="Only update generated files; never create stubs.",
+    ),
+    dry_run: bool = typer.Option(
+        False, "--dry-run", help="Print planned writes; make no disk changes."
+    ),
+    token: str | None = typer.Option(None, envvar="WEALTHBOX_TOKEN", hidden=True),
+) -> None:
+    from ._skill_bootstrap import bootstrap_skill_dir
+
+    if platforms_flag:
+        targets = _resolve_platforms(platforms_flag)
+    else:
+        targets = [p for p in detect_platforms() if is_installed(p)]
+
+    if not targets:
+        typer.echo(
+            "No installed platforms found. Run 'wbox skills install' first.",
+            err=True,
+        )
+        raise typer.Exit(code=2)
+
+    if dry_run:
+        for t in targets:
+            typer.echo(
+                f"[dry-run] would bootstrap {skill_dir(t)} (generated_only={generated_only})"
+            )
+        return
+
+    for t in targets:
+        result = bootstrap_skill_dir(
+            skill_dir(t), token=token, generated_only=generated_only
+        )
+        typer.echo(
+            f"✓ bootstrapped {t.id}: wrote {len(result.wrote_generated)} generated files, "
+            f"{result.wrote_stubs} stubs (firm: {result.firm_identity.get('name')})"
+        )
