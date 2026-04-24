@@ -82,83 +82,54 @@ For the full command list, see the [CLI Reference](https://massive-value.github.
 
 ## Use with AI Coding Agents
 
-wealthbox-cli ships with a [Claude Code](https://claude.ai/download) skill that lets AI agents manage your CRM through natural language. Instead of memorizing CLI flags, just describe what you want:
+wealthbox-cli ships with a skill for [Claude Code](https://claude.ai/download) and [Codex](https://openai.com/codex) that lets AI agents manage your CRM through natural language. Instead of memorizing CLI flags, just describe what you want:
 
 ```
-/wealthbox-crm create a contact for Jane Doe, she's a new prospect
-/wealthbox-crm list my tasks due this week
-/wealthbox-crm add a note to contact 123 about today's meeting
-/wealthbox-crm find all contacts tagged "VIP" and export to CSV
+create a contact for Jane Doe, she's a new prospect
+list my tasks due this week
+add a note to contact 123 about today's meeting
+find all contacts tagged "VIP" and export to CSV
 ```
 
-The skill translates your intent into the correct `wbox` commands, handles flag construction, and validates inputs — making it ideal for advisors who want CRM automation without learning CLI syntax.
+The skill translates your intent into the correct `wbox` commands, handles flag construction, and validates inputs — ideal for advisors who want CRM automation without learning CLI syntax.
 
-### Install the skill
+### Install
 
-Download the skill directly from GitHub into your Claude Code skills directory:
+One command, same on every OS:
 
-**macOS/Linux:**
 ```bash
-git clone --depth 1 https://github.com/massive-value/wealthbox-cli.git /tmp/wealthbox-cli \
-  && cp -r /tmp/wealthbox-cli/docs/skills/wealthbox-crm ~/.claude/skills/wealthbox-crm \
-  && rm -rf /tmp/wealthbox-cli
+pip install wealthbox-cli
+wbox config set-token        # paste your Wealthbox API token
+wbox skills install          # interactive: pick Claude Code, Codex, or both
 ```
 
-**Windows (PowerShell):**
-```powershell
-git clone --depth 1 https://github.com/massive-value/wealthbox-cli.git $env:TEMP\wealthbox-cli
-Copy-Item -Recurse $env:TEMP\wealthbox-cli\docs\skills\wealthbox-crm $env:USERPROFILE\.claude\skills\wealthbox-crm
-Remove-Item -Recurse -Force $env:TEMP\wealthbox-cli
-```
+The installer asks which platforms to target, copies the skill into the right directory (`~/.claude/skills/` for Claude Code, `~/.codex/skills/` for Codex — with `SKILL.md` renamed to `AGENTS.md` automatically), and offers to bootstrap your firm's customizations from the Wealthbox API.
 
-**Windows (Command Prompt):**
-```cmd
-git clone --depth 1 https://github.com/massive-value/wealthbox-cli.git %TEMP%\wealthbox-cli
-xcopy /E /I %TEMP%\wealthbox-cli\docs\skills\wealthbox-crm %USERPROFILE%\.claude\skills\wealthbox-crm
-rmdir /S /Q %TEMP%\wealthbox-cli
-```
+### First agent run bootstraps itself
 
-If you already have the repo cloned, just copy from your local checkout:
+The first time an agent invokes the skill, it walks you through populating firm-specific conventions — category values, custom fields, users, defaults, required fields, household naming, named workflows. No further CLI commands needed. After that first run, the bootstrap artifacts self-delete from the skill.
 
-**macOS/Linux:**
+### Refresh after firm changes
+
+If your firm adds or renames category values, custom fields, or users:
+
 ```bash
-cp -r docs/skills/wealthbox-crm ~/.claude/skills/wealthbox-crm
+wbox skills refresh
 ```
 
-**Windows (PowerShell):**
-```powershell
-Copy-Item -Recurse docs\skills\wealthbox-crm $env:USERPROFILE\.claude\skills\wealthbox-crm
-```
+This updates the generated half of the skill's firm files; hand-edited policy is preserved.
 
-**Windows (Command Prompt):**
-```cmd
-xcopy /E /I docs\skills\wealthbox-crm %USERPROFILE%\.claude\skills\wealthbox-crm
-```
+### Other commands
 
-### Firm-specific configuration
-
-Customize the skill for your firm's defaults, required fields, and naming conventions:
-
-**macOS/Linux:**
 ```bash
-cp ~/.claude/skills/wealthbox-crm/firm-config.example.md ~/.claude/skills/wealthbox-crm/firm-config.md
+wbox skills list             # show where the skill is installed + last bootstrap time
+wbox skills doctor           # diagnose install state + token
+wbox skills uninstall        # remove the skill
 ```
-
-**Windows (PowerShell):**
-```powershell
-Copy-Item $env:USERPROFILE\.claude\skills\wealthbox-crm\firm-config.example.md $env:USERPROFILE\.claude\skills\wealthbox-crm\firm-config.md
-```
-
-**Windows (Command Prompt):**
-```cmd
-copy %USERPROFILE%\.claude\skills\wealthbox-crm\firm-config.example.md %USERPROFILE%\.claude\skills\wealthbox-crm\firm-config.md
-```
-
-Edit `firm-config.md` with your firm's conventions. The agent will then apply them automatically — for example, always tagging new contacts with your firm name, setting default contact types, or running multi-step onboarding workflows.
 
 ### Works with other agents too
 
-The `wbox` CLI is a standard command-line tool. Any AI coding agent that can execute shell commands — [Claude Code](https://claude.ai/download), [GitHub Copilot CLI](https://githubnext.com/projects/copilot-cli), [Cursor](https://cursor.sh/), or custom agent frameworks — can use it to read and write Wealthbox data. The included skill just makes Claude Code aware of the full command surface.
+The `wbox` CLI is a standard command-line tool. Any AI coding agent that can execute shell commands — [Claude Code](https://claude.ai/download), [GitHub Copilot CLI](https://githubnext.com/projects/copilot-cli), [Cursor](https://cursor.sh/), or custom agent frameworks — can use it to read and write Wealthbox data. The bundled skill just makes Claude Code and Codex aware of the full command surface.
 
 ------------------------------------------------------------------------
 
