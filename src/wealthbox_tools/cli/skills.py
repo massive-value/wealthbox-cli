@@ -14,6 +14,7 @@ from ._skill_platforms import (
     install_skill,
     is_installed,
     skill_dir,
+    uninstall_skill,
 )
 
 app = typer.Typer(
@@ -238,3 +239,30 @@ def doctor_cmd(
         typer.echo(f"  token failed: {e}")
     except Exception as e:  # network, config, etc.
         typer.echo(f"  token check failed: {e}")
+
+
+@app.command("uninstall", help="Remove the wealthbox-crm skill from a platform.")
+def uninstall_cmd(
+    platforms_flag: list[str] = typer.Option([], "--platform", "-p"),
+    yes: bool = typer.Option(False, "--yes", "-y", help="Skip confirmation."),
+) -> None:
+    if platforms_flag:
+        targets = _resolve_platforms(platforms_flag)
+    else:
+        targets = [p for p in detect_platforms() if is_installed(p)]
+        if not targets:
+            typer.echo("Nothing to remove. No installed platforms detected.")
+            return
+
+    for t in targets:
+        if not is_installed(t):
+            typer.echo(f"  {t.id}: not installed, skipping")
+            continue
+        if not yes and not typer.confirm(f"Remove {skill_dir(t)}?", default=False):
+            continue
+        try:
+            uninstall_skill(t)
+            typer.echo(f"✓ removed {skill_dir(t)}")
+        except SkillInstallError as e:
+            typer.echo(f"Error: {e}", err=True)
+            raise typer.Exit(code=1) from e
