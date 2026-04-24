@@ -48,7 +48,8 @@ def render_custom_fields_md(fetched: dict[str, list[dict[str, Any]]]) -> str:
         for f in fields:
             options = f.get("options") or []
             option_names = (
-                ", ".join(o.get("name", "") for o in options) if options else "—"
+                ", ".join(o.get("label") or o.get("name", "") for o in options)
+                if options else "-"
             )
             rows.append(
                 [
@@ -198,10 +199,13 @@ async def _fetch_all(
     users = users_resp.get("users", [])
 
     me = await client.get_me()
+    accounts = me.get("accounts") or []
+    primary_account = accounts[0] if accounts else {}
     firm = {
-        "id": me.get("id"),
-        "name": me.get("name"),
-        "account": me.get("account"),
+        "id": primary_account.get("id"),
+        "name": primary_account.get("name"),
+        "user_id": me.get("id"),
+        "user_name": me.get("name"),
     }
     return categories, custom_fields, users, firm
 

@@ -15,7 +15,7 @@ app = typer.Typer(
     "set-token",
     help=(
         "Store your Wealthbox API token. Get one at https://dev.wealthbox.com "
-        "(Settings → API Access → Access Tokens)."
+        "(Settings -> API Access -> Access Tokens)."
     ),
 )
 def set_token(
@@ -27,7 +27,7 @@ def set_token(
     if token is None:
         typer.echo(
             "Find your token at https://dev.wealthbox.com "
-            "(Settings → API Access → Access Tokens)"
+            "(Settings -> API Access -> Access Tokens)"
         )
         token = typer.prompt("Wealthbox API token", hide_input=True)
     config = load_config()

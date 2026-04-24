@@ -40,7 +40,7 @@ def test_render_custom_fields_groups_by_document_type():
              "field_type": "String", "options": []},
             {"id": 2, "name": "Risk Tolerance", "document_type": "Contact",
              "field_type": "Dropdown",
-             "options": [{"name": "Low"}, {"name": "High"}]},
+             "options": [{"label": "Low"}, {"label": "High"}]},
         ],
         "Opportunity": [
             {"id": 3, "name": "Referral Source", "document_type": "Opportunity",
@@ -53,6 +53,20 @@ def test_render_custom_fields_groups_by_document_type():
     assert "Favorite Color" in md
     assert "Low" in md and "High" in md
     assert "Risk Tolerance" in md
+
+
+def test_render_custom_fields_accepts_name_as_fallback():
+    """Some API responses may use 'name' instead of 'label'; accept both."""
+    fetched = {
+        "Contact": [
+            {"id": 1, "name": "Status", "document_type": "Contact",
+             "field_type": "Dropdown",
+             "options": [{"name": "Active"}, {"name": "Inactive"}]},
+        ],
+    }
+    md = render_custom_fields_md(fetched)
+    assert "Active" in md
+    assert "Inactive" in md
 
 
 def test_render_users_writes_table():

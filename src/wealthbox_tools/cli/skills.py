@@ -32,7 +32,7 @@ def list_platforms() -> None:
         dest = skill_dir(p)
         installed = is_installed(p)
         meta_file = dest / "firm" / "_meta.json"
-        last_bootstrap = "—"
+        last_bootstrap = "-"
         if meta_file.exists():
             try:
                 meta = json.loads(meta_file.read_text())
@@ -112,14 +112,14 @@ def install_cmd(
             except SkillInstallError as e:
                 typer.echo(f"Error installing to {target.id}: {e}", err=True)
                 raise typer.Exit(code=1) from e
-            typer.echo(f"✓ installed to {skill_dir(target)}")
+            typer.echo(f"OK installed to {skill_dir(target)}")
 
     if not no_bootstrap:
         if typer.confirm("Run 'wbox skills bootstrap' now?", default=True):
             from ._skill_bootstrap import bootstrap_skill_dir
             for target in targets:
                 bootstrap_skill_dir(skill_dir(target), token=None, generated_only=False)
-                typer.echo(f"✓ bootstrapped {target.id}")
+                typer.echo(f"OK bootstrapped {target.id}")
 
 
 @app.command("bootstrap", help="Populate firm/ files from the Wealthbox API.")
@@ -163,7 +163,7 @@ def bootstrap_cmd(
             skill_dir(t), token=token, generated_only=generated_only
         )
         typer.echo(
-            f"✓ bootstrapped {t.id}: wrote {len(result.wrote_generated)} generated files, "
+            f"OK bootstrapped {t.id}: wrote {len(result.wrote_generated)} generated files, "
             f"{result.wrote_stubs} stubs (firm: {result.firm_identity.get('name')})"
         )
 
@@ -201,14 +201,14 @@ def refresh_cmd(
                     age_days = (datetime.now(timezone.utc) - oldest).days
                     if age_days > staleness_days:
                         typer.echo(
-                            f"! {t.id}: generated files were {age_days} days stale — refreshing now",
+                            f"! {t.id}: generated files were {age_days} days stale - refreshing now",
                             err=True,
                         )
             except (json.JSONDecodeError, OSError, ValueError):
                 pass
 
         bootstrap_skill_dir(skill_dir(t), token=token, generated_only=True)
-        typer.echo(f"✓ refreshed {t.id}")
+        typer.echo(f"OK refreshed {t.id}")
 
 
 @app.command("doctor", help="Diagnose install state and token.")
@@ -231,9 +231,11 @@ def doctor_cmd(
     typer.echo("\n# Token")
     try:
         me = run_client(token, lambda c: c.get_me())
+        accounts = me.get("accounts") or []
+        firm_name = accounts[0].get("name") if accounts else "(no firm)"
         typer.echo(
-            f"  token ok — authenticated as {me.get('name')} "
-            f"({me.get('account')}, id={me.get('id')})"
+            f"  token ok - authenticated as {me.get('name')} "
+            f"(firm: {firm_name}, user id={me.get('id')})"
         )
     except WealthboxAPIError as e:
         typer.echo(f"  token failed: {e}")
@@ -262,7 +264,7 @@ def uninstall_cmd(
             continue
         try:
             uninstall_skill(t)
-            typer.echo(f"✓ removed {skill_dir(t)}")
+            typer.echo(f"OK removed {skill_dir(t)}")
         except SkillInstallError as e:
             typer.echo(f"Error: {e}", err=True)
             raise typer.Exit(code=1) from e

@@ -6,7 +6,6 @@ import respx
 from wealthbox_tools.cli.main import app
 from wealthbox_tools.models.enums import CategoryType, DocumentType
 
-
 _BASE = "https://api.crmworkspace.com/v1"
 
 
@@ -27,7 +26,7 @@ def _setup_api_mocks():
     )
     respx.get(f"{_BASE}/me").mock(
         return_value=httpx.Response(
-            200, json={"id": 1, "name": "Adv", "account": "Firm"}
+            200, json={"id": 1, "name": "Adv", "accounts": [{"id": 100, "name": "Firm"}]}
         )
     )
 
