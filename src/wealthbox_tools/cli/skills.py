@@ -98,6 +98,7 @@ def install_cmd(
     ),
     force: bool = typer.Option(False, "--force", help="Overwrite existing install."),
     no_bootstrap: bool = typer.Option(False, "--no-bootstrap", help="Skip the post-install bootstrap prompt."),
+    token: str | None = typer.Option(None, envvar="WEALTHBOX_TOKEN", hidden=True),
 ) -> None:
     targets = _resolve_platforms(platforms_flag) if platforms_flag else _prompt_platforms()
 
@@ -122,7 +123,7 @@ def install_cmd(
         if typer.confirm("Run 'wbox skills bootstrap' now?", default=True):
             from ._skill_bootstrap import bootstrap_skill_dir
             for target in targets:
-                bootstrap_skill_dir(skill_dir(target), token=None, generated_only=False)
+                bootstrap_skill_dir(skill_dir(target), token=token, generated_only=False)
                 typer.echo(f"OK bootstrapped {target.id}")
 
 

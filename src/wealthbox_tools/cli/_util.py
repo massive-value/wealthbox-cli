@@ -62,6 +62,12 @@ def get_client(token: str | None = None) -> WealthboxClient:
             token = os.environ.get("WEALTHBOX_TOKEN")
         except ImportError:
             pass
+    if not token:
+        raise ValueError(
+            "Wealthbox token required. Provide one via any of: "
+            "--token flag, WEALTHBOX_TOKEN env var, "
+            "`wbox config set-token`, or a .env file in the working directory."
+        )
     return WealthboxClient(token=token)
 
 
