@@ -122,6 +122,8 @@ No output on success.
 
 ## Contact Categories
 
+Each of these is also available at the workspace level via `wbox categories <name>` — both forms return the same data.
+
 ```bash
 wbox contacts categories contact-types
 wbox contacts categories contact-sources
