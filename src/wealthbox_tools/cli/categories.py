@@ -26,6 +26,27 @@ app.command("investment-objectives", help="List investment objective options.")(
 app.command("financial-account-types", help="List financial account type options.")(
     make_category_command(CategoryType.FINANCIAL_ACCOUNT_TYPES)
 )
+app.command("contact-types", help="List contact type options.")(make_category_command(CategoryType.CONTACT_TYPES))
+app.command("contact-sources", help="List contact source options.")(
+    make_category_command(CategoryType.CONTACT_SOURCES)
+)
+app.command("email-types", help="List email type options.")(make_category_command(CategoryType.EMAIL_TYPES))
+app.command("phone-types", help="List phone type options.")(make_category_command(CategoryType.PHONE_TYPES))
+app.command("address-types", help="List address type options.")(
+    make_category_command(CategoryType.ADDRESS_TYPES)
+)
+app.command("website-types", help="List website type options.")(
+    make_category_command(CategoryType.WEBSITE_TYPES)
+)
+app.command("contact-roles", help="List contact role options.")(
+    make_category_command(CategoryType.CONTACT_ROLES)
+)
+app.command("event-categories", help="List event category options.")(
+    make_category_command(CategoryType.EVENT_CATEGORIES)
+)
+app.command("task-categories", help="List task category options.")(
+    make_category_command(CategoryType.TASK_CATEGORIES)
+)
 
 
 @app.command("custom-fields", help="List custom field categories. Optionally filter by document type.")
