@@ -1,8 +1,7 @@
 # First-Run Bootstrap
 
-You were told to read this because `firm/_meta.json` does not exist in the skill
-directory. Follow every step below. When you finish, delete this file and trim
-the `## First Run` section out of `SKILL.md`.
+You were told to read this because `_meta.json` in the skill root does not
+contain a `firm` section. Follow every step below.
 
 ## Step 1 — Fetch API-derived firm data
 
@@ -17,12 +16,13 @@ It populates these files per installed platform:
 - `firm/categories.md` — every category type + valid values
 - `firm/custom-fields.md` — custom fields per document type + valid values
 - `firm/users.md` — user id → name → email
-- `firm/_meta.json` — refresh timestamps + firm identity
+- `_meta.json` (skill root) — adds the `firm` section: identity, refresh
+  timestamps, and the CLI version that ran the bootstrap
 - Stub files: `firm/contacts.md`, `firm/tasks.md`, `firm/notes.md`,
   `firm/events.md`, `firm/opportunities.md`, `firm/projects.md`,
   `firm/workflows.md` — one-line TODOs you will fill in next.
 
-Verify `firm/_meta.json` now exists before continuing.
+Verify the `firm` section now exists in `_meta.json` before continuing.
 
 ## Step 2 — Gather firm policy (per-resource)
 
@@ -90,16 +90,11 @@ Ask the advisor: "Is there any firm convention, custom process, or preference
 I haven't asked about that I should follow?" Append freeform answers to
 `firm/workflows.md` under a `## Other Conventions` heading.
 
-## Step 4 — Self-trim
-
-Now that all firm files are filled in:
-
-1. Delete `bootstrap.md` (this file).
-2. Open `SKILL.md`. Find the `## First Run (self-delete after completion)`
-   section. Delete that heading and everything under it through (but not
-   including) the next `## ` heading.
-
-## Step 5 — Confirm and continue
+## Step 4 — Confirm and continue
 
 Tell the advisor: "First-run setup complete — `firm/` populated for <firm
 name>." Then return to the user's original request.
+
+You don't need to delete this file or trim `SKILL.md`. The first-run check
+keys on `_meta.json.firm`, which now exists, so the bootstrap path will be
+skipped on every subsequent invocation automatically.

@@ -86,11 +86,11 @@ def render_users_md(users: list[dict[str, Any]]) -> str:
 FIRM_README = """# firm/ — Firm Customizations
 
 This folder holds everything the agent needs to know about your firm's
-Wealthbox conventions.
+Wealthbox conventions. Install metadata lives in `../_meta.json` (skill
+root), not here.
 
 ## Generated files (overwritten by `wbox skills refresh`)
 
-- `_meta.json` — refresh timestamps, firm identity, CLI version
 - `categories.md` — every category type + valid values
 - `custom-fields.md` — custom fields per document type + valid values
 - `users.md` — user id → name → email
@@ -139,22 +139,52 @@ def write_stubs(firm_dir: Path) -> list[str]:
     return written
 
 
-def write_meta_json(
-    firm_dir: Path,
+def meta_path(skill_dir: Path) -> Path:
+    """Location of _meta.json relative to a skill install root."""
+    return skill_dir / "_meta.json"
+
+
+def read_meta(skill_dir: Path) -> dict[str, Any]:
+    """Read _meta.json. Returns {} if missing or unreadable."""
+    p = meta_path(skill_dir)
+    if not p.exists():
+        return {}
+    try:
+        loaded = json.loads(p.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError):
+        return {}
+    return loaded if isinstance(loaded, dict) else {}
+
+
+def write_meta(skill_dir: Path, data: dict[str, Any]) -> None:
+    meta_path(skill_dir).write_text(
+        json.dumps(data, indent=2) + "\n", encoding="utf-8"
+    )
+
+
+def update_template_meta(skill_dir: Path, *, cli_version: str) -> None:
+    """Set the template section of _meta.json. Preserves any existing firm section."""
+    meta = read_meta(skill_dir)
+    meta["template"] = {"cli_version": cli_version}
+    write_meta(skill_dir, meta)
+
+
+def update_firm_meta(
+    skill_dir: Path,
     *,
-    generated_files: list[str],
-    firm_identity: dict[str, Any],
+    identity: dict[str, Any],
     cli_version: str,
+    generated_files: list[str],
 ) -> None:
+    """Set the firm section of _meta.json. Preserves any existing template section."""
     now = datetime.now(timezone.utc).isoformat()
-    meta = {
-        "firm": firm_identity,
+    meta = read_meta(skill_dir)
+    meta["firm"] = {
+        "identity": identity,
         "cli_version": cli_version,
         "files": {name: now for name in generated_files},
     }
-    (firm_dir / "_meta.json").write_text(
-        json.dumps(meta, indent=2) + "\n", encoding="utf-8"
-    )
+    write_meta(skill_dir, meta)
 
 
 # --------------------------------------------------------------------------- #
@@ -230,11 +260,11 @@ def bootstrap_skill_dir(
     (firm_dir / "users.md").write_text(render_users_md(users), encoding="utf-8")
 
     generated = ["categories.md", "custom-fields.md", "users.md"]
-    write_meta_json(
-        firm_dir,
-        generated_files=generated,
-        firm_identity=firm_identity,
+    update_firm_meta(
+        skill_dir,
+        identity=firm_identity,
         cli_version=_pkg_version("wealthbox-cli"),
+        generated_files=generated,
     )
 
     wrote_stubs = 0

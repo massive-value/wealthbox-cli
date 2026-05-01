@@ -50,7 +50,8 @@ def test_full_lifecycle(runner, tmp_path, monkeypatch):
     r = runner.invoke(app, ["skills", "bootstrap"])
     assert r.exit_code == 0, r.stdout
     firm = dest / "firm"
-    assert (firm / "_meta.json").exists()
+    assert (dest / "_meta.json").exists()
+    assert not (firm / "_meta.json").exists()
 
     # mutate hand-edited file
     (firm / "contacts.md").write_text("# user policy\n")

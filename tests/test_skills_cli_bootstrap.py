@@ -46,12 +46,16 @@ def test_bootstrap_writes_all_firm_files(runner, tmp_path, monkeypatch):
     _setup_api_mocks()
     result = runner.invoke(app, ["skills", "bootstrap"])
     assert result.exit_code == 0, result.stdout
-    firm = tmp_path / ".claude" / "skills" / "wealthbox-crm" / "firm"
+    skill_root = tmp_path / ".claude" / "skills" / "wealthbox-crm"
+    firm = skill_root / "firm"
     for name in (
-        "categories.md", "custom-fields.md", "users.md", "_meta.json",
+        "categories.md", "custom-fields.md", "users.md",
         "_README.md", "contacts.md", "tasks.md",
     ):
         assert (firm / name).exists(), f"missing {name}"
+    # _meta.json now lives at the skill root, not inside firm/
+    assert (skill_root / "_meta.json").exists()
+    assert not (firm / "_meta.json").exists()
 
 
 @respx.mock

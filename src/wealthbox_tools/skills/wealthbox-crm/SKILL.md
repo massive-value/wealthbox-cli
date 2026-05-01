@@ -8,14 +8,34 @@ description: Use when the user wants to interact with Wealthbox CRM — creating
 Execute Wealthbox CRM operations via the `wbox` CLI. Supports contacts, tasks, notes, events,
 opportunities, projects, workflows, households, and read-only lookups (categories, users, activity, me).
 
-## First Run (self-delete after completion)
+## First Run
 
-If `firm/_meta.json` does not exist in this skill's directory, this is the
-first invocation on this machine. Before handling the user's request:
+If `_meta.json` in this skill's directory does **not** contain a `firm`
+section, the firm has not been onboarded yet on this machine. Before
+handling the user's request:
 
 1. Read `bootstrap.md` in this skill's directory.
 2. Follow it end-to-end.
-3. When done, this section and `bootstrap.md` will have been deleted.
+3. The bootstrap will populate `_meta.json.firm` so this check passes
+   on subsequent runs.
+
+## Staleness Check
+
+`_meta.json.template.cli_version` records which `wbox` version installed
+the template files. Compare it to the running CLI version:
+
+```bash
+wbox --version
+```
+
+If the template version is older, suggest the user run:
+
+```bash
+wbox skills upgrade
+```
+
+This refreshes SKILL.md, references/, firm-examples/, and bootstrap.md
+across every installed platform while preserving `firm/`.
 
 ## Prerequisites
 
