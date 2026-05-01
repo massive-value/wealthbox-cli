@@ -6,6 +6,16 @@ This project uses [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [1.1.4](https://github.com/massive-value/wealthbox-cli/releases/tag/v1.1.4) — 2026-05-01
+
+### Added
+- Workspace-level aliases for every resource-scoped category lookup. `wbox categories contact-types`, `wbox categories contact-roles`, `wbox categories event-categories`, `wbox categories task-categories`, and the rest now work alongside their existing `wbox <resource> categories` forms. Both routes call the same API endpoint.
+
+### Docs
+- Skill references (`lookups.md`, `contacts.md`) and `docs/cli-reference.md` updated to surface the workspace-level form as the primary listing.
+
+---
+
 ## [1.0.2](https://github.com/massive-value/wealthbox-cli/releases/tag/v1.0.2) — 2026-03-30
 
 ### Changed
