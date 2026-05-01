@@ -8,7 +8,7 @@ from pathlib import Path
 
 import typer
 
-from ._skill_bootstrap import read_meta, update_template_meta
+from ._skill_bootstrap import copy_firm_meta, read_meta, update_template_meta
 from ._skill_platforms import (
     Platform,
     SkillInstallError,
@@ -376,7 +376,12 @@ def sync_cmd(
         )
         raise typer.Exit(code=2)
 
-    others = [p for p in installed if p.id != source.id]
+    src_resolved = skill_dir(source).resolve()
+
+    def _is_same_path(p: Platform) -> bool:
+        return skill_dir(p).resolve() == src_resolved
+
+    others = [p for p in installed if p.id != source.id and not _is_same_path(p)]
 
     if all_targets and target_ids:
         typer.echo("Error: --all-targets and --target are mutually exclusive.", err=True)
@@ -387,8 +392,12 @@ def sync_cmd(
     elif target_ids:
         targets = _resolve_platforms(target_ids)
         for t in targets:
-            if t.id == source.id:
-                typer.echo(f"Error: target {t.id!r} is the same as the source.", err=True)
+            if t.id == source.id or _is_same_path(t):
+                typer.echo(
+                    f"Error: target {t.id!r} is the same as the source "
+                    f"(resolves to {src_resolved}).",
+                    err=True,
+                )
                 raise typer.Exit(code=2)
             if not is_installed(t):
                 typer.echo(f"Error: target {t.id!r} is not installed.", err=True)
@@ -425,7 +434,11 @@ def sync_cmd(
         tgt_firm = skill_dir(t) / "firm"
         tgt_firm.mkdir(parents=True, exist_ok=True)
         shutil.copytree(src_firm, tgt_firm, dirs_exist_ok=True)
-        typer.echo(f"OK synced {len(src_files)} files: {source.id} -> {t.id}")
+        meta_copied = copy_firm_meta(skill_dir(source), skill_dir(t))
+        meta_note = "" if meta_copied else " (no _meta.json firm section on source)"
+        typer.echo(
+            f"OK synced {len(src_files)} files: {source.id} -> {t.id}{meta_note}"
+        )
 
 
 @app.command("uninstall", help="Remove the wealthbox-crm skill from a platform.")
