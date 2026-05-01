@@ -36,7 +36,9 @@ wbox activity list [OPTIONS]
 
 **Important:** Activity uses cursor-based pagination, NOT `--page`/`--per-page`. Use the cursor value from the previous response for the next page.
 
-## Workspace-Level Categories
+## Categories
+
+Every category type is available under `wbox categories <name>`. The full set:
 
 ```bash
 wbox categories tags
@@ -45,16 +47,19 @@ wbox categories opportunity-stages
 wbox categories opportunity-pipelines
 wbox categories investment-objectives
 wbox categories financial-account-types
+wbox categories contact-types
+wbox categories contact-sources
+wbox categories email-types
+wbox categories phone-types
+wbox categories address-types
+wbox categories website-types
+wbox categories contact-roles
+wbox categories event-categories
+wbox categories task-categories
 wbox categories custom-fields [--document-type STR] [--page INT] [--per-page INT] [--format ...]
 ```
 
-## Resource-Scoped Categories
-
-```bash
-wbox contacts categories {contact-types|contact-sources|email-types|phone-types|address-types|website-types|contact-roles}
-wbox events categories
-wbox tasks categories
-```
+The contact-related types are also reachable as aliases under `wbox contacts categories <name>` (contact-types, contact-sources, email-types, phone-types, address-types, website-types, contact-roles). Likewise, `wbox events categories` and `wbox tasks categories` are aliases for `wbox categories event-categories` and `wbox categories task-categories`. Either form returns the same data.
 
 ## Examples
 
@@ -69,5 +74,5 @@ wbox users list --format table
 wbox activity list --contact 12345 --format table
 
 # Look up valid contact types
-wbox contacts categories contact-types
+wbox categories contact-types
 ```

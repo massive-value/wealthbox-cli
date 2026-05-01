@@ -343,7 +343,18 @@ wbox categories opportunity-stages
 wbox categories opportunity-pipelines
 wbox categories investment-objectives
 wbox categories financial-account-types
+wbox categories contact-types
+wbox categories contact-sources
+wbox categories email-types
+wbox categories phone-types
+wbox categories address-types
+wbox categories website-types
+wbox categories contact-roles
+wbox categories event-categories
+wbox categories task-categories
 ```
+
+The contact category types (contact-types, contact-sources, email-types, phone-types, address-types, website-types, contact-roles) are also reachable under `wbox contacts categories <name>`. `wbox events categories` and `wbox tasks categories` are aliases for `wbox categories event-categories` and `wbox categories task-categories`. Both forms call the same API endpoint.
 
 ### Custom Fields
 
