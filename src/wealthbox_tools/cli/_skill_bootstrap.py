@@ -187,6 +187,20 @@ def update_firm_meta(
     write_meta(skill_dir, meta)
 
 
+def copy_firm_meta(src_skill_dir: Path, dst_skill_dir: Path) -> bool:
+    """Copy the firm section of _meta.json from src to dst, preserving dst's template.
+
+    Returns True if a firm section was copied, False if src had none.
+    """
+    src_firm = read_meta(src_skill_dir).get("firm")
+    if not src_firm:
+        return False
+    dst_meta = read_meta(dst_skill_dir)
+    dst_meta["firm"] = src_firm
+    write_meta(dst_skill_dir, dst_meta)
+    return True
+
+
 # --------------------------------------------------------------------------- #
 # Orchestrator                                                                 #
 # --------------------------------------------------------------------------- #
