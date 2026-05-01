@@ -39,7 +39,7 @@ def test_sync_copies_firm_dir(runner, tmp_path, monkeypatch):
     src_firm = _firm_dir(home, project, "codex")
     src_firm.mkdir(parents=True, exist_ok=True)
     (src_firm / "notes.md").write_text("FIRM NOTES SYNCED")
-    (src_firm / "_meta.json").write_text('{"firm": {"name": "Acme"}}')
+    (src_firm / "categories.md").write_text("# generated categories\n")
 
     result = runner.invoke(
         app,
@@ -49,7 +49,7 @@ def test_sync_copies_firm_dir(runner, tmp_path, monkeypatch):
 
     tgt = _firm_dir(home, project, "claude-code-project")
     assert (tgt / "notes.md").read_text() == "FIRM NOTES SYNCED"
-    assert (tgt / "_meta.json").exists()
+    assert (tgt / "categories.md").exists()
 
 
 def test_sync_dry_run_does_not_write(runner, tmp_path, monkeypatch):

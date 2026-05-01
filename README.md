@@ -125,8 +125,11 @@ This updates the generated half of the skill's firm files; hand-edited policy is
 wbox skills list             # show where the skill is installed + last bootstrap time
 wbox skills doctor           # diagnose install state + token
 wbox skills sync             # copy firm/ from one install to others (Claude Code <-> Codex)
+wbox skills upgrade          # refresh template files (SKILL.md, references/, ...) preserving firm/
 wbox skills uninstall        # remove the skill
 ```
+
+When the CLI ships a newer template (improved SKILL.md, new reference docs, etc.), `wbox skills upgrade` re-copies the bundled template into every installed platform without touching your firm-specific data in `firm/`. Each install records the template's CLI version in `_meta.json`, so the agent can detect drift and prompt you to upgrade when needed.
 
 `wbox skills sync` is useful if you maintain firm conventions in one platform's install (e.g., your Claude Code user scope) and want the same `firm/` files mirrored to Codex or to a project-scoped `.claude/skills/` folder. The command runs as a wizard by default; pass `--source`, `--target`, and `--yes` for non-interactive use.
 

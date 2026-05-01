@@ -58,11 +58,12 @@ def test_refresh_preserves_handedited_files(runner, tmp_path, monkeypatch):
 @respx.mock
 def test_refresh_warns_when_meta_is_stale(runner, tmp_path, monkeypatch):
     _install_and_bootstrap(runner, tmp_path, monkeypatch)
-    firm = tmp_path / ".claude" / "skills" / "wealthbox-crm" / "firm"
-    meta = json.loads((firm / "_meta.json").read_text())
+    skill_root = tmp_path / ".claude" / "skills" / "wealthbox-crm"
+    meta_path = skill_root / "_meta.json"
+    meta = json.loads(meta_path.read_text())
     stale = (datetime.now(timezone.utc) - timedelta(days=60)).isoformat()
-    meta["files"] = {k: stale for k in meta["files"]}
-    (firm / "_meta.json").write_text(json.dumps(meta) + "\n")
+    meta["firm"]["files"] = {k: stale for k in meta["firm"]["files"]}
+    meta_path.write_text(json.dumps(meta) + "\n")
     result = runner.invoke(app, ["skills", "refresh", "--staleness-days", "30"])
     assert result.exit_code == 0, result.stdout
     output = (result.stdout or "") + (result.stderr or "")

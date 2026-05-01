@@ -1,13 +1,14 @@
 from __future__ import annotations
 
-import json
 import shutil
 from datetime import datetime, timezone
+from importlib.metadata import version as _pkg_version
 from importlib.resources import as_file, files
 from pathlib import Path
 
 import typer
 
+from ._skill_bootstrap import read_meta, update_template_meta
 from ._skill_platforms import (
     Platform,
     SkillInstallError,
@@ -16,6 +17,7 @@ from ._skill_platforms import (
     is_installed,
     skill_dir,
     uninstall_skill,
+    upgrade_skill,
 )
 
 app = typer.Typer(
@@ -27,31 +29,31 @@ app = typer.Typer(
 
 @app.command("list", help="Show where the skill is installed per platform.")
 def list_platforms() -> None:
-    header = ("platform", "path", "status", "last-bootstrap")
-    rows: list[tuple[str, str, str, str]] = []
+    header = ("platform", "path", "status", "template-version", "last-bootstrap")
+    rows: list[tuple[str, str, str, str, str]] = []
     for p in detect_platforms():
         dest = skill_dir(p)
         installed = is_installed(p)
-        meta_file = dest / "firm" / "_meta.json"
+        template_version = "-"
         last_bootstrap = "-"
-        if meta_file.exists():
-            try:
-                meta = json.loads(meta_file.read_text())
-                files = meta.get("files", {})
-                if files:
-                    last_bootstrap = max(files.values())
-            except (json.JSONDecodeError, OSError):
-                last_bootstrap = "(unreadable)"
+        if installed:
+            meta = read_meta(dest)
+            template_version = meta.get("template", {}).get("cli_version", "-")
+            firm_section = meta.get("firm") or {}
+            firm_files = firm_section.get("files") or {}
+            if firm_files:
+                last_bootstrap = max(firm_files.values())
         rows.append((
             p.id,
             str(dest),
             "installed" if installed else "not installed",
+            template_version,
             last_bootstrap,
         ))
 
     widths = [
         max(len(r[i]) for r in ([header] + rows))
-        for i in range(4)
+        for i in range(len(header))
     ]
     fmt = "  ".join(f"{{:<{w}}}" for w in widths)
     typer.echo(fmt.format(*header))
@@ -113,6 +115,7 @@ def install_cmd(
             except SkillInstallError as e:
                 typer.echo(f"Error installing to {target.id}: {e}", err=True)
                 raise typer.Exit(code=1) from e
+            update_template_meta(skill_dir(target), cli_version=_pkg_version("wealthbox-cli"))
             typer.echo(f"OK installed to {skill_dir(target)}")
 
     if not no_bootstrap:
@@ -192,24 +195,63 @@ def refresh_cmd(
         raise typer.Exit(code=2)
 
     for t in targets:
-        meta_path = skill_dir(t) / "firm" / "_meta.json"
-        if meta_path.exists():
+        meta = read_meta(skill_dir(t))
+        firm_files = (meta.get("firm") or {}).get("files") or {}
+        if firm_files:
             try:
-                meta = json.loads(meta_path.read_text())
-                ts_values = list(meta.get("files", {}).values())
-                if ts_values:
-                    oldest = min(datetime.fromisoformat(ts) for ts in ts_values)
-                    age_days = (datetime.now(timezone.utc) - oldest).days
-                    if age_days > staleness_days:
-                        typer.echo(
-                            f"! {t.id}: generated files were {age_days} days stale - refreshing now",
-                            err=True,
-                        )
-            except (json.JSONDecodeError, OSError, ValueError):
+                oldest = min(datetime.fromisoformat(ts) for ts in firm_files.values())
+                age_days = (datetime.now(timezone.utc) - oldest).days
+                if age_days > staleness_days:
+                    typer.echo(
+                        f"! {t.id}: generated files were {age_days} days stale - refreshing now",
+                        err=True,
+                    )
+            except ValueError:
                 pass
 
         bootstrap_skill_dir(skill_dir(t), token=token, generated_only=True)
         typer.echo(f"OK refreshed {t.id}")
+
+
+@app.command(
+    "upgrade",
+    help="Refresh template files (SKILL.md, references/, firm-examples/, bootstrap.md) "
+         "in every installed platform. Preserves firm/ and _meta.json firm section.",
+)
+def upgrade_cmd(
+    platforms_flag: list[str] = typer.Option(
+        [], "--platform", "-p",
+        help="Platform id. Default: every installed platform.",
+    ),
+) -> None:
+    if platforms_flag:
+        targets = _resolve_platforms(platforms_flag)
+        for t in targets:
+            if not is_installed(t):
+                typer.echo(f"Error: {t.id!r} is not installed.", err=True)
+                raise typer.Exit(code=2)
+    else:
+        targets = [p for p in detect_platforms() if is_installed(p)]
+
+    if not targets:
+        typer.echo(
+            "No installed platforms found. Run 'wbox skills install' first.",
+            err=True,
+        )
+        raise typer.Exit(code=2)
+
+    current = _pkg_version("wealthbox-cli")
+
+    with as_file(files("wealthbox_tools").joinpath("skills/wealthbox-crm")) as src:
+        for t in targets:
+            existing = (read_meta(skill_dir(t)).get("template") or {}).get("cli_version", "-")
+            try:
+                upgrade_skill(t, Path(src))
+            except SkillInstallError as e:
+                typer.echo(f"Error upgrading {t.id}: {e}", err=True)
+                raise typer.Exit(code=1) from e
+            update_template_meta(skill_dir(t), cli_version=current)
+            typer.echo(f"OK upgraded {t.id}: {existing} -> {current}")
 
 
 @app.command("doctor", help="Diagnose install state and token.")
@@ -220,13 +262,19 @@ def doctor_cmd(
 
     from ._util import run_client
 
+    current = _pkg_version("wealthbox-cli")
     typer.echo("# Skill install state")
     for p in detect_platforms():
         status = "installed" if is_installed(p) else "not installed"
-        meta_path = skill_dir(p) / "firm" / "_meta.json"
-        bootstrapped = "bootstrapped" if meta_path.exists() else "not bootstrapped"
+        meta = read_meta(skill_dir(p)) if is_installed(p) else {}
+        bootstrapped = "bootstrapped" if meta.get("firm") else "not bootstrapped"
+        template_v = (meta.get("template") or {}).get("cli_version", "-")
+        upgrade_hint = ""
+        if template_v not in ("-", current):
+            upgrade_hint = f"  [upgrade available: {template_v} -> {current}]"
         typer.echo(
-            f"  {p.id:<22} {status:<16} {bootstrapped:<18} {skill_dir(p)}"
+            f"  {p.id:<22} {status:<16} {bootstrapped:<18} "
+            f"template={template_v:<10} {skill_dir(p)}{upgrade_hint}"
         )
 
     typer.echo("\n# Token")

@@ -69,10 +69,36 @@ def install_skill(platform: Platform, src: Path, *, force: bool) -> None:
         _safe_rmtree(platform, dest)
     dest.parent.mkdir(parents=True, exist_ok=True)
     shutil.copytree(src, dest)
-    if platform.skill_filename != "SKILL.md":
-        skill_md = dest / "SKILL.md"
-        if skill_md.exists():
-            skill_md.rename(dest / platform.skill_filename)
+    _rename_skill_md(platform, dest)
+
+
+def upgrade_skill(platform: Platform, src: Path) -> None:
+    """Re-copy the bundled template over an existing install.
+
+    Preserves the user's `firm/` directory and root `_meta.json` (the
+    bundled template ships neither). Refreshes SKILL.md, references/,
+    firm-examples/, and bootstrap.md.
+    """
+    dest = skill_dir(platform)
+    if not dest.is_dir() or not (dest / platform.skill_filename).is_file():
+        raise SkillInstallError(
+            f"Cannot upgrade: nothing installed at {dest}"
+        )
+    shutil.copytree(src, dest, dirs_exist_ok=True)
+    _rename_skill_md(platform, dest)
+
+
+def _rename_skill_md(platform: Platform, dest: Path) -> None:
+    """Rename SKILL.md → platform.skill_filename if needed (e.g. AGENTS.md for codex)."""
+    if platform.skill_filename == "SKILL.md":
+        return
+    skill_md = dest / "SKILL.md"
+    target = dest / platform.skill_filename
+    if not skill_md.exists():
+        return
+    if target.exists():
+        target.unlink()
+    skill_md.rename(target)
 
 
 def uninstall_skill(platform: Platform) -> None:

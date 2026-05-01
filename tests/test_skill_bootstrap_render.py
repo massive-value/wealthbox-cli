@@ -89,12 +89,12 @@ def test_render_users_empty_list():
 # Stubs + meta.json                                                            #
 # --------------------------------------------------------------------------- #
 
-import json  # noqa: E402
-
 from wealthbox_tools.cli._skill_bootstrap import (  # noqa: E402
     FIRM_README,
     STUB_CONTENTS,
-    write_meta_json,
+    read_meta,
+    update_firm_meta,
+    update_template_meta,
     write_stubs,
 )
 
@@ -129,21 +129,43 @@ def test_write_stubs_never_overwrites(tmp_path):
     assert "contacts.md" not in written
 
 
-def test_write_meta_json_records_timestamps(tmp_path):
-    firm = tmp_path / "firm"
-    firm.mkdir()
-    write_meta_json(
-        firm,
+def test_update_template_meta_writes_to_skill_root(tmp_path):
+    update_template_meta(tmp_path, cli_version="1.1.2")
+    meta = read_meta(tmp_path)
+    assert meta == {"template": {"cli_version": "1.1.2"}}
+    assert (tmp_path / "_meta.json").exists()
+
+
+def test_update_firm_meta_preserves_template_section(tmp_path):
+    update_template_meta(tmp_path, cli_version="1.1.2")
+    update_firm_meta(
+        tmp_path,
+        identity={"id": 99, "name": "Test Firm"},
+        cli_version="1.1.2",
         generated_files=["categories.md", "custom-fields.md", "users.md"],
-        firm_identity={"id": 99, "name": "Test Firm"},
-        cli_version="1.1.0",
     )
-    meta = json.loads((firm / "_meta.json").read_text())
-    assert meta["firm"]["id"] == 99
-    assert meta["cli_version"] == "1.1.0"
-    assert set(meta["files"]) == {"categories.md", "custom-fields.md", "users.md"}
-    for ts in meta["files"].values():
+    meta = read_meta(tmp_path)
+    assert meta["template"] == {"cli_version": "1.1.2"}
+    assert meta["firm"]["identity"] == {"id": 99, "name": "Test Firm"}
+    assert meta["firm"]["cli_version"] == "1.1.2"
+    assert set(meta["firm"]["files"]) == {
+        "categories.md", "custom-fields.md", "users.md",
+    }
+    for ts in meta["firm"]["files"].values():
         assert "T" in ts  # ISO 8601
+
+
+def test_update_template_meta_preserves_firm_section(tmp_path):
+    update_firm_meta(
+        tmp_path,
+        identity={"id": 1, "name": "Old"},
+        cli_version="1.1.0",
+        generated_files=["categories.md"],
+    )
+    update_template_meta(tmp_path, cli_version="1.1.2")
+    meta = read_meta(tmp_path)
+    assert meta["template"]["cli_version"] == "1.1.2"
+    assert meta["firm"]["identity"]["name"] == "Old"
 
 
 def test_firm_readme_constant_mentions_generated_and_hand_edited():

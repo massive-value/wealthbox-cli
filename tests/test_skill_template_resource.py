@@ -47,9 +47,18 @@ def test_skill_md_has_first_run_section():
     resource = files("wealthbox_tools").joinpath("skills/wealthbox-crm/SKILL.md")
     with as_file(resource) as path:
         content = path.read_text(encoding="utf-8")
-    assert "## First Run (self-delete after completion)" in content
-    assert "firm/_meta.json" in content
+    assert "## First Run" in content
+    assert "_meta.json" in content
     assert "bootstrap.md" in content
+
+
+def test_skill_md_has_staleness_check_section():
+    resource = files("wealthbox_tools").joinpath("skills/wealthbox-crm/SKILL.md")
+    with as_file(resource) as path:
+        content = path.read_text(encoding="utf-8")
+    assert "## Staleness Check" in content
+    assert "wbox skills upgrade" in content
+    assert "template.cli_version" in content
 
 
 def test_skill_md_workflow_mentions_firm_folder():

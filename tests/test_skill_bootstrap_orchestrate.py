@@ -57,7 +57,8 @@ def test_bootstrap_writes_generated_and_stubs_first_time(tmp_path):
     assert (firm / "categories.md").exists()
     assert (firm / "custom-fields.md").exists()
     assert (firm / "users.md").exists()
-    assert (firm / "_meta.json").exists()
+    assert (skill_dir / "_meta.json").exists()
+    assert not (firm / "_meta.json").exists()
     assert (firm / "_README.md").exists()
     for n in (
         "contacts.md", "tasks.md", "notes.md", "events.md",
@@ -101,8 +102,11 @@ def test_bootstrap_records_firm_identity_in_meta(tmp_path):
 
     bootstrap_skill_dir(skill_dir, token="t", generated_only=False)
 
-    meta = json.loads((skill_dir / "firm" / "_meta.json").read_text())
-    assert meta["firm"]["id"] == 31965
-    assert meta["firm"]["name"] == "Squire Wealth Advisors"
-    assert meta["firm"]["user_id"] == 42
-    assert meta["firm"]["user_name"] == "Kadin"
+    meta = json.loads((skill_dir / "_meta.json").read_text())
+    identity = meta["firm"]["identity"]
+    assert identity["id"] == 31965
+    assert identity["name"] == "Squire Wealth Advisors"
+    assert identity["user_id"] == 42
+    assert identity["user_name"] == "Kadin"
+    assert "cli_version" in meta["firm"]
+    assert meta["firm"]["files"]  # at least one generated-file timestamp
