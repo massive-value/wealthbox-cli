@@ -1,11 +1,14 @@
 # First-Run Bootstrap
 
-You were told to read this because `_meta.json` in the skill root does not
-contain a `firm` section. Follow every step below.
+You were told to read this because `_meta.json.firm.onboarded_at` is missing
+in the skill root. Follow every step below, then run the marker command in
+Step 5 so this bootstrap path is skipped on future invocations.
 
 ## Step 1 — Fetch API-derived firm data
 
-Run this command:
+Check `_meta.json` first. If it already has a `firm` section with `identity`
+and a `files` map, the CLI bootstrap has already run on this machine and
+you can skip to Step 2. Otherwise, run:
 
 ```bash
 wbox skills bootstrap
@@ -13,11 +16,12 @@ wbox skills bootstrap
 
 It populates these files per installed platform:
 
-- `firm/categories.md` — every category type + valid values
-- `firm/custom-fields.md` — custom fields per document type + valid values
-- `firm/users.md` — user id → name → email
+- `firm/categories.md` — every category type + valid values (paginated; complete)
+- `firm/custom-fields.md` — custom fields per document type + valid values (paginated; complete)
+- `firm/users.md` — user id → name → email (paginated; complete)
 - `_meta.json` (skill root) — adds the `firm` section: identity, refresh
-  timestamps, and the CLI version that ran the bootstrap
+  timestamps, and the CLI version that ran the bootstrap. Does **not**
+  set `onboarded_at` — that's Step 5.
 - Stub files: `firm/contacts.md`, `firm/tasks.md`, `firm/notes.md`,
   `firm/events.md`, `firm/opportunities.md`, `firm/projects.md`,
   `firm/workflows.md` — one-line TODOs you will fill in next.
@@ -32,6 +36,10 @@ in `firm/<resource>.md`, replacing the stub TODO.
 
 Read `firm/categories.md` and `firm/custom-fields.md` first so every
 multiple-choice prompt offers **real** values from the firm's workspace.
+If the advisor mentions a tag, custom-field option, or user that you can't
+find in those files, flag it — they're generated from a paginated fetch and
+*should* be complete. A missing entry usually means the value doesn't exist
+in the workspace yet (rather than a pagination gap).
 
 ### firm/contacts.md
 
@@ -90,11 +98,22 @@ Ask the advisor: "Is there any firm convention, custom process, or preference
 I haven't asked about that I should follow?" Append freeform answers to
 `firm/workflows.md` under a `## Other Conventions` heading.
 
-## Step 4 — Confirm and continue
+## Step 4 — Mark the firm onboarded
+
+Run:
+
+```bash
+wbox skills mark-onboarded
+```
+
+This stamps `firm.onboarded_at` in `_meta.json`. The First Run check in
+`SKILL.md` keys off this field, so future invocations will skip the
+bootstrap path automatically.
+
+## Step 5 — Confirm and continue
 
 Tell the advisor: "First-run setup complete — `firm/` populated for <firm
 name>." Then return to the user's original request.
 
 You don't need to delete this file or trim `SKILL.md`. The first-run check
-keys on `_meta.json.firm`, which now exists, so the bootstrap path will be
-skipped on every subsequent invocation automatically.
+keys on `_meta.json.firm.onboarded_at`, which now exists.

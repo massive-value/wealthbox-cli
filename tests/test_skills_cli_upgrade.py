@@ -84,16 +84,18 @@ def test_upgrade_errors_when_nothing_installed(runner, tmp_path, monkeypatch):
     assert "no installed" in output.lower()
 
 
-def test_upgrade_codex_keeps_agents_md_and_no_skill_md(runner, tmp_path, monkeypatch):
+def test_upgrade_codex_keeps_skill_md(runner, tmp_path, monkeypatch):
+    """Codex stores skills as SKILL.md (same as Claude Code) — upgrade should
+    refresh that file and not produce an AGENTS.md."""
     dest = _install(runner, tmp_path, monkeypatch, platform="codex")
-    assert (dest / "AGENTS.md").exists()
-    assert not (dest / "SKILL.md").exists()
-    (dest / "AGENTS.md").write_text("TAMPERED")
+    assert (dest / "SKILL.md").exists()
+    assert not (dest / "AGENTS.md").exists()
+    (dest / "SKILL.md").write_text("TAMPERED")
 
     result = runner.invoke(app, ["skills", "upgrade"])
     assert result.exit_code == 0, result.stdout
-    assert (dest / "AGENTS.md").read_text().startswith("---")
-    assert not (dest / "SKILL.md").exists()
+    assert (dest / "SKILL.md").read_text().startswith("---")
+    assert not (dest / "AGENTS.md").exists()
 
 
 def test_upgrade_explicit_platform_flag(runner, tmp_path, monkeypatch):

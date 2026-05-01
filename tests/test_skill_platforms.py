@@ -21,12 +21,12 @@ def test_claude_code_user_platform_uses_home_claude_skills(monkeypatch, tmp_path
     assert p.requires_project_cwd is False
 
 
-def test_codex_platform_uses_agents_md(monkeypatch, tmp_path):
+def test_codex_platform_uses_skill_md(monkeypatch, tmp_path):
     monkeypatch.setenv("HOME", str(tmp_path))
     monkeypatch.setenv("USERPROFILE", str(tmp_path))
     platforms = {p.id: p for p in detect_platforms()}
     p = platforms["codex"]
-    assert p.skill_filename == "AGENTS.md"
+    assert p.skill_filename == "SKILL.md"
     assert p.root_dir == tmp_path / ".codex" / "skills"
 
 
@@ -87,18 +87,19 @@ def test_install_copies_template(tmp_path):
     assert is_installed(platform)
 
 
-def test_install_renames_to_agents_md_for_codex(tmp_path):
+def test_install_keeps_skill_md_for_all_platforms(tmp_path):
+    """All platforms (including codex) install SKILL.md verbatim — no rename."""
     template = _make_template(tmp_path)
     platform = Platform(
         id="t", label="t",
         root_dir=tmp_path / "root",
-        skill_filename="AGENTS.md",
+        skill_filename="SKILL.md",
         requires_project_cwd=False,
     )
     install_skill(platform, template, force=False)
     dest = tmp_path / "root" / "wealthbox-crm"
-    assert (dest / "AGENTS.md").exists()
-    assert not (dest / "SKILL.md").exists()
+    assert (dest / "SKILL.md").exists()
+    assert not (dest / "AGENTS.md").exists()
 
 
 def test_install_refuses_overwrite_without_force(tmp_path):

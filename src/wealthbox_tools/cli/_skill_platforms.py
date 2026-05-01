@@ -40,7 +40,7 @@ def detect_platforms() -> list[Platform]:
             id="codex",
             label="Codex",
             root_dir=home / ".codex" / "skills",
-            skill_filename="AGENTS.md",
+            skill_filename="SKILL.md",
             requires_project_cwd=False,
         ),
     ]
@@ -69,7 +69,6 @@ def install_skill(platform: Platform, src: Path, *, force: bool) -> None:
         _safe_rmtree(platform, dest)
     dest.parent.mkdir(parents=True, exist_ok=True)
     shutil.copytree(src, dest)
-    _rename_skill_md(platform, dest)
 
 
 def upgrade_skill(platform: Platform, src: Path) -> None:
@@ -85,20 +84,6 @@ def upgrade_skill(platform: Platform, src: Path) -> None:
             f"Cannot upgrade: nothing installed at {dest}"
         )
     shutil.copytree(src, dest, dirs_exist_ok=True)
-    _rename_skill_md(platform, dest)
-
-
-def _rename_skill_md(platform: Platform, dest: Path) -> None:
-    """Rename SKILL.md → platform.skill_filename if needed (e.g. AGENTS.md for codex)."""
-    if platform.skill_filename == "SKILL.md":
-        return
-    skill_md = dest / "SKILL.md"
-    target = dest / platform.skill_filename
-    if not skill_md.exists():
-        return
-    if target.exists():
-        target.unlink()
-    skill_md.rename(target)
 
 
 def uninstall_skill(platform: Platform) -> None:

@@ -18,7 +18,9 @@ def test_install_by_flag_copies_template(runner, tmp_path, monkeypatch):
     assert (dest / "firm-examples" / "contacts.md").exists()
 
 
-def test_install_codex_renames_to_agents_md(runner, tmp_path, monkeypatch):
+def test_install_codex_uses_skill_md(runner, tmp_path, monkeypatch):
+    """Codex stores skills as SKILL.md (same as Claude Code). AGENTS.md is the
+    project-level instructions file, not a skill filename."""
     monkeypatch.setenv("HOME", str(tmp_path))
     monkeypatch.setenv("USERPROFILE", str(tmp_path))
     monkeypatch.chdir(tmp_path)
@@ -27,8 +29,8 @@ def test_install_codex_renames_to_agents_md(runner, tmp_path, monkeypatch):
     )
     assert result.exit_code == 0, result.stdout
     dest = tmp_path / ".codex" / "skills" / "wealthbox-crm"
-    assert (dest / "AGENTS.md").exists()
-    assert not (dest / "SKILL.md").exists()
+    assert (dest / "SKILL.md").exists()
+    assert not (dest / "AGENTS.md").exists()
 
 
 def test_install_refuses_existing_without_force(runner, tmp_path, monkeypatch):

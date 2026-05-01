@@ -176,15 +176,39 @@ def update_firm_meta(
     cli_version: str,
     generated_files: list[str],
 ) -> None:
-    """Set the firm section of _meta.json. Preserves any existing template section."""
+    """Set the firm section of _meta.json. Preserves the qualitative onboarded_at marker
+    (set by the agent via `wbox skills mark-onboarded`) and any existing template section."""
     now = datetime.now(timezone.utc).isoformat()
     meta = read_meta(skill_dir)
-    meta["firm"] = {
+    existing_firm = meta.get("firm") or {}
+    firm_section: dict[str, Any] = {
         "identity": identity,
         "cli_version": cli_version,
         "files": {name: now for name in generated_files},
     }
+    onboarded_at = existing_firm.get("onboarded_at")
+    if onboarded_at:
+        firm_section["onboarded_at"] = onboarded_at
+    meta["firm"] = firm_section
     write_meta(skill_dir, meta)
+
+
+def mark_firm_onboarded(skill_dir: Path) -> str:
+    """Stamp `firm.onboarded_at` with the current UTC time. Returns the timestamp written.
+
+    Raises FileNotFoundError if no `firm` section exists yet (caller must run
+    `wbox skills bootstrap` before marking onboarded)."""
+    meta = read_meta(skill_dir)
+    firm = meta.get("firm")
+    if not firm:
+        raise FileNotFoundError(
+            f"{meta_path(skill_dir)} has no 'firm' section; run 'wbox skills bootstrap' first."
+        )
+    now = datetime.now(timezone.utc).isoformat()
+    firm["onboarded_at"] = now
+    meta["firm"] = firm
+    write_meta(skill_dir, meta)
+    return now
 
 
 def copy_firm_meta(src_skill_dir: Path, dst_skill_dir: Path) -> bool:
@@ -230,18 +254,18 @@ async def _fetch_all(
     for ct in CategoryType:
         if ct is CategoryType.CUSTOM_FIELDS:
             continue
-        resp = await client.list_categories(ct)
+        resp = await client.list_all_categories(ct)
         categories[ct.value] = resp.get(ct.value, [])
 
     custom_fields: dict[str, list[dict[str, Any]]] = {}
     for dt in DocumentType:
-        resp = await client.list_categories(
+        resp = await client.list_all_categories(
             CategoryType.CUSTOM_FIELDS,
             CategoryListQuery(document_type=dt),
         )
         custom_fields[dt.value] = resp.get("custom_fields", [])
 
-    users_resp = await client.list_users()
+    users_resp = await client.list_all_users()
     users = users_resp.get("users", [])
 
     me = await client.get_me()

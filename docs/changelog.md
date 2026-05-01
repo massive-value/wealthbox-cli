@@ -6,6 +6,19 @@ This project uses [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [1.1.6](https://github.com/massive-value/wealthbox-cli/releases/tag/v1.1.6) — 2026-05-01
+
+### Fixed
+- `wbox skills bootstrap` and `wbox skills refresh` now paginate every API call. Previously they fetched a single page (default `per_page=25`) for each category type, custom-field document type, and the user list, silently truncating any workspace with more than 25 entries per group. Generated `firm/categories.md`, `firm/custom-fields.md`, and `firm/users.md` are now complete.
+- The codex skill installs as `SKILL.md`, not `AGENTS.md`. Codex uses `SKILL.md` for skills (same as Claude Code); `AGENTS.md` is the project-level instructions file (the codex equivalent of `CLAUDE.md`) and was never the right name for a skill. **Migration:** if you installed the skill under codex on 1.1.5 or earlier, reinstall with `wbox skills install --platform codex --force` to drop the stale `AGENTS.md`.
+- The skill's First Run check now keys on `firm.onboarded_at` instead of the mere presence of a `firm` section. Previously, running `wbox skills bootstrap` populated the `firm` section, which made the agent skip the qualitative Q&A in `bootstrap.md` on first invocation. The CLI bootstrap is the *quantitative* half (categories, custom fields, users); the *qualitative* half (firm defaults, naming conventions, named workflows) happens at first agent invocation, and the agent now stamps `firm.onboarded_at` when it finishes.
+
+### Added
+- `wbox skills mark-onboarded` — stamps `firm.onboarded_at` in the skill's `_meta.json`. The agent invokes this as the last step of `bootstrap.md`; users typically don't need to run it manually.
+- `wbox skills list` and `wbox skills doctor` now report onboarded status (`bootstrapped (qualitative pending)` vs `onboarded`).
+
+---
+
 ## [1.1.5](https://github.com/massive-value/wealthbox-cli/releases/tag/v1.1.5) — 2026-05-01
 
 ### Fixed

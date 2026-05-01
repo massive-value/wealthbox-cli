@@ -10,14 +10,20 @@ opportunities, projects, workflows, households, and read-only lookups (categorie
 
 ## First Run
 
-If `_meta.json` in this skill's directory does **not** contain a `firm`
-section, the firm has not been onboarded yet on this machine. Before
-handling the user's request:
+If `_meta.json.firm.onboarded_at` is missing in this skill's directory,
+the firm has not been onboarded yet on this machine. Before handling the
+user's request:
 
 1. Read `bootstrap.md` in this skill's directory.
 2. Follow it end-to-end.
-3. The bootstrap will populate `_meta.json.firm` so this check passes
-   on subsequent runs.
+3. The final step writes `_meta.json.firm.onboarded_at`, which makes
+   this check pass on subsequent runs.
+
+`firm.onboarded_at` is the qualitative-onboarding marker. The CLI
+bootstrap (`wbox skills bootstrap`) only populates the API-derived
+parts of `firm` (identity, generated files); it intentionally does
+*not* set `onboarded_at`, because that requires the per-firm Q&A in
+`bootstrap.md`.
 
 ## Staleness Check
 

@@ -8,7 +8,7 @@ from pathlib import Path
 
 import typer
 
-from ._skill_bootstrap import copy_firm_meta, read_meta, update_template_meta
+from ._skill_bootstrap import copy_firm_meta, mark_firm_onboarded, read_meta, update_template_meta
 from ._skill_platforms import (
     Platform,
     SkillInstallError,
@@ -29,13 +29,14 @@ app = typer.Typer(
 
 @app.command("list", help="Show where the skill is installed per platform.")
 def list_platforms() -> None:
-    header = ("platform", "path", "status", "template-version", "last-bootstrap")
-    rows: list[tuple[str, str, str, str, str]] = []
+    header = ("platform", "path", "status", "template-version", "last-bootstrap", "onboarded")
+    rows: list[tuple[str, str, str, str, str, str]] = []
     for p in detect_platforms():
         dest = skill_dir(p)
         installed = is_installed(p)
         template_version = "-"
         last_bootstrap = "-"
+        onboarded = "-"
         if installed:
             meta = read_meta(dest)
             template_version = meta.get("template", {}).get("cli_version", "-")
@@ -43,12 +44,14 @@ def list_platforms() -> None:
             firm_files = firm_section.get("files") or {}
             if firm_files:
                 last_bootstrap = max(firm_files.values())
+            onboarded = firm_section.get("onboarded_at") or "no"
         rows.append((
             p.id,
             str(dest),
             "installed" if installed else "not installed",
             template_version,
             last_bootstrap,
+            onboarded,
         ))
 
     widths = [
@@ -268,13 +271,19 @@ def doctor_cmd(
     for p in detect_platforms():
         status = "installed" if is_installed(p) else "not installed"
         meta = read_meta(skill_dir(p)) if is_installed(p) else {}
-        bootstrapped = "bootstrapped" if meta.get("firm") else "not bootstrapped"
+        firm_section = meta.get("firm") or {}
+        if not firm_section:
+            firm_state = "not bootstrapped"
+        elif firm_section.get("onboarded_at"):
+            firm_state = "onboarded"
+        else:
+            firm_state = "bootstrapped (qualitative pending)"
         template_v = (meta.get("template") or {}).get("cli_version", "-")
         upgrade_hint = ""
         if template_v not in ("-", current):
             upgrade_hint = f"  [upgrade available: {template_v} -> {current}]"
         typer.echo(
-            f"  {p.id:<22} {status:<16} {bootstrapped:<18} "
+            f"  {p.id:<22} {status:<16} {firm_state:<36} "
             f"template={template_v:<10} {skill_dir(p)}{upgrade_hint}"
         )
 
@@ -440,6 +449,41 @@ def sync_cmd(
         typer.echo(
             f"OK synced {len(src_files)} files: {source.id} -> {t.id}{meta_note}"
         )
+
+
+@app.command(
+    "mark-onboarded",
+    help="Stamp firm.onboarded_at in _meta.json. Run after qualitative firm Q&A is captured.",
+)
+def mark_onboarded_cmd(
+    platforms_flag: list[str] = typer.Option(
+        [], "--platform", "-p",
+        help="Platform id. Default: every installed platform.",
+    ),
+) -> None:
+    if platforms_flag:
+        targets = _resolve_platforms(platforms_flag)
+        for t in targets:
+            if not is_installed(t):
+                typer.echo(f"Error: {t.id!r} is not installed.", err=True)
+                raise typer.Exit(code=2)
+    else:
+        targets = [p for p in detect_platforms() if is_installed(p)]
+
+    if not targets:
+        typer.echo(
+            "No installed platforms found. Run 'wbox skills install' first.",
+            err=True,
+        )
+        raise typer.Exit(code=2)
+
+    for t in targets:
+        try:
+            ts = mark_firm_onboarded(skill_dir(t))
+        except FileNotFoundError as e:
+            typer.echo(f"Error: {t.id}: {e}", err=True)
+            raise typer.Exit(code=2) from e
+        typer.echo(f"OK marked {t.id} onboarded at {ts}")
 
 
 @app.command("uninstall", help="Remove the wealthbox-crm skill from a platform.")

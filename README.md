@@ -103,11 +103,13 @@ wbox config set-token        # paste your Wealthbox API token
 wbox skills install          # interactive: pick Claude Code, Codex, or both
 ```
 
-The installer asks which platforms to target, copies the skill into the right directory (`~/.claude/skills/` for Claude Code, `~/.codex/skills/` for Codex — with `SKILL.md` renamed to `AGENTS.md` automatically), and offers to bootstrap your firm's customizations from the Wealthbox API.
+The installer asks which platforms to target, copies the skill into the right directory (`~/.claude/skills/` for Claude Code, `~/.codex/skills/` for Codex — both use `SKILL.md`), and offers to bootstrap your firm's customizations from the Wealthbox API.
 
-### First agent run bootstraps itself
+> **Upgrading from < 1.1.6?** Earlier versions installed the codex skill as `AGENTS.md`. That was wrong — codex uses `SKILL.md` for skills (and `AGENTS.md` only as the project-level instructions file, in place of `CLAUDE.md`). If your codex install still has `AGENTS.md`, reinstall with `wbox skills install --platform codex --force`.
 
-The first time an agent invokes the skill, it walks you through populating firm-specific conventions — category values, custom fields, users, defaults, required fields, household naming, named workflows. No further CLI commands needed. After that first run, the bootstrap artifacts self-delete from the skill.
+### First agent run captures firm conventions
+
+`wbox skills bootstrap` populates the API-derived files (categories, custom fields, users) — that's the *quantitative* half. The *qualitative* half (firm defaults, naming conventions, named workflows, required fields) happens the first time an agent invokes the skill: it walks you through the questions in `bootstrap.md` and stamps `firm.onboarded_at` in `_meta.json` when done. On subsequent runs the bootstrap path is skipped automatically.
 
 ### Refresh after firm changes
 
@@ -126,6 +128,7 @@ wbox skills list             # show where the skill is installed + last bootstra
 wbox skills doctor           # diagnose install state + token
 wbox skills sync             # copy firm/ from one install to others (Claude Code <-> Codex)
 wbox skills upgrade          # refresh template files (SKILL.md, references/, ...) preserving firm/
+wbox skills mark-onboarded   # stamp firm.onboarded_at after qualitative Q&A (the agent calls this for you)
 wbox skills uninstall        # remove the skill
 ```
 
