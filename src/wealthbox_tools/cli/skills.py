@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import shutil
 from datetime import datetime, timezone
 from importlib.resources import as_file, files
 from pathlib import Path
@@ -241,6 +242,142 @@ def doctor_cmd(
         typer.echo(f"  token failed: {e}")
     except Exception as e:  # network, config, etc.
         typer.echo(f"  token check failed: {e}")
+
+
+def _prompt_sync_source(installed: list[Platform]) -> Platform:
+    typer.echo("Installed platforms:")
+    for i, p in enumerate(installed, 1):
+        typer.echo(f"  {i}. {p.id:<22} {p.label}")
+    while True:
+        raw = typer.prompt("Source platform (id or number)").strip()
+        for i, p in enumerate(installed, 1):
+            if raw == str(i) or raw == p.id:
+                return p
+        typer.echo(f"  ! unknown selection {raw!r}; try again", err=True)
+
+
+def _prompt_sync_targets(candidates: list[Platform]) -> list[Platform]:
+    typer.echo("Available targets:")
+    for i, p in enumerate(candidates, 1):
+        typer.echo(f"  {i}. {p.id:<22} {p.label}")
+    typer.echo("  a. all of the above")
+    raw = typer.prompt("Targets (comma-separated ids/numbers, or 'a')").strip()
+    if raw.lower() in {"a", "all"}:
+        return list(candidates)
+    selected: list[Platform] = []
+    for token in (t.strip() for t in raw.split(",") if t.strip()):
+        match: Platform | None = None
+        for i, p in enumerate(candidates, 1):
+            if token == str(i) or token == p.id:
+                match = p
+                break
+        if match is None:
+            raise typer.BadParameter(f"unknown target {token!r}")
+        if match not in selected:
+            selected.append(match)
+    return selected
+
+
+@app.command(
+    "sync",
+    help="Copy firm/ files from one installed platform to one or more others.",
+)
+def sync_cmd(
+    source_id: str | None = typer.Option(
+        None, "--source", "-s",
+        help="Platform id to copy firm/ from. Prompts if omitted.",
+    ),
+    target_ids: list[str] = typer.Option(
+        [], "--target", "-t",
+        help="Platform id to copy firm/ to. Repeat for multiple. Prompts if omitted.",
+    ),
+    all_targets: bool = typer.Option(
+        False, "--all-targets",
+        help="Sync to every installed platform except the source.",
+    ),
+    dry_run: bool = typer.Option(
+        False, "--dry-run", help="Show planned writes without copying.",
+    ),
+    yes: bool = typer.Option(
+        False, "--yes", "-y", help="Skip confirmation prompt.",
+    ),
+) -> None:
+    installed = [p for p in detect_platforms() if is_installed(p)]
+    if len(installed) < 2:
+        ids = [p.id for p in installed] or ["none"]
+        typer.echo(
+            f"Need at least two installed platforms to sync. Installed: {ids}",
+            err=True,
+        )
+        raise typer.Exit(code=2)
+
+    if source_id:
+        source = _resolve_platforms([source_id])[0]
+        if not is_installed(source):
+            typer.echo(f"Error: source {source.id!r} is not installed.", err=True)
+            raise typer.Exit(code=2)
+    else:
+        source = _prompt_sync_source(installed)
+
+    src_firm = skill_dir(source) / "firm"
+    if not src_firm.is_dir():
+        typer.echo(
+            f"Error: {source.id} has no firm/ directory at {src_firm}. "
+            f"Run 'wbox skills bootstrap --platform {source.id}' first.",
+            err=True,
+        )
+        raise typer.Exit(code=2)
+
+    others = [p for p in installed if p.id != source.id]
+
+    if all_targets and target_ids:
+        typer.echo("Error: --all-targets and --target are mutually exclusive.", err=True)
+        raise typer.Exit(code=2)
+
+    if all_targets:
+        targets = others
+    elif target_ids:
+        targets = _resolve_platforms(target_ids)
+        for t in targets:
+            if t.id == source.id:
+                typer.echo(f"Error: target {t.id!r} is the same as the source.", err=True)
+                raise typer.Exit(code=2)
+            if not is_installed(t):
+                typer.echo(f"Error: target {t.id!r} is not installed.", err=True)
+                raise typer.Exit(code=2)
+    else:
+        targets = _prompt_sync_targets(others)
+
+    if not targets:
+        typer.echo("No targets selected.", err=True)
+        raise typer.Exit(code=2)
+
+    typer.echo(f"Source: {source.id} ({src_firm})")
+    typer.echo("Targets:")
+    for t in targets:
+        typer.echo(f"  {t.id} ({skill_dir(t) / 'firm'})")
+
+    src_files = sorted(p for p in src_firm.rglob("*") if p.is_file())
+
+    if dry_run:
+        for t in targets:
+            tgt_firm = skill_dir(t) / "firm"
+            for src_file in src_files:
+                rel = src_file.relative_to(src_firm)
+                dest = tgt_firm / rel
+                action = "overwrite" if dest.exists() else "create"
+                typer.echo(f"  [dry-run][{t.id}] {action} firm/{rel.as_posix()}")
+        return
+
+    if not yes and not typer.confirm("Proceed with sync?", default=False):
+        typer.echo("Cancelled.")
+        raise typer.Exit(code=1)
+
+    for t in targets:
+        tgt_firm = skill_dir(t) / "firm"
+        tgt_firm.mkdir(parents=True, exist_ok=True)
+        shutil.copytree(src_firm, tgt_firm, dirs_exist_ok=True)
+        typer.echo(f"OK synced {len(src_files)} files: {source.id} -> {t.id}")
 
 
 @app.command("uninstall", help="Remove the wealthbox-crm skill from a platform.")

@@ -124,8 +124,11 @@ This updates the generated half of the skill's firm files; hand-edited policy is
 ```bash
 wbox skills list             # show where the skill is installed + last bootstrap time
 wbox skills doctor           # diagnose install state + token
+wbox skills sync             # copy firm/ from one install to others (Claude Code <-> Codex)
 wbox skills uninstall        # remove the skill
 ```
+
+`wbox skills sync` is useful if you maintain firm conventions in one platform's install (e.g., your Claude Code user scope) and want the same `firm/` files mirrored to Codex or to a project-scoped `.claude/skills/` folder. The command runs as a wizard by default; pass `--source`, `--target`, and `--yes` for non-interactive use.
 
 ### Works with other agents too
 

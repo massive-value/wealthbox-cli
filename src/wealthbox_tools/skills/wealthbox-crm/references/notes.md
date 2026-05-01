@@ -1,6 +1,6 @@
 # Notes
 
-Notes attach free-text content to contacts, projects, or opportunities. No delete support in the API.
+Notes attach free-text content to contacts, projects, or opportunities. No delete support in the API. Text-only — file attachments must be added via the Wealthbox web UI.
 
 ## List Notes
 
