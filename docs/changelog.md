@@ -6,6 +6,17 @@ This project uses [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [1.1.5](https://github.com/massive-value/wealthbox-cli/releases/tag/v1.1.5) — 2026-05-01
+
+### Fixed
+- `wbox skills install`, `wbox skills bootstrap`, and `wbox skills refresh` now honor every token source the rest of the CLI does. Previously these commands only looked at the `--token` flag and `WEALTHBOX_TOKEN` env var, ignoring tokens stored via `wbox config set-token` and `.env` files. Users running `wbox skills install` after `wbox config set-token` saw "Wealthbox token required" errors despite having a token set.
+- The "token required" error message now lists every supported source (flag, env var, config file, `.env`).
+
+### Added
+- `wbox skills install` accepts `--token` (matching `bootstrap`, `refresh`, and `doctor`), so a token can be supplied inline for the post-install bootstrap step.
+
+---
+
 ## [1.1.4](https://github.com/massive-value/wealthbox-cli/releases/tag/v1.1.4) — 2026-05-01
 
 ### Added

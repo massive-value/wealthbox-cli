@@ -212,6 +212,8 @@ from importlib.metadata import version as _pkg_version  # noqa: E402
 from wealthbox_tools.client import WealthboxClient  # noqa: E402
 from wealthbox_tools.models import CategoryListQuery, CategoryType, DocumentType  # noqa: E402
 
+from ._util import get_client  # noqa: E402
+
 
 @dataclass
 class BootstrapResult:
@@ -264,7 +266,7 @@ def bootstrap_skill_dir(
     firm_dir.mkdir(parents=True, exist_ok=True)
 
     async def _run() -> tuple[dict, dict, list, dict]:
-        async with WealthboxClient(token=token) as client:
+        async with get_client(token) as client:
             return await _fetch_all(client)
 
     categories, custom_fields, users, firm_identity = asyncio.run(_run())
