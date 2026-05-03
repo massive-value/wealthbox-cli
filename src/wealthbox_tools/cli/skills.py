@@ -19,6 +19,7 @@ from ._skill_platforms import (
     Platform,
     SkillInstallError,
     detect_platforms,
+    detect_plugin_installs,
     install_skill,
     is_installed,
     skill_dir,
@@ -43,7 +44,7 @@ def _ensure_firm_migrated() -> Path | None:
     return migrate_legacy_firm(installed)
 
 
-@app.command("list", help="Show where the skill is installed per platform.")
+@app.command("list", help="Show every skill copy on this machine: legacy installs and plugin-managed.")
 def list_platforms() -> None:
     _ensure_firm_migrated()
     firm_meta = read_firm_meta()
@@ -55,7 +56,7 @@ def list_platforms() -> None:
             last_bootstrap = max(files_map.values())
         onboarded = firm_meta.get("onboarded_at") or "no"
 
-    header = ("platform", "path", "status", "template-version")
+    header = ("source", "path", "status", "version")
     rows: list[tuple[str, str, str, str]] = []
     for p in detect_platforms():
         dest = skill_dir(p)
@@ -68,6 +69,13 @@ def list_platforms() -> None:
             str(dest),
             "installed" if installed else "not installed",
             template_version,
+        ))
+    for pi in detect_plugin_installs():
+        rows.append((
+            f"plugin:{pi.host}",
+            str(pi.skill_dir),
+            f"plugin@{pi.marketplace}",
+            pi.version,
         ))
 
     widths = [
@@ -291,7 +299,7 @@ def doctor_cmd(
         typer.echo(f"! migrated legacy firm/ data from {migrated_from} to {firm_dir()}")
 
     current = _pkg_version("wealthbox-cli")
-    typer.echo("# Skill install state")
+    typer.echo("# Skill install state (legacy template-copy)")
     for p in detect_platforms():
         status = "installed" if is_installed(p) else "not installed"
         meta = read_meta(skill_dir(p)) if is_installed(p) else {}
@@ -302,6 +310,17 @@ def doctor_cmd(
         typer.echo(
             f"  {p.id:<22} {status:<16} template={template_v:<10} {skill_dir(p)}{upgrade_hint}"
         )
+
+    plugin_installs = detect_plugin_installs()
+    typer.echo("\n# Plugin installs (managed by host CLI: claude/codex plugin)")
+    if not plugin_installs:
+        typer.echo("  (none detected)")
+    else:
+        for pi in plugin_installs:
+            typer.echo(
+                f"  {pi.host:<22} {('plugin@' + pi.marketplace):<24} "
+                f"version={pi.version:<10} {pi.skill_dir}"
+            )
 
     typer.echo("\n# Firm data (canonical)")
     firm_meta = read_firm_meta()

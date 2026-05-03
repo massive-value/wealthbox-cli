@@ -4,6 +4,8 @@ import shutil
 from dataclasses import dataclass
 from pathlib import Path
 
+SKILL_NAME = "wealthbox-crm"
+
 
 @dataclass(frozen=True)
 class Platform:
@@ -14,8 +16,79 @@ class Platform:
     requires_project_cwd: bool
 
 
+@dataclass(frozen=True)
+class PluginInstall:
+    """A copy of `wealthbox-crm` discovered inside an agent host's plugin cache.
+
+    These are managed by the host CLI (`claude plugin install ...` or the
+    Codex equivalent) — `wbox skills install` does not write here, and
+    `wbox skills uninstall` does not touch them.
+    """
+    host: str        # 'claude-code-user' | 'claude-code-project' | 'codex'
+    marketplace: str
+    version: str
+    skill_dir: Path
+
+
 def _home() -> Path:
     return Path.home()
+
+
+def _scan_plugin_cache(cache_root: Path, host: str) -> list[PluginInstall]:
+    """Find any `<marketplace>/<plugin-name>/<version>/skills/wealthbox-crm/`
+    matches under a Claude Code- or Codex-style plugin cache root."""
+    if not cache_root.is_dir():
+        return []
+    out: list[PluginInstall] = []
+    for marketplace_dir in cache_root.iterdir():
+        if not marketplace_dir.is_dir():
+            continue
+        plugin_dir = marketplace_dir / SKILL_NAME
+        if not plugin_dir.is_dir():
+            continue
+        for version_dir in plugin_dir.iterdir():
+            if not version_dir.is_dir():
+                continue
+            skill_dir = version_dir / "skills" / SKILL_NAME
+            if (skill_dir / "SKILL.md").is_file():
+                out.append(PluginInstall(
+                    host=host,
+                    marketplace=marketplace_dir.name,
+                    version=version_dir.name,
+                    skill_dir=skill_dir,
+                ))
+    return out
+
+
+def detect_plugin_installs() -> list[PluginInstall]:
+    """Discover every host-managed plugin copy of wealthbox-crm on this
+    machine. Includes Claude Code user scope, Claude Code project scope
+    (cwd-relative), and Codex.
+
+    Deduped by resolved skill_dir path so a single install isn't reported
+    twice when home and cwd point at the same directory (rare in real use,
+    common in tests).
+    """
+    home = _home()
+    cwd = Path.cwd()
+    candidates = [
+        (home / ".claude" / "plugins" / "cache", "claude-code-user"),
+        (cwd / ".claude" / "plugins" / "cache", "claude-code-project"),
+        (home / ".codex" / "plugins" / "cache", "codex"),
+    ]
+    installs: list[PluginInstall] = []
+    seen: set[Path] = set()
+    for cache_root, host in candidates:
+        for pi in _scan_plugin_cache(cache_root, host=host):
+            try:
+                key = pi.skill_dir.resolve()
+            except OSError:
+                key = pi.skill_dir
+            if key in seen:
+                continue
+            seen.add(key)
+            installs.append(pi)
+    return installs
 
 
 def detect_platforms() -> list[Platform]:
