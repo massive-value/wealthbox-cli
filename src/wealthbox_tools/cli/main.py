@@ -8,6 +8,7 @@ from .activity import app as activity_app
 from .categories import app as categories_app
 from .config import app as config_app
 from .contacts import app as contacts_app
+from .doctor import doctor_cmd as _doctor_cmd
 from .events import app as events_app
 from .households import app as households_app
 from .me import app as me_app
@@ -33,6 +34,12 @@ def _main(
     if version:
         typer.echo(_pkg_version("wealthbox-cli"))
         raise typer.Exit()
+
+
+app.command(
+    "doctor",
+    help="Comprehensive health check: CLI version, auth, agent CLIs, skills, plugins, firm.",
+)(_doctor_cmd)
 
 
 app.add_typer(activity_app, name="activity")

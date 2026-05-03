@@ -14,7 +14,7 @@ from ._skill_bootstrap import (
     read_meta,
     update_template_meta,
 )
-from ._skill_paths import firm_dir, firm_meta_path
+from ._skill_paths import firm_dir
 from ._skill_platforms import (
     Platform,
     SkillInstallError,
@@ -286,70 +286,23 @@ def upgrade_cmd(
             typer.echo(f"OK upgraded {t.id}: {existing} -> {current}")
 
 
-@app.command("doctor", help="Diagnose install state and token.")
+@app.command(
+    "doctor",
+    help="Diagnose install state, auth, and firm data. Alias of `wbox doctor`.",
+)
 def doctor_cmd(
-    token: str | None = typer.Option(None, envvar="WEALTHBOX_TOKEN", hidden=True),
+    token: str | None = typer.Option(
+        None, "--token",
+        help="Override the API token for the smoke test.",
+    ),
 ) -> None:
-    from wealthbox_tools.client import WealthboxAPIError
-
-    from ._util import run_client
-
-    migrated_from = _ensure_firm_migrated()
-    if migrated_from is not None:
-        typer.echo(f"! migrated legacy firm/ data from {migrated_from} to {firm_dir()}")
-
-    current = _pkg_version("wealthbox-cli")
-    typer.echo("# Skill install state (legacy template-copy)")
-    for p in detect_platforms():
-        status = "installed" if is_installed(p) else "not installed"
-        meta = read_meta(skill_dir(p)) if is_installed(p) else {}
-        template_v = (meta.get("template") or {}).get("cli_version", "-")
-        upgrade_hint = ""
-        if template_v not in ("-", current):
-            upgrade_hint = f"  [upgrade available: {template_v} -> {current}]"
-        typer.echo(
-            f"  {p.id:<22} {status:<16} template={template_v:<10} {skill_dir(p)}{upgrade_hint}"
-        )
-
-    plugin_installs = detect_plugin_installs()
-    typer.echo("\n# Plugin installs (managed by host CLI: claude/codex plugin)")
-    if not plugin_installs:
-        typer.echo("  (none detected)")
-    else:
-        for pi in plugin_installs:
-            typer.echo(
-                f"  {pi.host:<22} {('plugin@' + pi.marketplace):<24} "
-                f"version={pi.version:<10} {pi.skill_dir}"
-            )
-
-    typer.echo("\n# Firm data (canonical)")
-    firm_meta = read_firm_meta()
-    if not firm_meta:
-        firm_state = "not bootstrapped"
-    elif firm_meta.get("onboarded_at"):
-        firm_state = "onboarded"
-    else:
-        firm_state = "bootstrapped (qualitative pending)"
-    identity = firm_meta.get("identity") or {}
-    typer.echo(f"  state:     {firm_state}")
-    typer.echo(f"  firm:      {identity.get('name', '-')}")
-    typer.echo(f"  user:      {identity.get('user_name', '-')}")
-    typer.echo(f"  path:      {firm_dir()}")
-    typer.echo(f"  meta:      {firm_meta_path()}")
-
-    typer.echo("\n# Token")
-    try:
-        me = run_client(token, lambda c: c.get_me())
-        accounts = me.get("accounts") or []
-        firm_name = accounts[0].get("name") if accounts else "(no firm)"
-        typer.echo(
-            f"  token ok - authenticated as {me.get('name')} "
-            f"(firm: {firm_name}, user id={me.get('id')})"
-        )
-    except WealthboxAPIError as e:
-        typer.echo(f"  token failed: {e}")
-    except Exception as e:  # network, config, etc.
-        typer.echo(f"  token check failed: {e}")
+    # `wbox skills doctor` is the older entry point; `wbox doctor` is the
+    # canonical top-level form. Both call the same function so the output
+    # never drifts. Token is intentionally not bound to envvar= so the
+    # doctor can report whether the token came from the flag, env var,
+    # config file, or .env file.
+    from .doctor import run_doctor
+    run_doctor(token=token)
 
 
 @app.command(
