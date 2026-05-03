@@ -106,15 +106,34 @@ The skill translates your intent into the correct `wbox` commands, handles flag 
 
 ### Install
 
-One command, same on every OS:
+Two ways depending on which agent you use:
+
+#### Option A — Claude Code plugin marketplace (recommended for Claude Code users)
+
+Inside Claude Code:
+
+```
+/plugin marketplace add massive-value/wealthbox-cli
+/plugin install wealthbox-crm@massive-value
+```
+
+The plugin auto-updates daily. The skill is installed under `~/.claude/plugins/cache/`. Firm data is stored at the canonical machine-level path (`~/.config/wbox/firm/` or `%APPDATA%\wbox\firm\`) — see [Where firm data lives](#where-firm-data-lives) below — and survives plugin auto-updates.
+
+The `wbox` CLI is still required as the execution engine. The bundled SKILL.md tells the agent to install it via the Phase 1 bootstrap if missing.
+
+#### Option B — `wbox skills install` (Claude Code, Codex, or local project scope)
 
 ```bash
 pip install wealthbox-cli
 wbox config set-token        # paste your Wealthbox API token
-wbox skills install          # interactive: pick Claude Code, Codex, or both
+wbox skills install          # interactive: pick Claude Code (user/project), Codex, or all
 ```
 
 The installer asks which platforms to target, copies the skill into the right directory (`~/.claude/skills/` for Claude Code, `~/.codex/skills/` for Codex — both use `SKILL.md`), and offers to bootstrap your firm's customizations from the Wealthbox API.
+
+#### Option C — Codex marketplace (when the openai/skills PR lands)
+
+Pending submission to [openai/skills](https://github.com/openai/skills) (status tracked in CHANGELOG). Until then, use Option B for Codex.
 
 > **Upgrading from < 1.1.6?** Earlier versions installed the codex skill as `AGENTS.md`. That was wrong — codex uses `SKILL.md` for skills (and `AGENTS.md` only as the project-level instructions file, in place of `CLAUDE.md`). If your codex install still has `AGENTS.md`, reinstall with `wbox skills install --platform codex --force`.
 

@@ -17,6 +17,9 @@ This project uses [Semantic Versioning](https://semver.org/).
 
 - `wbox skills firm-path` — prints the canonical firm directory. Used by the agent to locate firm data, and useful for ad-hoc inspection.
 - Automatic migration: any command that reads firm state (`bootstrap`, `refresh`, `doctor`, `list`, `mark-onboarded`, `firm-path`) detects legacy `<skill_dir>/firm/` and `<skill_dir>/_meta.json.firm` data on first run and moves it to the canonical path. If multiple installs have legacy data, the one with the most recent `onboarded_at` (or generated-files timestamp) wins.
+- **Claude Code plugin marketplace.** `.claude-plugin/marketplace.json` at the repo root, plus a self-contained plugin at `plugins/wealthbox-crm/` with `.claude-plugin/plugin.json`. Users can now install with `/plugin marketplace add massive-value/wealthbox-cli` then `/plugin install wealthbox-crm@massive-value` directly inside Claude Code. The custom marketplace works immediately; an Anthropic official-marketplace submission is in flight.
+- **Codex plugin manifest** at `.codex-plugin/plugin.json` plus a `codex-skill/` mirror of the skill template, ready for the openai/skills PR and a future Codex marketplace listing once self-serve publishing opens.
+- `scripts/sync-plugin.py` — keeps the plugin and codex copies in sync with the canonical skill template at `src/wealthbox_tools/skills/wealthbox-crm/`. Run before committing skill template changes.
 
 ### Removed
 
