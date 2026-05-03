@@ -70,11 +70,13 @@ def list_platforms() -> None:
             "installed" if installed else "not installed",
             template_version,
         ))
-    for pi in detect_plugin_installs():
+    plugin_installs = detect_plugin_installs()
+    plugin_installs.sort(key=lambda p: (not p.active, p.version))
+    for pi in plugin_installs:
         rows.append((
             f"plugin:{pi.host}",
             str(pi.skill_dir),
-            f"plugin@{pi.marketplace}",
+            f"plugin@{pi.marketplace} ({'active' if pi.active else 'cached'})",
             pi.version,
         ))
 

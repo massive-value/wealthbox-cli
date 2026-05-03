@@ -250,3 +250,56 @@ def test_detect_plugin_installs_skips_dirs_without_skill_md(monkeypatch, tmp_pat
     incomplete.mkdir(parents=True)
     # No skills/wealthbox-crm/SKILL.md
     assert detect_plugin_installs() == []
+
+
+def _write_installed_plugins(plugins_root: Path, install_path: Path, marketplace: str = "massive-value"):
+    """Write a host-style installed_plugins.json that marks `install_path` active."""
+    plugins_root.mkdir(parents=True, exist_ok=True)
+    state = {
+        "version": 2,
+        "plugins": {
+            f"wealthbox-crm@{marketplace}": [
+                {
+                    "scope": "user",
+                    "installPath": str(install_path),
+                    "version": install_path.name,
+                    "installedAt": "2026-05-03T00:00:00Z",
+                    "lastUpdated": "2026-05-03T00:00:00Z",
+                    "gitCommitSha": "abc123",
+                }
+            ]
+        },
+    }
+    (plugins_root / "installed_plugins.json").write_text(__import__("json").dumps(state))
+
+
+def test_detect_plugin_installs_marks_active_from_installed_plugins_json(monkeypatch, tmp_path):
+    """When installed_plugins.json points at a version dir, that install is
+    marked active and other cached versions are marked cached."""
+    monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.setenv("USERPROFILE", str(tmp_path))
+    monkeypatch.chdir(tmp_path)
+    plugins_root = tmp_path / ".claude" / "plugins"
+    cache = plugins_root / "cache"
+    _make_plugin_install(cache, "massive-value", "1.2.0")
+    new_install = _make_plugin_install(cache, "massive-value", "1.3.0")
+    # installed_plugins.json points at the version-dir root, not the skills/ subdir.
+    _write_installed_plugins(plugins_root, new_install.parent.parent)
+
+    installs = {pi.version: pi for pi in detect_plugin_installs()}
+    assert installs["1.3.0"].active is True
+    assert installs["1.2.0"].active is False
+
+
+def test_detect_plugin_installs_treats_all_active_when_no_state_file(monkeypatch, tmp_path):
+    """No installed_plugins.json -> we have no info, treat every install
+    as active rather than pessimistically labeling everything cached."""
+    monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.setenv("USERPROFILE", str(tmp_path))
+    monkeypatch.chdir(tmp_path)
+    cache = tmp_path / ".claude" / "plugins" / "cache"
+    _make_plugin_install(cache, "massive-value", "1.3.0")
+    # No installed_plugins.json written.
+    installs = detect_plugin_installs()
+    assert len(installs) == 1
+    assert installs[0].active is True

@@ -122,10 +122,14 @@ def run_doctor(token: str | None = None) -> int:
     if not plugin_installs:
         typer.echo("  (none detected)")
     else:
+        # Active first, then cached (descending version) so the live
+        # install is the first thing the eye lands on.
+        plugin_installs.sort(key=lambda p: (not p.active, p.version), reverse=False)
         for pi in plugin_installs:
+            status_label = "active" if pi.active else "cached"
             typer.echo(
                 f"  {pi.host:<22} plugin@{pi.marketplace:<18} "
-                f"version={pi.version:<10} {pi.skill_dir}"
+                f"version={pi.version:<8} {status_label:<7} {pi.skill_dir}"
             )
 
     # --- Firm data --------------------------------------------------------
