@@ -1,243 +1,167 @@
-# Wealthbox CLI — Command-Line Client for the Wealthbox CRM API
+# Wealthbox CLI
 
-[![PyPI version](https://img.shields.io/pypi/v/wealthbox-cli)](https://pypi.org/project/wealthbox-cli/)
-[![Downloads](https://img.shields.io/pypi/dm/wealthbox-cli)](https://pypi.org/project/wealthbox-cli/)
-[![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue)](https://www.python.org/downloads/)
-[![CI](https://img.shields.io/github/actions/workflow/status/massive-value/wealthbox-cli/ci.yml?label=CI)](https://github.com/massive-value/wealthbox-cli/actions/workflows/ci.yml)
-[![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
+**Run your Wealthbox CRM through Claude or ChatGPT.** Tell your AI agent *"add a contact for Jane Doe, send her our welcome packet, and put a follow-up on my calendar for next Tuesday"* — and it just happens. No coding, no Python, no terminal commands to memorize.
 
-**wealthbox-cli** (`wbox`) is a command-line tool and Python client library for the [Wealthbox CRM](https://www.wealthbox.com/) API. It gives financial advisors, developers, and RIA firms full CRUD access to contacts, tasks, events, notes, households, and more — directly from the terminal. Automate your CRM workflows, export data, and integrate Wealthbox into scripts and CI pipelines.
+[![PyPI](https://img.shields.io/pypi/v/wealthbox-cli)](https://pypi.org/project/wealthbox-cli/) [![Downloads](https://img.shields.io/pypi/dm/wealthbox-cli)](https://pypi.org/project/wealthbox-cli/) [![CI](https://img.shields.io/github/actions/workflow/status/massive-value/wealthbox-cli/ci.yml?label=CI)](https://github.com/massive-value/wealthbox-cli/actions/workflows/ci.yml) [![License: Apache 2.0](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
 
-[Documentation](https://massive-value.github.io/wealthbox-cli/) | [PyPI](https://pypi.org/project/wealthbox-cli/) | [Changelog](https://massive-value.github.io/wealthbox-cli/changelog/) | [Wealthbox CRM](https://www.wealthbox.com/) | [Wealthbox API Docs](https://dev.wealthbox.com)
-
-> **Disclaimer:** This is an unofficial, community-built tool. It is not affiliated with,
-> endorsed by, or supported by Wealthbox or its parent company. "Wealthbox" is a trademark
-> of its respective owner.
+> Unofficial, community-built. Not affiliated with or endorsed by Wealthbox.
 
 ------------------------------------------------------------------------
 
-## Why Use wealthbox-cli?
+## Install (60 seconds, no Python required)
 
-- **No coding required** — structured CLI flags replace raw JSON and cURL commands
-- **Automate CRM workflows** — script bulk updates, data exports, and scheduled tasks
-- **Multiple output formats** — pipe JSON, CSV, or TSV directly to files or other tools
-- **Built for financial advisors and developers** — covers contacts, households, tasks, events, notes, categories, and custom fields
-- **AI-agent ready** — pair with [Claude Code](https://claude.ai/download) or other coding agents for natural-language CRM automation
-- **Open source** — Apache 2.0 licensed, community-driven, and extensible
+| Platform | Paste this into your terminal |
+|---|---|
+| **Mac / Linux** | `curl -LsSf https://raw.githubusercontent.com/massive-value/wealthbox-cli/main/scripts/install.sh \| bash` |
+| **Windows** (PowerShell) | `irm https://raw.githubusercontent.com/massive-value/wealthbox-cli/main/scripts/install.ps1 \| iex` |
 
-------------------------------------------------------------------------
+The installer:
+1. Sets up the tools it needs (Python, etc. — handled automatically).
+2. Asks for your **Wealthbox API token**. *Where to find it:* in Wealthbox, click your initials in the top right → **Settings** → **API Access** → **Create Access Token**. Paste the token when prompted.
+3. Installs the AI agent skill into [Claude Code](https://claude.ai/download) (and Codex, if you have it).
 
-## Quick Start
-
-**No Python? No problem.** One-line installer (works on a fresh machine):
-
-| Platform | Command |
-|----------|---------|
-| macOS / Linux | `curl -LsSf https://raw.githubusercontent.com/massive-value/wealthbox-cli/main/scripts/install.sh \| bash` |
-| Windows (PowerShell) | `irm https://raw.githubusercontent.com/massive-value/wealthbox-cli/main/scripts/install.ps1 \| iex` |
-
-The installer pulls in [uv](https://github.com/astral-sh/uv) (which provisions Python automatically), installs `wbox`, prompts for your Wealthbox API token, and offers to install the AI agent skill.
-
-Already have Python? You can install directly:
-
-```bash
-pip install wealthbox-cli
-wbox config set-token        # paste your Wealthbox API token (masked)
-wbox me                      # verify connection
-```
-
-See the [Getting Started](https://massive-value.github.io/wealthbox-cli/getting-started/) guide for pipx install, environment variable auth, and other options.
+That's it. Open Claude Code and try one of the prompts below.
 
 ------------------------------------------------------------------------
 
-## Usage Examples
-
-```bash
-# List contacts as a table
-wbox contacts list --format table
-
-# Create a new client contact
-wbox contacts add person --first-name Jane --last-name Doe --contact-type Client
-
-# Export tasks to CSV
-wbox tasks list --format csv > tasks.csv
-
-# Create a task linked to a contact
-wbox tasks add "Follow up call" --due-date "2026-04-10T09:00:00-07:00" --contact 12345
-
-# Add a meeting note
-wbox notes add "Discussed retirement plan" --contact 12345
-
-# Schedule an event
-wbox events add "Annual Review" --starts-at "2026-05-01T10:00:00-07:00" --ends-at "2026-05-01T11:00:00-07:00"
-```
-
-For the full command list, see the [CLI Reference](https://massive-value.github.io/wealthbox-cli/cli-reference/).
-
-------------------------------------------------------------------------
-
-## Supported Resources
-
-| Resource | List | Get | Create | Update | Delete |
-|----------|:----:|:---:|:------:|:------:|:------:|
-| Contacts | Yes | Yes | Yes | Yes | Yes |
-| Households | Yes | Yes | Yes | Yes | Yes |
-| Tasks | Yes | Yes | Yes | Yes | Yes |
-| Events | Yes | Yes | Yes | Yes | Yes |
-| Notes | Yes | Yes | Yes | Yes | — |
-| Users | Yes | — | — | — | — |
-| Activity | Yes | — | — | — | — |
-| Categories | Yes | — | — | — | — |
-
-------------------------------------------------------------------------
-
-## Use with AI Coding Agents
-
-wealthbox-cli ships with a skill for [Claude Code](https://claude.ai/download) and [Codex](https://openai.com/codex) that lets AI agents manage your CRM through natural language. Instead of memorizing CLI flags, just describe what you want:
+## Try this in Claude Code
 
 ```
-create a contact for Jane Doe, she's a new prospect
-list my tasks due this week
-add a note to contact 123 about today's meeting
-find all contacts tagged "VIP" and export to CSV
+"Show me my contacts created this week."
+
+"Add Jane Doe as a new prospect — she came in as a referral from Bob Smith."
+
+"Pull up the Smith household, add a task for me to call them on Monday."
+
+"Find notes from my meeting with the Joneses last month and summarize the action items."
+
+"Schedule an annual review with Mary Chen for the second Tuesday of next month."
 ```
 
-The skill translates your intent into the correct `wbox` commands, handles flag construction, and validates inputs — ideal for advisors who want CRM automation without learning CLI syntax.
+The first time you ask the agent to do something, it'll walk you through a short Q&A about your firm's conventions (default contact types, naming patterns, common workflows). After that, it just works.
 
-### Install
+If you're new to Claude Code itself, [download it here](https://claude.ai/download) — it's free for personal use.
 
-Two ways depending on which agent you use:
+------------------------------------------------------------------------
 
-#### Option A — Claude Code plugin marketplace (recommended for Claude Code users)
+## What it covers
 
-Inside Claude Code:
+Full read/write access for **contacts** (people, households, organizations, trusts), **tasks**, **events**, **notes**, **opportunities**, **projects**, and **workflows**. Read access for users, activity, and your firm's category lookups.
+
+Anything you can do in Wealthbox manually, the agent can do for you — usually in one sentence.
+
+------------------------------------------------------------------------
+
+## How it works
+
+Your AI agent uses a small command-line tool called `wbox` to talk to the [Wealthbox CRM API](https://dev.wealthbox.com). The skill that ships with this repo teaches the agent two things:
+
+1. **Your firm's conventions** — the agent walks you through a one-time Q&A on first use ("what's your default contact type for new prospects? what's your household naming convention?"), then remembers your answers. Stored locally on your machine, never sent to a server.
+2. **The right command for each request** — translating "add Jane as a prospect" into the correct API call, handling required fields, validating dropdowns against your firm's actual categories.
+
+You stay in control: the agent shows you what it's about to do before it does it.
+
+------------------------------------------------------------------------
+
+## Already a Claude Code user?
+
+You can install the skill directly from the plugin marketplace inside Claude Code:
 
 ```
 /plugin marketplace add massive-value/wealthbox-cli
 /plugin install wealthbox-crm@massive-value
 ```
 
-The plugin auto-updates daily. The skill is installed under `~/.claude/plugins/cache/`. Firm data is stored at the canonical machine-level path (`~/.config/wbox/firm/` or `%APPDATA%\wbox\firm\`) — see [Where firm data lives](#where-firm-data-lives) below — and survives plugin auto-updates.
+The plugin auto-updates daily. Firm data lives at `~/.config/wbox/firm/` (Mac/Linux) or `%APPDATA%\wbox\firm\` (Windows) and survives plugin updates. Run `wbox doctor` to see your install status anytime.
 
-The `wbox` CLI is still required as the execution engine. The bundled SKILL.md tells the agent to install it via the Phase 1 bootstrap if missing.
+------------------------------------------------------------------------
 
-#### Option B — `wbox skills install` (Claude Code, Codex, or local project scope)
+## For developers and power users
+
+<details>
+<summary><b>Direct CLI use, scripting, automation</b></summary>
 
 ```bash
 pip install wealthbox-cli
-wbox config set-token        # paste your Wealthbox API token
-wbox skills install          # interactive: pick Claude Code (user/project), Codex, or all
+wbox config set-token
+
+# List contacts as a table
+wbox contacts list --format table
+
+# Create a contact
+wbox contacts add person --first-name Jane --last-name Doe --contact-type Client
+
+# Export tasks to CSV
+wbox tasks list --format csv > tasks.csv
+
+# Add a meeting note linked to a contact
+wbox notes add "Discussed retirement plan" --contact 12345
 ```
 
-The installer asks which platforms to target, copies the skill into the right directory (`~/.claude/skills/` for Claude Code, `~/.codex/skills/` for Codex — both use `SKILL.md`), and offers to bootstrap your firm's customizations from the Wealthbox API.
+Full command reference: [CLI Reference](https://massive-value.github.io/wealthbox-cli/cli-reference/). Output formats: `json` (default), `table`, `csv`, `tsv`. Date format: ISO 8601 (`2026-05-01T10:00:00-07:00`). See [Getting Started](https://massive-value.github.io/wealthbox-cli/getting-started/) for pipx, env-var auth, and project-scoped installs.
+</details>
 
-#### Option C — Codex marketplace (when the openai/skills PR lands)
-
-Pending submission to [openai/skills](https://github.com/openai/skills) (status tracked in CHANGELOG). Until then, use Option B for Codex.
-
-> **Upgrading from < 1.1.6?** Earlier versions installed the codex skill as `AGENTS.md`. That was wrong — codex uses `SKILL.md` for skills (and `AGENTS.md` only as the project-level instructions file, in place of `CLAUDE.md`). If your codex install still has `AGENTS.md`, reinstall with `wbox skills install --platform codex --force`.
-
-### First agent run captures firm conventions
-
-`wbox skills bootstrap` populates the API-derived files (categories, custom fields, users) — that's the *quantitative* half. The *qualitative* half (firm defaults, naming conventions, named workflows, required fields) happens the first time an agent invokes the skill: it walks you through the questions in `bootstrap.md` and stamps `onboarded_at` in the canonical firm `_meta.json` when done. On subsequent runs the bootstrap path is skipped automatically.
-
-### Where firm data lives
-
-Firm data is stored at one canonical machine-level path — **not** inside each skill install. This way it survives plugin auto-updates, skill template upgrades, and works the same across Claude Code, Codex, or any other host:
-
-| Platform | Firm data path |
-|----------|----------------|
-| macOS / Linux | `~/.config/wbox/firm/` |
-| Windows | `%APPDATA%\wbox\firm\` |
-
-Run `wbox skills firm-path` to print the resolved path. The bundled SKILL.md tells the agent to call this command and read firm files from that directory.
-
-### Refresh after firm changes
-
-If your firm adds or renames category values, custom fields, or users:
+<details>
+<summary><b>Manage skill installs (legacy / Codex / project scope)</b></summary>
 
 ```bash
-wbox skills refresh
+wbox skills install        # interactive picker — Claude Code, Codex, project scope
+wbox skills bootstrap      # populate firm data from your Wealthbox account
+wbox skills refresh        # re-fetch generated firm data (categories, users, custom fields)
+wbox skills upgrade        # update the bundled SKILL.md / references in every install
+wbox skills firm-path      # print the canonical firm data directory
+wbox skills uninstall      # remove the skill template (firm data is preserved)
+wbox doctor                # comprehensive health check
 ```
 
-This updates the generated half (categories, custom-fields, users); hand-edited policy is preserved.
+The marketplace plugin path (above) is recommended for Claude Code. The legacy `wbox skills install` path remains for Codex users (until OpenAI's marketplace lands), project-scoped installs, or air-gapped setups without the `claude` CLI.
+</details>
 
-### Other commands
-
-```bash
-wbox skills list             # show install state per platform + canonical firm path
-wbox skills doctor           # diagnose install state + token + firm state
-wbox skills firm-path        # print canonical firm directory (for the agent)
-wbox skills upgrade          # refresh template files in every install; firm data is unaffected
-wbox skills mark-onboarded   # stamp onboarded_at in firm meta (the agent calls this for you)
-wbox skills uninstall        # remove the skill template; firm data is preserved
-```
-
-When the CLI ships a newer template (improved SKILL.md, new reference docs, etc.), `wbox skills upgrade` re-copies the bundled template into every installed platform. Firm data lives outside the skill dir, so it's untouched. Each install records the template's CLI version in its own `_meta.json`, so the agent can detect drift and prompt you to upgrade when needed.
-
-### Works with other agents too
-
-The `wbox` CLI is a standard command-line tool. Any AI coding agent that can execute shell commands — [Claude Code](https://claude.ai/download), [GitHub Copilot CLI](https://githubnext.com/projects/copilot-cli), [Cursor](https://cursor.sh/), or custom agent frameworks — can use it to read and write Wealthbox data. The bundled skill just makes Claude Code and Codex aware of the full command surface.
-
-------------------------------------------------------------------------
-
-## Architecture
+<details>
+<summary><b>Architecture and contributing</b></summary>
 
 ```
 src/wealthbox_tools/
-    cli/        # Typer commands — user-facing, delegates to client
+    cli/        # Typer commands
     client/     # Async HTTP client built from mixins
-    models/     # Pydantic v2 models for input validation
+    models/     # Pydantic v2 input validation
 ```
 
-Built with [Typer](https://typer.tiangolo.com/), [httpx](https://www.python-httpx.org/), and [Pydantic v2](https://docs.pydantic.dev/). See [Contributing](https://massive-value.github.io/wealthbox-cli/contributing/) for the full architecture guide and how to add new resources.
-
-------------------------------------------------------------------------
-
-## Contributing
+Built with [Typer](https://typer.tiangolo.com/), [httpx](https://www.python-httpx.org/), and [Pydantic v2](https://docs.pydantic.dev/).
 
 ```bash
 git clone https://github.com/massive-value/wealthbox-cli
 cd wealthbox-cli
 python -m venv .venv
-```
-
-Activate the virtual environment:
-
-| Platform | Command |
-|----------|---------|
-| macOS/Linux | `source .venv/bin/activate` |
-| Windows (PowerShell) | `.venv\Scripts\Activate.ps1` |
-| Windows (Command Prompt) | `.venv\Scripts\activate.bat` |
-
-Then install and test:
-
-```bash
+# Activate: source .venv/bin/activate (Mac/Linux) | .venv\Scripts\Activate.ps1 (Windows)
 pip install -e ".[dev]"
 pytest
 ```
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for the full guide.
+See [CONTRIBUTING.md](CONTRIBUTING.md) and [CLAUDE.md](CLAUDE.md) for the architecture guide and conventions.
+</details>
+
+<details>
+<summary><b>Troubleshooting</b></summary>
+
+- **401 Unauthorized** — token expired or wrong. Run `wbox config show` to see the masked token, `wbox config set-token` to update.
+- **Windows: "execution policy" error during install** — the installer offers to fix this for you. If you skipped it, run `Set-ExecutionPolicy RemoteSigned -Scope CurrentUser` and re-run the installer.
+- **Linux: command not found after install** — open a new terminal, or run `source ~/.local/bin/env` in your current shell.
+- **Date format errors** — Wealthbox needs ISO 8601: `"2026-05-01T10:00:00-07:00"` for datetimes, `"YYYY-MM-DD"` for date-only fields.
+- **Writes succeed but nothing changes** — some category-constrained fields silently no-op on bad values. Check valid values with `wbox categories <type>`.
+
+For anything else, open an issue at [github.com/massive-value/wealthbox-cli/issues](https://github.com/massive-value/wealthbox-cli/issues).
+</details>
 
 ------------------------------------------------------------------------
 
-## Troubleshooting
+## Links
 
-**401 Unauthorized** — Check your API token. Run `wbox config show` to verify.
-
-**Date format errors** — Use ISO 8601: `"2026-04-01T10:00:00-07:00"` or `"2026-04-01T10:00:00Z"`. Date-only fields use `"YYYY-MM-DD"`.
-
-**Writes appear to succeed but nothing changed** — Some category-constrained writes silently no-op. Check valid values first with `wbox contacts categories contact-types`.
-
-------------------------------------------------------------------------
+[Documentation](https://massive-value.github.io/wealthbox-cli/) · [Changelog](https://massive-value.github.io/wealthbox-cli/changelog/) · [PyPI](https://pypi.org/project/wealthbox-cli/) · [Wealthbox CRM](https://www.wealthbox.com/) · [Wealthbox API](https://dev.wealthbox.com)
 
 ## Disclaimer
 
-This is an **unofficial, community-built** tool. It is not affiliated with, endorsed by,
-or supported by Wealthbox or its parent company. "Wealthbox" is a trademark of its
-respective owner. Use of this tool is subject to the [Wealthbox API Terms of Service](https://dev.wealthbox.com).
-
-------------------------------------------------------------------------
+This is an **unofficial, community-built** tool. It is not affiliated with, endorsed by, or supported by Wealthbox or its parent company. "Wealthbox" is a trademark of its respective owner. Use of this tool is subject to the [Wealthbox API Terms of Service](https://dev.wealthbox.com).
 
 ## License
 
