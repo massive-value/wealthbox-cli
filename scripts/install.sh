@@ -95,7 +95,10 @@ main() {
     esac
 
     echo
-    echo "Done. Try: wbox me"
+    echo "Done."
+    echo "If 'wbox me' returns 'command not found' in this shell, run:"
+    echo "    source \$HOME/.local/bin/env"
+    echo "or open a new terminal. Then try: wbox me"
 }
 
 main "$@"

@@ -79,7 +79,10 @@ try {
     }
 
     Write-Host ""
-    Write-Host "Done. Try: wbox me" -ForegroundColor Green
+    Write-Host "Done." -ForegroundColor Green
+    Write-Host "If 'wbox me' returns 'command not found' in a new terminal, that"
+    Write-Host "shell hasn't picked up the user PATH update yet. Sign out and"
+    Write-Host "back in (or restart Windows Terminal completely). Then: wbox me"
     $installerSucceeded = $true
 }
 catch {
