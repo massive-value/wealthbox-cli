@@ -75,24 +75,63 @@ main() {
     fi
 
     echo
-    if [ "$tty" = "/dev/tty" ]; then
-        printf "Install the AI agent skill (Claude Code / Codex)? [Y/n] "
-        read -r install_skill </dev/tty || install_skill=""
-    else
-        printf "Install the AI agent skill (Claude Code / Codex)? [Y/n] "
-        read -r install_skill || install_skill=""
-    fi
+    echo "=== AI agent skill setup ==="
+    if command -v claude >/dev/null 2>&1; then
+        # Claude Code is installed — use the plugin marketplace path.
+        # This is the recommended setup: the plugin auto-updates daily,
+        # firm data lives at the canonical machine path (independent of
+        # plugin version), and the install is a single CLI invocation.
+        echo "Claude Code detected. Installing wealthbox-crm via the plugin marketplace..."
+        if claude plugin marketplace add massive-value/wealthbox-cli; then
+            :
+        else
+            echo "  (marketplace 'massive-value' may already be configured — continuing)"
+        fi
+        if claude plugin install wealthbox-crm@massive-value; then
+            echo "  Installed."
+        else
+            echo "  Plugin install failed. Fall back: wbox skills install --platform claude-code-user" >&2
+        fi
 
-    case "$install_skill" in
-        [Nn]*) echo "Skipped. Run 'wbox skills install' anytime." ;;
-        *)
-            if [ "$tty" = "/dev/tty" ]; then
-                wbox skills install </dev/tty
-            else
-                wbox skills install
-            fi
-            ;;
-    esac
+        echo
+        if [ "$tty" = "/dev/tty" ]; then
+            printf "Also install for Codex (separate AI agent)? [y/N] "
+            read -r install_codex </dev/tty || install_codex=""
+        else
+            printf "Also install for Codex (separate AI agent)? [y/N] "
+            read -r install_codex || install_codex=""
+        fi
+        case "$install_codex" in
+            [Yy]*)
+                if [ "$tty" = "/dev/tty" ]; then
+                    wbox skills install --platform codex </dev/tty
+                else
+                    wbox skills install --platform codex
+                fi
+                ;;
+            *) ;;
+        esac
+    else
+        # No `claude` CLI — fall back to the legacy wbox skills install
+        # interactive picker (handles Codex / project-scope / etc.).
+        if [ "$tty" = "/dev/tty" ]; then
+            printf "Install the AI agent skill (Claude Code / Codex)? [Y/n] "
+            read -r install_skill </dev/tty || install_skill=""
+        else
+            printf "Install the AI agent skill (Claude Code / Codex)? [Y/n] "
+            read -r install_skill || install_skill=""
+        fi
+        case "$install_skill" in
+            [Nn]*) echo "Skipped. Run 'wbox skills install' anytime." ;;
+            *)
+                if [ "$tty" = "/dev/tty" ]; then
+                    wbox skills install </dev/tty
+                else
+                    wbox skills install
+                fi
+                ;;
+        esac
+    fi
 
     echo
     echo "Done."

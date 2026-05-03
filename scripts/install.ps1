@@ -110,12 +110,39 @@ try {
     Write-Host ""
     wbox config set-token
 
-    Write-Step "Skill install..."
-    $installSkill = Read-Host "Install the AI agent skill (Claude Code / Codex)? [Y/n]"
-    if ($installSkill -match '^[Nn]') {
-        Write-Host "  Skipped. Run 'wbox skills install' anytime."
+    Write-Step "AI agent skill setup..."
+    if (Get-Command claude -ErrorAction SilentlyContinue) {
+        # Claude Code is installed — use the plugin marketplace path.
+        # Recommended setup: plugin auto-updates daily, firm data lives
+        # at the canonical machine path (independent of plugin version),
+        # and the install is a single CLI invocation.
+        Write-Host "  Claude Code detected. Installing wealthbox-crm via the plugin marketplace..."
+        try {
+            claude plugin marketplace add massive-value/wealthbox-cli 2>&1 | Out-Host
+        } catch {
+            Write-Host "  (marketplace 'massive-value' may already be configured - continuing)"
+        }
+        try {
+            claude plugin install wealthbox-crm@massive-value 2>&1 | Out-Host
+            Write-Host "  Installed." -ForegroundColor Green
+        } catch {
+            Write-Host "  Plugin install failed. Fall back: wbox skills install --platform claude-code-user" -ForegroundColor Yellow
+        }
+
+        Write-Host ""
+        $installCodex = Read-Host "  Also install for Codex (separate AI agent)? [y/N]"
+        if ($installCodex -match '^[Yy]') {
+            wbox skills install --platform codex
+        }
     } else {
-        wbox skills install
+        # No `claude` CLI — fall back to the legacy wbox skills install
+        # interactive picker (handles Codex / project-scope / etc.).
+        $installSkill = Read-Host "  Install the AI agent skill (Claude Code / Codex)? [Y/n]"
+        if ($installSkill -match '^[Nn]') {
+            Write-Host "  Skipped. Run 'wbox skills install' anytime."
+        } else {
+            wbox skills install
+        }
     }
 
     Write-Host ""
