@@ -6,6 +6,22 @@ This project uses [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [1.3.0](https://github.com/massive-value/wealthbox-cli/releases/tag/v1.3.0) — 2026-05-03
+
+### Added
+
+- **`wbox doctor`** — comprehensive top-level health check at the CLI root. Reports the wbox CLI version + Python version + binary location; authentication source detection (flag / env var / config file / `.env`) plus a smoke test against `/me`; agent CLI presence (`claude` / `codex` on PATH); legacy skill installs; plugin installs (managed via `claude plugin install` / `codex plugin install`); firm data state with file count, generated-vs-hand-edited split, and oldest-generated-file timestamp; and a Summary section listing actionable issues. `wbox skills doctor` keeps working as an alias of the new top-level command — both call the same function so output never drifts.
+- `wbox skills list` and `wbox skills doctor` now detect plugin-installed copies of `wealthbox-crm` under `~/.claude/plugins/cache/.../skills/wealthbox-crm/` and `~/.codex/plugins/cache/.../skills/wealthbox-crm/`. Previously a user who installed via the marketplace plugin path saw "not installed" everywhere even though the plugin was actively serving the skill.
+- Bootstrap installer (`scripts/install.sh` / `scripts/install.ps1`) now prefers the Claude Code plugin marketplace path when `claude` is on PATH — runs `claude plugin marketplace add` + `claude plugin install` directly, then offers a separate Codex install. Falls back to the legacy `wbox skills install` picker when no `claude` CLI is detected.
+- Bootstrap installer pre-flight checks Windows PowerShell `ExecutionPolicy` and offers to set `RemoteSigned` for the current user if needed (no admin required), instead of bombing partway through with Astral's terse error.
+
+### Fixed
+
+- Bootstrap `install.sh` no longer hangs at startup. The previous version did `exec </dev/tty` at the top, which cut off bash's source of piped script content (`curl … | bash`) and waited forever for the rest of the script to arrive on the user's keyboard. The whole body is now wrapped in a `main()` function so bash reads it fully before executing.
+- Bootstrap `install.ps1` no longer auto-closes its window on error. Wrapped in try/catch/finally with explicit step headers and a "Press Enter to close" pause so a transient PowerShell host stays open long enough to show the actual error.
+
+---
+
 ## [1.2.0](https://github.com/massive-value/wealthbox-cli/releases/tag/v1.2.0) — 2026-05-02
 
 ### Changed
