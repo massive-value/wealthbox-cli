@@ -22,6 +22,28 @@ $installerSucceeded = $false
 try {
     Write-Host "=== wealthbox-cli installer ===" -ForegroundColor Cyan
 
+    Write-Step "Checking PowerShell execution policy..."
+    # uv's installer requires Unrestricted, RemoteSigned, or Bypass. The
+    # Windows-client default is Restricted, which blocks uv from running.
+    # Detect this upfront so the user gets one clear instruction instead
+    # of bombing partway through with Astral's terse error.
+    $policy = Get-ExecutionPolicy
+    $allowed = @('Unrestricted', 'RemoteSigned', 'Bypass')
+    if ($policy -notin $allowed) {
+        Write-Host ""
+        Write-Host "  Your execution policy is '$policy'. uv's installer needs at" -ForegroundColor Yellow
+        Write-Host "  least 'RemoteSigned' to run." -ForegroundColor Yellow
+        Write-Host ""
+        Write-Host "  Run this once (no admin required), then re-run the installer:" -ForegroundColor Yellow
+        Write-Host "      Set-ExecutionPolicy RemoteSigned -Scope CurrentUser" -ForegroundColor Cyan
+        Write-Host "      irm https://raw.githubusercontent.com/massive-value/wealthbox-cli/main/scripts/install.ps1 | iex" -ForegroundColor Cyan
+        Write-Host ""
+        Write-Host "  ('RemoteSigned' is Microsoft's recommended dev-machine default."
+        Write-Host "   It allows local scripts and requires signatures on downloaded ones.)"
+        return
+    }
+    Write-Host "  Policy: $policy (OK)"
+
     Write-Step "Checking for uv (Python tool manager)..."
     if (-not (Get-Command uv -ErrorAction SilentlyContinue)) {
         Write-Host "  uv not found. Installing from astral.sh..."
