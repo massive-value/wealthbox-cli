@@ -5,9 +5,6 @@
 #
 # Installs uv (if missing), installs wealthbox-cli as an isolated tool,
 # prompts for the API token, and offers to install the AI agent skill.
-#
-# Wrapped in a try/finally so the window stays open long enough to read
-# the result even if the parent shell would otherwise auto-close on exit.
 
 $ErrorActionPreference = "Stop"
 
@@ -17,7 +14,10 @@ function Write-Step {
     Write-Host "[*] $Message" -ForegroundColor Cyan
 }
 
-$installerSucceeded = $false
+# 'pending', 'succeeded', 'user-action', 'errored'.
+# 'user-action' = clean early-exit because the user needs to do something
+# manual (e.g., declined to flip ExecutionPolicy). NOT an error.
+$state = 'pending'
 
 try {
     Write-Host "=== wealthbox-cli installer ===" -ForegroundColor Cyan
@@ -25,24 +25,42 @@ try {
     Write-Step "Checking PowerShell execution policy..."
     # uv's installer requires Unrestricted, RemoteSigned, or Bypass. The
     # Windows-client default is Restricted, which blocks uv from running.
-    # Detect this upfront so the user gets one clear instruction instead
-    # of bombing partway through with Astral's terse error.
+    # Detect this upfront and offer to fix it (CurrentUser scope, no
+    # admin required) so the user doesn't have to re-run the installer.
     $policy = Get-ExecutionPolicy
     $allowed = @('Unrestricted', 'RemoteSigned', 'Bypass')
     if ($policy -notin $allowed) {
         Write-Host ""
-        Write-Host "  Your execution policy is '$policy'. uv's installer needs at" -ForegroundColor Yellow
-        Write-Host "  least 'RemoteSigned' to run." -ForegroundColor Yellow
+        Write-Host "  Your execution policy is '$policy'. uv's installer needs at least"
+        Write-Host "  'RemoteSigned' to run."
         Write-Host ""
-        Write-Host "  Run this once (no admin required), then re-run the installer:" -ForegroundColor Yellow
-        Write-Host "      Set-ExecutionPolicy RemoteSigned -Scope CurrentUser" -ForegroundColor Cyan
-        Write-Host "      irm https://raw.githubusercontent.com/massive-value/wealthbox-cli/main/scripts/install.ps1 | iex" -ForegroundColor Cyan
+        Write-Host "  'RemoteSigned' is Microsoft's recommended developer-machine default."
+        Write-Host "  It allows your local scripts to run, while still requiring signatures"
+        Write-Host "  on scripts downloaded from the internet."
         Write-Host ""
-        Write-Host "  ('RemoteSigned' is Microsoft's recommended dev-machine default."
-        Write-Host "   It allows local scripts and requires signatures on downloaded ones.)"
-        return
+        $confirm = Read-Host "  Set RemoteSigned for your user account now? [Y/n]"
+        if ($confirm -match '^[Nn]') {
+            Write-Host ""
+            Write-Host "  Skipped. To enable later, run:" -ForegroundColor Yellow
+            Write-Host "      Set-ExecutionPolicy RemoteSigned -Scope CurrentUser"
+            Write-Host "      irm https://raw.githubusercontent.com/massive-value/wealthbox-cli/main/scripts/install.ps1 | iex"
+            $state = 'user-action'
+            return
+        }
+        try {
+            Set-ExecutionPolicy RemoteSigned -Scope CurrentUser -Force
+            Write-Host "  Policy updated to RemoteSigned (CurrentUser scope)."
+        } catch {
+            Write-Host ""
+            Write-Host "  Couldn't update policy: $($_.Exception.Message)" -ForegroundColor Yellow
+            Write-Host "  Run manually, then re-run the installer:"
+            Write-Host "      Set-ExecutionPolicy RemoteSigned -Scope CurrentUser"
+            $state = 'user-action'
+            return
+        }
+    } else {
+        Write-Host "  Policy: $policy (OK)"
     }
-    Write-Host "  Policy: $policy (OK)"
 
     Write-Step "Checking for uv (Python tool manager)..."
     if (-not (Get-Command uv -ErrorAction SilentlyContinue)) {
@@ -81,7 +99,7 @@ try {
         Write-Host "  Open a new terminal and run:"
         Write-Host "    wbox config set-token"
         Write-Host "    wbox skills install"
-        $installerSucceeded = $true
+        $state = 'user-action'
         return
     }
     Write-Host "  wbox found at $((Get-Command wbox).Source)"
@@ -105,9 +123,10 @@ try {
     Write-Host "If 'wbox me' returns 'command not found' in a new terminal, that"
     Write-Host "shell hasn't picked up the user PATH update yet. Sign out and"
     Write-Host "back in (or restart Windows Terminal completely). Then: wbox me"
-    $installerSucceeded = $true
+    $state = 'succeeded'
 }
 catch {
+    $state = 'errored'
     Write-Host ""
     Write-Host "ERROR: $($_.Exception.Message)" -ForegroundColor Red
     if ($_.InvocationInfo) {
@@ -122,10 +141,10 @@ finally {
     # double-click, `Run with PowerShell`, or `powershell -Command`),
     # which would otherwise close as soon as the script returns.
     Write-Host ""
-    if ($installerSucceeded) {
-        Write-Host "Press Enter to close this window..." -ForegroundColor DarkGray
-    } else {
+    if ($state -eq 'errored') {
         Write-Host "Press Enter to close this window (an error occurred)..." -ForegroundColor Yellow
+    } else {
+        Write-Host "Press Enter to close this window..." -ForegroundColor DarkGray
     }
     try { $null = Read-Host } catch { Start-Sleep -Seconds 30 }
 }
