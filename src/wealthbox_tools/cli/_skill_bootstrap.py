@@ -1,9 +1,12 @@
 from __future__ import annotations
 
 import json
+import shutil
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
+
+from ._skill_paths import firm_dir, firm_meta_path
 
 
 def _escape(s: str) -> str:
@@ -80,27 +83,31 @@ def render_users_md(users: list[dict[str, Any]]) -> str:
 
 
 # --------------------------------------------------------------------------- #
-# Stubs + meta.json                                                            #
+# Stubs                                                                        #
 # --------------------------------------------------------------------------- #
 
 FIRM_README = """# firm/ — Firm Customizations
 
 This folder holds everything the agent needs to know about your firm's
-Wealthbox conventions. Install metadata lives in `../_meta.json` (skill
-root), not here.
+Wealthbox conventions. Firm metadata lives in `_meta.json` next to this
+file (canonical, machine-level — survives plugin auto-updates).
+
+Per-install template version lives in `<skill_dir>/_meta.json` (one per
+installed platform).
 
 ## Generated files (overwritten by `wbox skills refresh`)
 
 - `categories.md` — every category type + valid values
 - `custom-fields.md` — custom fields per document type + valid values
-- `users.md` — user id → name → email
+- `users.md` — user id -> name -> email
 
 ## Hand-edited files (never overwritten)
 
 - `contacts.md`, `tasks.md`, `notes.md`, `events.md`,
   `opportunities.md`, `projects.md`, `workflows.md`
 
-Each hand-edited file has a matching example at `../firm-examples/<name>`.
+Each hand-edited file has a matching example in any installed skill's
+`firm-examples/` directory.
 """
 
 
@@ -124,20 +131,24 @@ STUB_CONTENTS: dict[str, str] = {
 }
 
 
-def write_stubs(firm_dir: Path) -> list[str]:
+def write_stubs(target_firm_dir: Path) -> list[str]:
     """Write stub files that don't already exist. Returns list of names written."""
     written: list[str] = []
     for name, body in STUB_CONTENTS.items():
-        path = firm_dir / name
+        path = target_firm_dir / name
         if path.exists():
             continue
         path.write_text(body, encoding="utf-8")
         written.append(name)
-    readme = firm_dir / "_README.md"
+    readme = target_firm_dir / "_README.md"
     if not readme.exists():
         readme.write_text(FIRM_README, encoding="utf-8")
     return written
 
+
+# --------------------------------------------------------------------------- #
+# Per-install template metadata (one _meta.json per skill dir)                 #
+# --------------------------------------------------------------------------- #
 
 def meta_path(skill_dir: Path) -> Path:
     """Location of _meta.json relative to a skill install root."""
@@ -145,7 +156,11 @@ def meta_path(skill_dir: Path) -> Path:
 
 
 def read_meta(skill_dir: Path) -> dict[str, Any]:
-    """Read _meta.json. Returns {} if missing or unreadable."""
+    """Read `<skill_dir>/_meta.json`. Returns {} if missing or unreadable.
+
+    The per-install meta only carries the `template` section after the
+    canonical-firm-path refactor; firm state lives in `firm_meta_path()`.
+    """
     p = meta_path(skill_dir)
     if not p.exists():
         return {}
@@ -163,66 +178,125 @@ def write_meta(skill_dir: Path, data: dict[str, Any]) -> None:
 
 
 def update_template_meta(skill_dir: Path, *, cli_version: str) -> None:
-    """Set the template section of _meta.json. Preserves any existing firm section."""
+    """Set the template section of `<skill_dir>/_meta.json`."""
     meta = read_meta(skill_dir)
     meta["template"] = {"cli_version": cli_version}
     write_meta(skill_dir, meta)
 
 
+# --------------------------------------------------------------------------- #
+# Canonical firm metadata (one _meta.json per machine, at firm_meta_path())    #
+# --------------------------------------------------------------------------- #
+
+def read_firm_meta() -> dict[str, Any]:
+    """Read the canonical firm meta JSON. Returns {} if missing or unreadable."""
+    p = firm_meta_path()
+    if not p.exists():
+        return {}
+    try:
+        loaded = json.loads(p.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError):
+        return {}
+    return loaded if isinstance(loaded, dict) else {}
+
+
+def write_firm_meta(data: dict[str, Any]) -> None:
+    p = firm_meta_path()
+    p.parent.mkdir(parents=True, exist_ok=True)
+    p.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
+
+
 def update_firm_meta(
-    skill_dir: Path,
     *,
     identity: dict[str, Any],
     cli_version: str,
     generated_files: list[str],
 ) -> None:
-    """Set the firm section of _meta.json. Preserves the qualitative onboarded_at marker
-    (set by the agent via `wbox skills mark-onboarded`) and any existing template section."""
+    """Write firm identity + generated-file timestamps to canonical firm meta.
+
+    Preserves `onboarded_at` (set by the agent via `wbox skills mark-onboarded`).
+    """
     now = datetime.now(timezone.utc).isoformat()
-    meta = read_meta(skill_dir)
-    existing_firm = meta.get("firm") or {}
-    firm_section: dict[str, Any] = {
+    existing = read_firm_meta()
+    new_meta: dict[str, Any] = {
         "identity": identity,
         "cli_version": cli_version,
         "files": {name: now for name in generated_files},
     }
-    onboarded_at = existing_firm.get("onboarded_at")
+    onboarded_at = existing.get("onboarded_at")
     if onboarded_at:
-        firm_section["onboarded_at"] = onboarded_at
-    meta["firm"] = firm_section
-    write_meta(skill_dir, meta)
+        new_meta["onboarded_at"] = onboarded_at
+    write_firm_meta(new_meta)
 
 
-def mark_firm_onboarded(skill_dir: Path) -> str:
-    """Stamp `firm.onboarded_at` with the current UTC time. Returns the timestamp written.
+def mark_firm_onboarded() -> str:
+    """Stamp `onboarded_at` in canonical firm meta. Returns the timestamp.
 
-    Raises FileNotFoundError if no `firm` section exists yet (caller must run
-    `wbox skills bootstrap` before marking onboarded)."""
-    meta = read_meta(skill_dir)
-    firm = meta.get("firm")
-    if not firm:
+    Raises FileNotFoundError if no firm meta exists yet (caller must run
+    `wbox skills bootstrap` before marking onboarded).
+    """
+    meta = read_firm_meta()
+    if not meta:
         raise FileNotFoundError(
-            f"{meta_path(skill_dir)} has no 'firm' section; run 'wbox skills bootstrap' first."
+            f"{firm_meta_path()} does not exist; run 'wbox skills bootstrap' first."
         )
     now = datetime.now(timezone.utc).isoformat()
-    firm["onboarded_at"] = now
-    meta["firm"] = firm
-    write_meta(skill_dir, meta)
+    meta["onboarded_at"] = now
+    write_firm_meta(meta)
     return now
 
 
-def copy_firm_meta(src_skill_dir: Path, dst_skill_dir: Path) -> bool:
-    """Copy the firm section of _meta.json from src to dst, preserving dst's template.
+# --------------------------------------------------------------------------- #
+# Migration: legacy <skill_dir>/firm/ + meta.firm  ->  canonical               #
+# --------------------------------------------------------------------------- #
 
-    Returns True if a firm section was copied, False if src had none.
+def migrate_legacy_firm(skill_dirs: list[Path]) -> Path | None:
+    """If legacy firm/ data exists in any skill dir, move it to the canonical
+    location. Returns the source skill_dir migrated from, or None if nothing
+    was migrated.
+
+    Strategy when multiple legacy installs exist: pick the one with the most
+    recent `onboarded_at`, falling back to the most recent `files` timestamp.
+    The other legacy installs are left in place (the doctor command surfaces
+    them so the user can clean up at their leisure).
     """
-    src_firm = read_meta(src_skill_dir).get("firm")
-    if not src_firm:
-        return False
-    dst_meta = read_meta(dst_skill_dir)
-    dst_meta["firm"] = src_firm
-    write_meta(dst_skill_dir, dst_meta)
-    return True
+    if firm_meta_path().exists() or firm_dir().is_dir():
+        return None
+
+    candidates: list[tuple[Path, dict[str, Any]]] = []
+    for sd in skill_dirs:
+        legacy_meta = read_meta(sd).get("firm")
+        legacy_dir = sd / "firm"
+        if legacy_meta or legacy_dir.is_dir():
+            candidates.append((sd, legacy_meta or {}))
+
+    if not candidates:
+        return None
+
+    def _key(item: tuple[Path, dict[str, Any]]) -> str:
+        firm = item[1]
+        ts = firm.get("onboarded_at") or ""
+        if not ts:
+            files = firm.get("files") or {}
+            ts = max(files.values(), default="")
+        return ts
+
+    source_dir, source_firm = max(candidates, key=_key)
+
+    legacy_firm_dir = source_dir / "firm"
+    if legacy_firm_dir.is_dir():
+        firm_dir().mkdir(parents=True, exist_ok=True)
+        for entry in legacy_firm_dir.iterdir():
+            dest = firm_dir() / entry.name
+            if entry.is_dir():
+                shutil.copytree(entry, dest, dirs_exist_ok=True)
+            else:
+                shutil.copy2(entry, dest)
+
+    if source_firm:
+        write_firm_meta(source_firm)
+
+    return source_dir
 
 
 # --------------------------------------------------------------------------- #
@@ -241,7 +315,7 @@ from ._util import get_client  # noqa: E402
 
 @dataclass
 class BootstrapResult:
-    skill_dir: Path
+    firm_dir: Path
     wrote_generated: list[str]
     wrote_stubs: int
     firm_identity: dict[str, Any]
@@ -280,14 +354,17 @@ async def _fetch_all(
     return categories, custom_fields, users, firm
 
 
-def bootstrap_skill_dir(
-    skill_dir: Path,
+def bootstrap_firm(
     *,
     token: str | None,
     generated_only: bool,
 ) -> BootstrapResult:
-    firm_dir = skill_dir / "firm"
-    firm_dir.mkdir(parents=True, exist_ok=True)
+    """Populate the canonical firm directory + meta from the Wealthbox API.
+
+    Writes to `firm_dir()` (machine-level), not into any specific skill install.
+    """
+    target = firm_dir()
+    target.mkdir(parents=True, exist_ok=True)
 
     async def _run() -> tuple[dict, dict, list, dict]:
         async with get_client(token) as client:
@@ -295,13 +372,12 @@ def bootstrap_skill_dir(
 
     categories, custom_fields, users, firm_identity = asyncio.run(_run())
 
-    (firm_dir / "categories.md").write_text(render_categories_md(categories), encoding="utf-8")
-    (firm_dir / "custom-fields.md").write_text(render_custom_fields_md(custom_fields), encoding="utf-8")
-    (firm_dir / "users.md").write_text(render_users_md(users), encoding="utf-8")
+    (target / "categories.md").write_text(render_categories_md(categories), encoding="utf-8")
+    (target / "custom-fields.md").write_text(render_custom_fields_md(custom_fields), encoding="utf-8")
+    (target / "users.md").write_text(render_users_md(users), encoding="utf-8")
 
     generated = ["categories.md", "custom-fields.md", "users.md"]
     update_firm_meta(
-        skill_dir,
         identity=firm_identity,
         cli_version=_pkg_version("wealthbox-cli"),
         generated_files=generated,
@@ -309,14 +385,14 @@ def bootstrap_skill_dir(
 
     wrote_stubs = 0
     if not generated_only:
-        wrote_stubs = len(write_stubs(firm_dir))
+        wrote_stubs = len(write_stubs(target))
     else:
-        readme = firm_dir / "_README.md"
+        readme = target / "_README.md"
         if not readme.exists():
             readme.write_text(FIRM_README, encoding="utf-8")
 
     return BootstrapResult(
-        skill_dir=skill_dir,
+        firm_dir=target,
         wrote_generated=generated,
         wrote_stubs=wrote_stubs,
         firm_identity=firm_identity,

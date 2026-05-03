@@ -86,17 +86,19 @@ def test_render_users_empty_list():
 
 
 # --------------------------------------------------------------------------- #
-# Stubs + meta.json                                                            #
+# Stubs + meta (template-per-install + firm-canonical, separate files)         #
 # --------------------------------------------------------------------------- #
 
 from wealthbox_tools.cli._skill_bootstrap import (  # noqa: E402
     FIRM_README,
     STUB_CONTENTS,
+    read_firm_meta,
     read_meta,
     update_firm_meta,
     update_template_meta,
     write_stubs,
 )
+from wealthbox_tools.cli._skill_paths import firm_meta_path  # noqa: E402
 
 
 def test_stub_contents_has_every_resource():
@@ -136,36 +138,39 @@ def test_update_template_meta_writes_to_skill_root(tmp_path):
     assert (tmp_path / "_meta.json").exists()
 
 
-def test_update_firm_meta_preserves_template_section(tmp_path):
-    update_template_meta(tmp_path, cli_version="1.1.2")
+def test_update_firm_meta_writes_to_canonical_path():
     update_firm_meta(
-        tmp_path,
         identity={"id": 99, "name": "Test Firm"},
         cli_version="1.1.2",
         generated_files=["categories.md", "custom-fields.md", "users.md"],
     )
-    meta = read_meta(tmp_path)
-    assert meta["template"] == {"cli_version": "1.1.2"}
-    assert meta["firm"]["identity"] == {"id": 99, "name": "Test Firm"}
-    assert meta["firm"]["cli_version"] == "1.1.2"
-    assert set(meta["firm"]["files"]) == {
-        "categories.md", "custom-fields.md", "users.md",
-    }
-    for ts in meta["firm"]["files"].values():
+    meta = read_firm_meta()
+    assert meta["identity"] == {"id": 99, "name": "Test Firm"}
+    assert meta["cli_version"] == "1.1.2"
+    assert set(meta["files"]) == {"categories.md", "custom-fields.md", "users.md"}
+    for ts in meta["files"].values():
         assert "T" in ts  # ISO 8601
+    assert firm_meta_path().exists()
 
 
-def test_update_template_meta_preserves_firm_section(tmp_path):
+def test_firm_meta_independent_of_template_meta(tmp_path):
+    """Per-install template meta and machine-level firm meta are separate
+    files. Writes to one don't touch the other."""
+    update_template_meta(tmp_path, cli_version="1.1.2")
     update_firm_meta(
-        tmp_path,
         identity={"id": 1, "name": "Old"},
         cli_version="1.1.0",
         generated_files=["categories.md"],
     )
-    update_template_meta(tmp_path, cli_version="1.1.2")
-    meta = read_meta(tmp_path)
-    assert meta["template"]["cli_version"] == "1.1.2"
-    assert meta["firm"]["identity"]["name"] == "Old"
+
+    # template meta has no firm key
+    template_meta = read_meta(tmp_path)
+    assert template_meta == {"template": {"cli_version": "1.1.2"}}
+
+    # firm meta has identity but no template wrapper
+    firm_meta = read_firm_meta()
+    assert firm_meta["identity"]["name"] == "Old"
+    assert "template" not in firm_meta
 
 
 def test_firm_readme_constant_mentions_generated_and_hand_edited():

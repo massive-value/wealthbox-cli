@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import shutil
 from datetime import datetime, timezone
 from importlib.metadata import version as _pkg_version
 from importlib.resources import as_file, files
@@ -8,7 +7,14 @@ from pathlib import Path
 
 import typer
 
-from ._skill_bootstrap import copy_firm_meta, mark_firm_onboarded, read_meta, update_template_meta
+from ._skill_bootstrap import (
+    mark_firm_onboarded,
+    migrate_legacy_firm,
+    read_firm_meta,
+    read_meta,
+    update_template_meta,
+)
+from ._skill_paths import firm_dir, firm_meta_path
 from ._skill_platforms import (
     Platform,
     SkillInstallError,
@@ -27,31 +33,41 @@ app = typer.Typer(
 )
 
 
+def _ensure_firm_migrated() -> Path | None:
+    """Migrate legacy `<skill_dir>/firm/` data to the canonical path if needed.
+
+    Idempotent — a no-op once canonical firm meta exists. Returns the source
+    skill dir migrated from, or None if nothing migrated.
+    """
+    installed = [skill_dir(p) for p in detect_platforms() if is_installed(p)]
+    return migrate_legacy_firm(installed)
+
+
 @app.command("list", help="Show where the skill is installed per platform.")
 def list_platforms() -> None:
-    header = ("platform", "path", "status", "template-version", "last-bootstrap", "onboarded")
-    rows: list[tuple[str, str, str, str, str, str]] = []
+    _ensure_firm_migrated()
+    firm_meta = read_firm_meta()
+    last_bootstrap = "-"
+    onboarded = "no"
+    if firm_meta:
+        files_map = firm_meta.get("files") or {}
+        if files_map:
+            last_bootstrap = max(files_map.values())
+        onboarded = firm_meta.get("onboarded_at") or "no"
+
+    header = ("platform", "path", "status", "template-version")
+    rows: list[tuple[str, str, str, str]] = []
     for p in detect_platforms():
         dest = skill_dir(p)
         installed = is_installed(p)
         template_version = "-"
-        last_bootstrap = "-"
-        onboarded = "-"
         if installed:
-            meta = read_meta(dest)
-            template_version = meta.get("template", {}).get("cli_version", "-")
-            firm_section = meta.get("firm") or {}
-            firm_files = firm_section.get("files") or {}
-            if firm_files:
-                last_bootstrap = max(firm_files.values())
-            onboarded = firm_section.get("onboarded_at") or "no"
+            template_version = (read_meta(dest).get("template") or {}).get("cli_version", "-")
         rows.append((
             p.id,
             str(dest),
             "installed" if installed else "not installed",
             template_version,
-            last_bootstrap,
-            onboarded,
         ))
 
     widths = [
@@ -63,6 +79,11 @@ def list_platforms() -> None:
     typer.echo(fmt.format(*("-" * w for w in widths)))
     for r in rows:
         typer.echo(fmt.format(*r))
+
+    typer.echo("")
+    typer.echo(f"firm-path:       {firm_dir()}")
+    typer.echo(f"last-bootstrap:  {last_bootstrap}")
+    typer.echo(f"onboarded:       {onboarded}")
 
 
 def _resolve_platforms(ids: list[str]) -> list[Platform]:
@@ -122,105 +143,104 @@ def install_cmd(
             update_template_meta(skill_dir(target), cli_version=_pkg_version("wealthbox-cli"))
             typer.echo(f"OK installed to {skill_dir(target)}")
 
+    _ensure_firm_migrated()
+
     if not no_bootstrap:
         if typer.confirm("Run 'wbox skills bootstrap' now?", default=True):
-            from ._skill_bootstrap import bootstrap_skill_dir
-            for target in targets:
-                bootstrap_skill_dir(skill_dir(target), token=token, generated_only=False)
-                typer.echo(f"OK bootstrapped {target.id}")
+            from ._skill_bootstrap import bootstrap_firm
+            bootstrap_firm(token=token, generated_only=False)
+            typer.echo(f"OK bootstrapped firm at {firm_dir()}")
 
 
-@app.command("bootstrap", help="Populate firm/ files from the Wealthbox API.")
+@app.command(
+    "bootstrap",
+    help="Populate firm data from the Wealthbox API. Writes to one canonical location per machine.",
+)
 def bootstrap_cmd(
     platforms_flag: list[str] = typer.Option(
         [], "--platform", "-p",
-        help="Platform id. Default: every installed platform.",
+        help="Deprecated: firm data is now machine-level, no longer per-platform. The flag is accepted but ignored.",
     ),
     generated_only: bool = typer.Option(
         False, "--generated-only",
         help="Only update generated files; never create stubs.",
     ),
     dry_run: bool = typer.Option(
-        False, "--dry-run", help="Print planned writes; make no disk changes."
+        False, "--dry-run", help="Print the planned target; make no disk changes."
     ),
     token: str | None = typer.Option(None, envvar="WEALTHBOX_TOKEN", hidden=True),
 ) -> None:
-    from ._skill_bootstrap import bootstrap_skill_dir
+    from ._skill_bootstrap import bootstrap_firm
 
     if platforms_flag:
-        targets = _resolve_platforms(platforms_flag)
-    else:
-        targets = [p for p in detect_platforms() if is_installed(p)]
-
-    if not targets:
         typer.echo(
-            "No installed platforms found. Run 'wbox skills install' first.",
+            "! --platform is deprecated and ignored; firm data is now machine-level.",
             err=True,
         )
-        raise typer.Exit(code=2)
+
+    _ensure_firm_migrated()
 
     if dry_run:
-        for t in targets:
-            typer.echo(
-                f"[dry-run] would bootstrap {skill_dir(t)} (generated_only={generated_only})"
-            )
+        typer.echo(f"[dry-run] would bootstrap {firm_dir()} (generated_only={generated_only})")
         return
 
-    for t in targets:
-        result = bootstrap_skill_dir(
-            skill_dir(t), token=token, generated_only=generated_only
-        )
-        typer.echo(
-            f"OK bootstrapped {t.id}: wrote {len(result.wrote_generated)} generated files, "
-            f"{result.wrote_stubs} stubs (firm: {result.firm_identity.get('name')})"
-        )
+    result = bootstrap_firm(token=token, generated_only=generated_only)
+    typer.echo(
+        f"OK bootstrapped {result.firm_dir}: wrote {len(result.wrote_generated)} generated files, "
+        f"{result.wrote_stubs} stubs (firm: {result.firm_identity.get('name')})"
+    )
 
 
 @app.command("refresh", help="Re-fetch generated firm files. Hand-edited files are preserved.")
 def refresh_cmd(
-    platforms_flag: list[str] = typer.Option([], "--platform", "-p"),
+    platforms_flag: list[str] = typer.Option(
+        [], "--platform", "-p",
+        help="Deprecated: firm data is now machine-level, no longer per-platform.",
+    ),
     staleness_days: int = typer.Option(
-        30, "--staleness-days", help="Warn if _meta.json older than N days."
+        30, "--staleness-days", help="Warn if firm meta older than N days."
     ),
     token: str | None = typer.Option(None, envvar="WEALTHBOX_TOKEN", hidden=True),
 ) -> None:
-    from ._skill_bootstrap import bootstrap_skill_dir
+    from ._skill_bootstrap import bootstrap_firm
 
     if platforms_flag:
-        targets = _resolve_platforms(platforms_flag)
-    else:
-        targets = [p for p in detect_platforms() if is_installed(p)]
-
-    if not targets:
         typer.echo(
-            "No installed platforms found. Run 'wbox skills install' first.",
+            "! --platform is deprecated and ignored; firm data is now machine-level.",
+            err=True,
+        )
+
+    _ensure_firm_migrated()
+
+    meta = read_firm_meta()
+    if not meta:
+        typer.echo(
+            "No firm data found. Run 'wbox skills bootstrap' first.",
             err=True,
         )
         raise typer.Exit(code=2)
 
-    for t in targets:
-        meta = read_meta(skill_dir(t))
-        firm_files = (meta.get("firm") or {}).get("files") or {}
-        if firm_files:
-            try:
-                oldest = min(datetime.fromisoformat(ts) for ts in firm_files.values())
-                age_days = (datetime.now(timezone.utc) - oldest).days
-                if age_days > staleness_days:
-                    typer.echo(
-                        f"! {t.id}: generated files were {age_days} days stale - refreshing now",
-                        err=True,
-                    )
-            except ValueError:
-                pass
+    files_map = meta.get("files") or {}
+    if files_map:
+        try:
+            oldest = min(datetime.fromisoformat(ts) for ts in files_map.values())
+            age_days = (datetime.now(timezone.utc) - oldest).days
+            if age_days > staleness_days:
+                typer.echo(
+                    f"! generated files were {age_days} days stale - refreshing now",
+                    err=True,
+                )
+        except ValueError:
+            pass
 
-        bootstrap_skill_dir(skill_dir(t), token=token, generated_only=True)
-        typer.echo(f"OK refreshed {t.id}")
+    bootstrap_firm(token=token, generated_only=True)
+    typer.echo(f"OK refreshed {firm_dir()}")
 
 
 @app.command(
     "upgrade",
     help="Refresh template files (SKILL.md, references/, firm-examples/, bootstrap.md) "
-         "in every installed platform. Preserves firm/ and _meta.json firm section.",
+         "in every installed platform. Firm data is unaffected (it lives outside the skill dir).",
 )
 def upgrade_cmd(
     platforms_flag: list[str] = typer.Option(
@@ -266,26 +286,37 @@ def doctor_cmd(
 
     from ._util import run_client
 
+    migrated_from = _ensure_firm_migrated()
+    if migrated_from is not None:
+        typer.echo(f"! migrated legacy firm/ data from {migrated_from} to {firm_dir()}")
+
     current = _pkg_version("wealthbox-cli")
     typer.echo("# Skill install state")
     for p in detect_platforms():
         status = "installed" if is_installed(p) else "not installed"
         meta = read_meta(skill_dir(p)) if is_installed(p) else {}
-        firm_section = meta.get("firm") or {}
-        if not firm_section:
-            firm_state = "not bootstrapped"
-        elif firm_section.get("onboarded_at"):
-            firm_state = "onboarded"
-        else:
-            firm_state = "bootstrapped (qualitative pending)"
         template_v = (meta.get("template") or {}).get("cli_version", "-")
         upgrade_hint = ""
         if template_v not in ("-", current):
             upgrade_hint = f"  [upgrade available: {template_v} -> {current}]"
         typer.echo(
-            f"  {p.id:<22} {status:<16} {firm_state:<36} "
-            f"template={template_v:<10} {skill_dir(p)}{upgrade_hint}"
+            f"  {p.id:<22} {status:<16} template={template_v:<10} {skill_dir(p)}{upgrade_hint}"
         )
+
+    typer.echo("\n# Firm data (canonical)")
+    firm_meta = read_firm_meta()
+    if not firm_meta:
+        firm_state = "not bootstrapped"
+    elif firm_meta.get("onboarded_at"):
+        firm_state = "onboarded"
+    else:
+        firm_state = "bootstrapped (qualitative pending)"
+    identity = firm_meta.get("identity") or {}
+    typer.echo(f"  state:     {firm_state}")
+    typer.echo(f"  firm:      {identity.get('name', '-')}")
+    typer.echo(f"  user:      {identity.get('user_name', '-')}")
+    typer.echo(f"  path:      {firm_dir()}")
+    typer.echo(f"  meta:      {firm_meta_path()}")
 
     typer.echo("\n# Token")
     try:
@@ -302,191 +333,42 @@ def doctor_cmd(
         typer.echo(f"  token check failed: {e}")
 
 
-def _prompt_sync_source(installed: list[Platform]) -> Platform:
-    typer.echo("Installed platforms:")
-    for i, p in enumerate(installed, 1):
-        typer.echo(f"  {i}. {p.id:<22} {p.label}")
-    while True:
-        raw = typer.prompt("Source platform (id or number)").strip()
-        for i, p in enumerate(installed, 1):
-            if raw == str(i) or raw == p.id:
-                return p
-        typer.echo(f"  ! unknown selection {raw!r}; try again", err=True)
-
-
-def _prompt_sync_targets(candidates: list[Platform]) -> list[Platform]:
-    typer.echo("Available targets:")
-    for i, p in enumerate(candidates, 1):
-        typer.echo(f"  {i}. {p.id:<22} {p.label}")
-    typer.echo("  a. all of the above")
-    raw = typer.prompt("Targets (comma-separated ids/numbers, or 'a')").strip()
-    if raw.lower() in {"a", "all"}:
-        return list(candidates)
-    selected: list[Platform] = []
-    for token in (t.strip() for t in raw.split(",") if t.strip()):
-        match: Platform | None = None
-        for i, p in enumerate(candidates, 1):
-            if token == str(i) or token == p.id:
-                match = p
-                break
-        if match is None:
-            raise typer.BadParameter(f"unknown target {token!r}")
-        if match not in selected:
-            selected.append(match)
-    return selected
-
-
 @app.command(
-    "sync",
-    help="Copy firm/ files from one installed platform to one or more others.",
+    "firm-path",
+    help="Print the canonical firm data directory. Use this from agents to find firm/ files.",
 )
-def sync_cmd(
-    source_id: str | None = typer.Option(
-        None, "--source", "-s",
-        help="Platform id to copy firm/ from. Prompts if omitted.",
-    ),
-    target_ids: list[str] = typer.Option(
-        [], "--target", "-t",
-        help="Platform id to copy firm/ to. Repeat for multiple. Prompts if omitted.",
-    ),
-    all_targets: bool = typer.Option(
-        False, "--all-targets",
-        help="Sync to every installed platform except the source.",
-    ),
-    dry_run: bool = typer.Option(
-        False, "--dry-run", help="Show planned writes without copying.",
-    ),
-    yes: bool = typer.Option(
-        False, "--yes", "-y", help="Skip confirmation prompt.",
-    ),
-) -> None:
-    installed = [p for p in detect_platforms() if is_installed(p)]
-    if len(installed) < 2:
-        ids = [p.id for p in installed] or ["none"]
-        typer.echo(
-            f"Need at least two installed platforms to sync. Installed: {ids}",
-            err=True,
-        )
-        raise typer.Exit(code=2)
-
-    if source_id:
-        source = _resolve_platforms([source_id])[0]
-        if not is_installed(source):
-            typer.echo(f"Error: source {source.id!r} is not installed.", err=True)
-            raise typer.Exit(code=2)
-    else:
-        source = _prompt_sync_source(installed)
-
-    src_firm = skill_dir(source) / "firm"
-    if not src_firm.is_dir():
-        typer.echo(
-            f"Error: {source.id} has no firm/ directory at {src_firm}. "
-            f"Run 'wbox skills bootstrap --platform {source.id}' first.",
-            err=True,
-        )
-        raise typer.Exit(code=2)
-
-    src_resolved = skill_dir(source).resolve()
-
-    def _is_same_path(p: Platform) -> bool:
-        return skill_dir(p).resolve() == src_resolved
-
-    others = [p for p in installed if p.id != source.id and not _is_same_path(p)]
-
-    if all_targets and target_ids:
-        typer.echo("Error: --all-targets and --target are mutually exclusive.", err=True)
-        raise typer.Exit(code=2)
-
-    if all_targets:
-        targets = others
-    elif target_ids:
-        targets = _resolve_platforms(target_ids)
-        for t in targets:
-            if t.id == source.id or _is_same_path(t):
-                typer.echo(
-                    f"Error: target {t.id!r} is the same as the source "
-                    f"(resolves to {src_resolved}).",
-                    err=True,
-                )
-                raise typer.Exit(code=2)
-            if not is_installed(t):
-                typer.echo(f"Error: target {t.id!r} is not installed.", err=True)
-                raise typer.Exit(code=2)
-    else:
-        targets = _prompt_sync_targets(others)
-
-    if not targets:
-        typer.echo("No targets selected.", err=True)
-        raise typer.Exit(code=2)
-
-    typer.echo(f"Source: {source.id} ({src_firm})")
-    typer.echo("Targets:")
-    for t in targets:
-        typer.echo(f"  {t.id} ({skill_dir(t) / 'firm'})")
-
-    src_files = sorted(p for p in src_firm.rglob("*") if p.is_file())
-
-    if dry_run:
-        for t in targets:
-            tgt_firm = skill_dir(t) / "firm"
-            for src_file in src_files:
-                rel = src_file.relative_to(src_firm)
-                dest = tgt_firm / rel
-                action = "overwrite" if dest.exists() else "create"
-                typer.echo(f"  [dry-run][{t.id}] {action} firm/{rel.as_posix()}")
-        return
-
-    if not yes and not typer.confirm("Proceed with sync?", default=False):
-        typer.echo("Cancelled.")
-        raise typer.Exit(code=1)
-
-    for t in targets:
-        tgt_firm = skill_dir(t) / "firm"
-        tgt_firm.mkdir(parents=True, exist_ok=True)
-        shutil.copytree(src_firm, tgt_firm, dirs_exist_ok=True)
-        meta_copied = copy_firm_meta(skill_dir(source), skill_dir(t))
-        meta_note = "" if meta_copied else " (no _meta.json firm section on source)"
-        typer.echo(
-            f"OK synced {len(src_files)} files: {source.id} -> {t.id}{meta_note}"
-        )
+def firm_path_cmd() -> None:
+    _ensure_firm_migrated()
+    typer.echo(str(firm_dir()))
 
 
 @app.command(
     "mark-onboarded",
-    help="Stamp firm.onboarded_at in _meta.json. Run after qualitative firm Q&A is captured.",
+    help="Stamp `onboarded_at` in canonical firm meta. Run after qualitative firm Q&A is captured.",
 )
 def mark_onboarded_cmd(
     platforms_flag: list[str] = typer.Option(
         [], "--platform", "-p",
-        help="Platform id. Default: every installed platform.",
+        help="Deprecated: onboarded_at is now machine-level, no longer per-platform.",
     ),
 ) -> None:
     if platforms_flag:
-        targets = _resolve_platforms(platforms_flag)
-        for t in targets:
-            if not is_installed(t):
-                typer.echo(f"Error: {t.id!r} is not installed.", err=True)
-                raise typer.Exit(code=2)
-    else:
-        targets = [p for p in detect_platforms() if is_installed(p)]
-
-    if not targets:
         typer.echo(
-            "No installed platforms found. Run 'wbox skills install' first.",
+            "! --platform is deprecated and ignored; onboarded_at is now machine-level.",
             err=True,
         )
-        raise typer.Exit(code=2)
 
-    for t in targets:
-        try:
-            ts = mark_firm_onboarded(skill_dir(t))
-        except FileNotFoundError as e:
-            typer.echo(f"Error: {t.id}: {e}", err=True)
-            raise typer.Exit(code=2) from e
-        typer.echo(f"OK marked {t.id} onboarded at {ts}")
+    _ensure_firm_migrated()
+
+    try:
+        ts = mark_firm_onboarded()
+    except FileNotFoundError as e:
+        typer.echo(f"Error: {e}", err=True)
+        raise typer.Exit(code=2) from e
+    typer.echo(f"OK marked onboarded at {ts}")
 
 
-@app.command("uninstall", help="Remove the wealthbox-crm skill from a platform.")
+@app.command("uninstall", help="Remove the wealthbox-crm skill from a platform. Firm data is preserved.")
 def uninstall_cmd(
     platforms_flag: list[str] = typer.Option([], "--platform", "-p"),
     yes: bool = typer.Option(False, "--yes", "-y", help="Skip confirmation."),

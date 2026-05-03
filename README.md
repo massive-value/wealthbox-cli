@@ -106,21 +106,51 @@ The skill translates your intent into the correct `wbox` commands, handles flag 
 
 ### Install
 
-One command, same on every OS:
+Two ways depending on which agent you use:
+
+#### Option A — Claude Code plugin marketplace (recommended for Claude Code users)
+
+Inside Claude Code:
+
+```
+/plugin marketplace add massive-value/wealthbox-cli
+/plugin install wealthbox-crm@massive-value
+```
+
+The plugin auto-updates daily. The skill is installed under `~/.claude/plugins/cache/`. Firm data is stored at the canonical machine-level path (`~/.config/wbox/firm/` or `%APPDATA%\wbox\firm\`) — see [Where firm data lives](#where-firm-data-lives) below — and survives plugin auto-updates.
+
+The `wbox` CLI is still required as the execution engine. The bundled SKILL.md tells the agent to install it via the Phase 1 bootstrap if missing.
+
+#### Option B — `wbox skills install` (Claude Code, Codex, or local project scope)
 
 ```bash
 pip install wealthbox-cli
 wbox config set-token        # paste your Wealthbox API token
-wbox skills install          # interactive: pick Claude Code, Codex, or both
+wbox skills install          # interactive: pick Claude Code (user/project), Codex, or all
 ```
 
 The installer asks which platforms to target, copies the skill into the right directory (`~/.claude/skills/` for Claude Code, `~/.codex/skills/` for Codex — both use `SKILL.md`), and offers to bootstrap your firm's customizations from the Wealthbox API.
+
+#### Option C — Codex marketplace (when the openai/skills PR lands)
+
+Pending submission to [openai/skills](https://github.com/openai/skills) (status tracked in CHANGELOG). Until then, use Option B for Codex.
 
 > **Upgrading from < 1.1.6?** Earlier versions installed the codex skill as `AGENTS.md`. That was wrong — codex uses `SKILL.md` for skills (and `AGENTS.md` only as the project-level instructions file, in place of `CLAUDE.md`). If your codex install still has `AGENTS.md`, reinstall with `wbox skills install --platform codex --force`.
 
 ### First agent run captures firm conventions
 
-`wbox skills bootstrap` populates the API-derived files (categories, custom fields, users) — that's the *quantitative* half. The *qualitative* half (firm defaults, naming conventions, named workflows, required fields) happens the first time an agent invokes the skill: it walks you through the questions in `bootstrap.md` and stamps `firm.onboarded_at` in `_meta.json` when done. On subsequent runs the bootstrap path is skipped automatically.
+`wbox skills bootstrap` populates the API-derived files (categories, custom fields, users) — that's the *quantitative* half. The *qualitative* half (firm defaults, naming conventions, named workflows, required fields) happens the first time an agent invokes the skill: it walks you through the questions in `bootstrap.md` and stamps `onboarded_at` in the canonical firm `_meta.json` when done. On subsequent runs the bootstrap path is skipped automatically.
+
+### Where firm data lives
+
+Firm data is stored at one canonical machine-level path — **not** inside each skill install. This way it survives plugin auto-updates, skill template upgrades, and works the same across Claude Code, Codex, or any other host:
+
+| Platform | Firm data path |
+|----------|----------------|
+| macOS / Linux | `~/.config/wbox/firm/` |
+| Windows | `%APPDATA%\wbox\firm\` |
+
+Run `wbox skills firm-path` to print the resolved path. The bundled SKILL.md tells the agent to call this command and read firm files from that directory.
 
 ### Refresh after firm changes
 
@@ -130,22 +160,20 @@ If your firm adds or renames category values, custom fields, or users:
 wbox skills refresh
 ```
 
-This updates the generated half of the skill's firm files; hand-edited policy is preserved.
+This updates the generated half (categories, custom-fields, users); hand-edited policy is preserved.
 
 ### Other commands
 
 ```bash
-wbox skills list             # show where the skill is installed + last bootstrap time
-wbox skills doctor           # diagnose install state + token
-wbox skills sync             # copy firm/ from one install to others (Claude Code <-> Codex)
-wbox skills upgrade          # refresh template files (SKILL.md, references/, ...) preserving firm/
-wbox skills mark-onboarded   # stamp firm.onboarded_at after qualitative Q&A (the agent calls this for you)
-wbox skills uninstall        # remove the skill
+wbox skills list             # show install state per platform + canonical firm path
+wbox skills doctor           # diagnose install state + token + firm state
+wbox skills firm-path        # print canonical firm directory (for the agent)
+wbox skills upgrade          # refresh template files in every install; firm data is unaffected
+wbox skills mark-onboarded   # stamp onboarded_at in firm meta (the agent calls this for you)
+wbox skills uninstall        # remove the skill template; firm data is preserved
 ```
 
-When the CLI ships a newer template (improved SKILL.md, new reference docs, etc.), `wbox skills upgrade` re-copies the bundled template into every installed platform without touching your firm-specific data in `firm/`. Each install records the template's CLI version in `_meta.json`, so the agent can detect drift and prompt you to upgrade when needed.
-
-`wbox skills sync` is useful if you maintain firm conventions in one platform's install (e.g., your Claude Code user scope) and want the same `firm/` files mirrored to Codex or to a project-scoped `.claude/skills/` folder. The command runs as a wizard by default; pass `--source`, `--target`, and `--yes` for non-interactive use.
+When the CLI ships a newer template (improved SKILL.md, new reference docs, etc.), `wbox skills upgrade` re-copies the bundled template into every installed platform. Firm data lives outside the skill dir, so it's untouched. Each install records the template's CLI version in its own `_meta.json`, so the agent can detect drift and prompt you to upgrade when needed.
 
 ### Works with other agents too
 

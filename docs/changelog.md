@@ -6,6 +6,31 @@ This project uses [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [1.2.0](https://github.com/massive-value/wealthbox-cli/releases/tag/v1.2.0) — 2026-05-02
+
+### Changed
+
+- **Firm data hoisted to a canonical machine-level path.** `firm/` and the firm metadata (`identity`, `files` timestamps, `onboarded_at`) now live at `~/.config/wbox/firm/` (macOS/Linux) or `%APPDATA%\wbox\firm\` (Windows) — one source of truth per machine. Previously each skill install had its own `firm/` and embedded the firm section in `<skill_dir>/_meta.json`. The new layout survives plugin auto-updates, skill template upgrades, and reinstalls without risking the firm bootstrap state being wiped, and removes the duplication problem when the same skill is installed via multiple paths (Claude Code marketplace + manual install + Codex). Per-install `_meta.json` is retained for the per-install `template.cli_version` field.
+- `SKILL.md` now instructs the agent to run `wbox skills firm-path` to find the firm directory, then read `<firm>/<resource>.md` files from there. `bootstrap.md` updated to match.
+
+### Added
+
+- `wbox skills firm-path` — prints the canonical firm directory. Used by the agent to locate firm data, and useful for ad-hoc inspection.
+- Automatic migration: any command that reads firm state (`bootstrap`, `refresh`, `doctor`, `list`, `mark-onboarded`, `firm-path`) detects legacy `<skill_dir>/firm/` and `<skill_dir>/_meta.json.firm` data on first run and moves it to the canonical path. If multiple installs have legacy data, the one with the most recent `onboarded_at` (or generated-files timestamp) wins.
+- **Claude Code plugin marketplace.** `.claude-plugin/marketplace.json` at the repo root, plus a self-contained plugin at `plugins/wealthbox-crm/` with `.claude-plugin/plugin.json`. Users can now install with `/plugin marketplace add massive-value/wealthbox-cli` then `/plugin install wealthbox-crm@massive-value` directly inside Claude Code. The custom marketplace works immediately; an Anthropic official-marketplace submission is in flight.
+- **Codex plugin manifest** at `.codex-plugin/plugin.json` plus a `codex-skill/` mirror of the skill template, ready for the openai/skills PR and a future Codex marketplace listing once self-serve publishing opens.
+- `scripts/sync-plugin.py` — keeps the plugin and codex copies in sync with the canonical skill template at `src/wealthbox_tools/skills/wealthbox-crm/`. Run before committing skill template changes.
+
+### Removed
+
+- `wbox skills sync` is gone. Firm data is now machine-level, so there's nothing to sync between platform installs.
+
+### Deprecated
+
+- `--platform` flag on `bootstrap`, `refresh`, and `mark-onboarded` is accepted but ignored, with a warning. Firm operations are no longer scoped per platform.
+
+---
+
 ## [1.1.6](https://github.com/massive-value/wealthbox-cli/releases/tag/v1.1.6) — 2026-05-01
 
 ### Fixed

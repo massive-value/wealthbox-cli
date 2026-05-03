@@ -1,0 +1,25 @@
+{
+  "$schema": "https://code.claude.com/schemas/marketplace.json",
+  "name": "massive-value",
+  "description": "Marketplace for the Wealthbox CRM agent skill (and future Wealthbox-related plugins).",
+  "owner": {
+    "name": "Kadin Bullock"
+  },
+  "plugins": [
+    {
+      "name": "wealthbox-crm",
+      "source": "./plugins/wealthbox-crm",
+      "description": "Wealthbox CRM agent skill — natural-language CRM automation backed by the `wbox` CLI.",
+      "version": "1.2.0",
+      "category": "productivity",
+      "tags": [
+        "wealthbox",
+        "crm",
+        "financial-advisor"
+      ],
+      "homepage": "https://github.com/massive-value/wealthbox-cli",
+      "repository": "https://github.com/massive-value/wealthbox-cli",
+      "license": "Apache-2.0"
+    }
+  ]
+}
