@@ -152,9 +152,23 @@ _PERSON_RESERVED = {
     "type", "first_name", "middle_name", "last_name", "prefix", "suffix", "nickname",
     "gender", "marital_status", "birth_date", "anniversary", "job_title", "company_name",
     "contact_type", "contact_source", "status", "assigned_to", "email_addresses", "phone_numbers",
+    "tags",
 }
-_HOUSEHOLD_RESERVED = {"type", "name", "contact_type", "contact_source", "status", "assigned_to", "email_addresses"}
+_HOUSEHOLD_RESERVED = {
+    "type", "name", "contact_type", "contact_source", "status", "assigned_to", "email_addresses", "tags",
+}
 _ORG_TRUST_RESERVED = _HOUSEHOLD_RESERVED | {"phone_numbers"}
+
+
+def _parse_tags(tags: str | None) -> list[str] | None:
+    """Split a comma-separated tag string into a list of trimmed names.
+
+    Returns None when no value is provided. Empty/whitespace-only entries are dropped.
+    """
+    if tags is None:
+        return None
+    parsed = [t.strip() for t in tags.split(",") if t.strip()]
+    return parsed or None
 
 
 def _build_contact_entry(value: str | None, kind: str | None) -> list[dict[str, Any]] | None:
@@ -178,6 +192,7 @@ def _create_named_contact(
     email_type: str | None,
     phone: str | None,
     phone_type: str | None,
+    tags: str | None,
     more_fields: str | None,
     token: str | None,
     fmt: OutputFormat,
@@ -196,6 +211,9 @@ def _create_named_contact(
     phones = _build_contact_entry(phone, phone_type)
     if phones:
         payload["phone_numbers"] = phones
+    tag_list = _parse_tags(tags)
+    if tag_list is not None:
+        payload["tags"] = tag_list
     if more_fields:
         payload.update(parse_more_fields(more_fields, reserved))
     input_model = ContactCreateInput(**payload)
@@ -229,6 +247,9 @@ def add_person(
     phone_type: str | None = typer.Option(
         None, "--phone-type", help="Phone kind (e.g. Work, Mobile) — see: wbox contacts categories phone-types"
     ),
+    tags: str | None = typer.Option(
+        None, "--tags", help="Comma-separated tag names (e.g. 'VIP,Q1-Outreach'). New tags are auto-created."
+    ),
     more_fields: str | None = typer.Option(
         None, "--more-fields", help="Extra fields as JSON object (merged with flags; cannot override explicit flags)"
     ),
@@ -260,6 +281,9 @@ def add_person(
     phones = _build_contact_entry(phone, phone_type)
     if phones:
         payload["phone_numbers"] = phones
+    tag_list = _parse_tags(tags)
+    if tag_list is not None:
+        payload["tags"] = tag_list
     if more_fields:
         payload.update(parse_more_fields(more_fields, _PERSON_RESERVED))
     input_model = ContactCreateInput(**payload)
@@ -278,6 +302,9 @@ def add_household(
     email_type: str | None = typer.Option(
         None, "--email-type", help="Email kind (e.g. Work, Personal) — see: wbox contacts categories email-types"
     ),
+    tags: str | None = typer.Option(
+        None, "--tags", help="Comma-separated tag names (e.g. 'VIP,Q1-Outreach'). New tags are auto-created."
+    ),
     more_fields: str | None = typer.Option(
         None, "--more-fields", help="Extra fields as JSON object (merged with flags; cannot override explicit flags)"
     ),
@@ -295,6 +322,9 @@ def add_household(
     emails = _build_contact_entry(email, email_type)
     if emails:
         payload["email_addresses"] = emails
+    tag_list = _parse_tags(tags)
+    if tag_list is not None:
+        payload["tags"] = tag_list
     if more_fields:
         payload.update(parse_more_fields(more_fields, _HOUSEHOLD_RESERVED))
     input_model = ContactCreateInput(**payload)
@@ -317,6 +347,9 @@ def add_org(
     phone_type: str | None = typer.Option(
         None, "--phone-type", help="Phone kind (e.g. Work, Mobile) — see: wbox contacts categories phone-types"
     ),
+    tags: str | None = typer.Option(
+        None, "--tags", help="Comma-separated tag names (e.g. 'VIP,Q1-Outreach'). New tags are auto-created."
+    ),
     more_fields: str | None = typer.Option(
         None, "--more-fields", help="Extra fields as JSON object (merged with flags; cannot override explicit flags)"
     ),
@@ -325,7 +358,7 @@ def add_org(
 ) -> None:
     _create_named_contact(
         RecordType.ORGANIZATION, _ORG_TRUST_RESERVED, name, contact_type, contact_source,
-        active, assigned_to, email, email_type, phone, phone_type, more_fields, token, fmt,
+        active, assigned_to, email, email_type, phone, phone_type, tags, more_fields, token, fmt,
     )
 
 
@@ -345,6 +378,9 @@ def add_trust(
     phone_type: str | None = typer.Option(
         None, "--phone-type", help="Phone kind (e.g. Work, Mobile) — see: wbox contacts categories phone-types"
     ),
+    tags: str | None = typer.Option(
+        None, "--tags", help="Comma-separated tag names (e.g. 'VIP,Q1-Outreach'). New tags are auto-created."
+    ),
     more_fields: str | None = typer.Option(
         None, "--more-fields", help="Extra fields as JSON object (merged with flags; cannot override explicit flags)"
     ),
@@ -353,7 +389,7 @@ def add_trust(
 ) -> None:
     _create_named_contact(
         RecordType.TRUST, _ORG_TRUST_RESERVED, name, contact_type, contact_source,
-        active, assigned_to, email, email_type, phone, phone_type, more_fields, token, fmt,
+        active, assigned_to, email, email_type, phone, phone_type, tags, more_fields, token, fmt,
     )
 
 
@@ -376,6 +412,14 @@ def update_contact(
     contact_source: str | None = typer.Option(None, "--contact-source"),
     active: bool | None = typer.Option(None, "--active/--inactive", help="Set contact status to Active or Inactive"),
     assigned_to: int | None = typer.Option(None, "--assigned-to", help="Reassign to a user by ID"),
+    tags: str | None = typer.Option(
+        None,
+        "--tags",
+        help=(
+            "Comma-separated tag names (e.g. 'VIP,Q1-Outreach'). Replaces all tags on the contact — "
+            "include existing tags you wish to keep. New tags are auto-created."
+        ),
+    ),
     token: str | None = typer.Option(None, envvar="WEALTHBOX_TOKEN", hidden=True),
     fmt: OutputFormat = typer.Option(OutputFormat.JSON, "--format"),
 ) -> None:
@@ -394,6 +438,9 @@ def update_contact(
             "status": active_to_status(active),
             "assigned_to": assigned_to,
         }.items() if v is not None}
+        tag_list = _parse_tags(tags)
+        if tag_list is not None:
+            payload["tags"] = tag_list
         input_model = ContactUpdateInput(**payload)
 
     output_result(run_client(token, lambda c: c.update_contact(contact_id, input_model)), fmt)

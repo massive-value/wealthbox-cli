@@ -341,3 +341,99 @@ def test_add_trust_more_fields_reserved_key_raises(runner) -> None:
     extra = json.dumps({"type": "Oops"})
     result = runner.invoke(app, ["contacts", "add", "trust", "--name", "Conglomerate Trust", "--more-fields", extra])
     assert result.exit_code != 0
+
+
+# ---------------------------------------------------------------------------
+# tags flag — first-class on every add subcommand
+# ---------------------------------------------------------------------------
+
+@respx.mock
+def test_add_person_tags_single(runner) -> None:
+    route = respx.post(_API_URL).mock(return_value=httpx.Response(200, json=_CONTACT_RESPONSE))
+    result = runner.invoke(
+        app, ["contacts", "add", "person", "--first-name", "John", "--tags", "VIP"]
+    )
+    assert result.exit_code == 0
+    sent = json.loads(route.calls[0].request.content)
+    assert sent["tags"] == ["VIP"]
+
+
+@respx.mock
+def test_add_person_tags_multiple_trims_whitespace(runner) -> None:
+    route = respx.post(_API_URL).mock(return_value=httpx.Response(200, json=_CONTACT_RESPONSE))
+    result = runner.invoke(
+        app,
+        ["contacts", "add", "person", "--first-name", "John", "--tags", "VIP, Q1-Outreach , Client"],
+    )
+    assert result.exit_code == 0
+    sent = json.loads(route.calls[0].request.content)
+    assert sent["tags"] == ["VIP", "Q1-Outreach", "Client"]
+
+
+def test_add_person_tags_more_fields_reserved_key_raises(runner) -> None:
+    extra = json.dumps({"tags": ["Oops"]})
+    result = runner.invoke(
+        app,
+        ["contacts", "add", "person", "--first-name", "John", "--tags", "VIP", "--more-fields", extra],
+    )
+    assert result.exit_code != 0
+
+
+@respx.mock
+def test_add_household_tags(runner) -> None:
+    route = respx.post(_API_URL).mock(return_value=httpx.Response(200, json=_HOUSEHOLD_RESPONSE))
+    result = runner.invoke(
+        app, ["contacts", "add", "household", "--name", "The Smiths", "--tags", "VIP,Client"]
+    )
+    assert result.exit_code == 0
+    sent = json.loads(route.calls[0].request.content)
+    assert sent["tags"] == ["VIP", "Client"]
+
+
+def test_add_household_tags_more_fields_reserved_key_raises(runner) -> None:
+    extra = json.dumps({"tags": ["Oops"]})
+    result = runner.invoke(
+        app,
+        ["contacts", "add", "household", "--name", "The Smiths", "--more-fields", extra],
+    )
+    assert result.exit_code != 0
+
+
+@respx.mock
+def test_add_org_tags(runner) -> None:
+    route = respx.post(_API_URL).mock(return_value=httpx.Response(200, json=_ORG_RESPONSE))
+    result = runner.invoke(
+        app, ["contacts", "add", "org", "--name", "Acme Co.", "--tags", "Vendor,Strategic"]
+    )
+    assert result.exit_code == 0
+    sent = json.loads(route.calls[0].request.content)
+    assert sent["tags"] == ["Vendor", "Strategic"]
+
+
+def test_add_org_tags_more_fields_reserved_key_raises(runner) -> None:
+    extra = json.dumps({"tags": ["Oops"]})
+    result = runner.invoke(
+        app, ["contacts", "add", "org", "--name", "Acme Co.", "--more-fields", extra]
+    )
+    assert result.exit_code != 0
+
+
+@respx.mock
+def test_add_trust_tags(runner) -> None:
+    route = respx.post(_API_URL).mock(return_value=httpx.Response(200, json=_TRUST_RESPONSE))
+    result = runner.invoke(
+        app,
+        ["contacts", "add", "trust", "--name", "Conglomerate Trust", "--tags", "Irrevocable"],
+    )
+    assert result.exit_code == 0
+    sent = json.loads(route.calls[0].request.content)
+    assert sent["tags"] == ["Irrevocable"]
+
+
+def test_add_trust_tags_more_fields_reserved_key_raises(runner) -> None:
+    extra = json.dumps({"tags": ["Oops"]})
+    result = runner.invoke(
+        app,
+        ["contacts", "add", "trust", "--name", "Conglomerate Trust", "--more-fields", extra],
+    )
+    assert result.exit_code != 0
