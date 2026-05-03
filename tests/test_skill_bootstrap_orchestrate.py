@@ -5,7 +5,8 @@ import json
 import httpx
 import respx
 
-from wealthbox_tools.cli._skill_bootstrap import bootstrap_skill_dir
+from wealthbox_tools.cli._skill_bootstrap import bootstrap_firm
+from wealthbox_tools.cli._skill_paths import firm_dir, firm_meta_path
 from wealthbox_tools.models.enums import CategoryType, DocumentType
 
 _BASE = "https://api.crmworkspace.com/v1"
@@ -42,58 +43,50 @@ def _me_response(*, user_id: int, user_name: str, firm_id: int, firm_name: str) 
 
 
 @respx.mock
-def test_bootstrap_writes_generated_and_stubs_first_time(tmp_path):
-    skill_dir = tmp_path / "wealthbox-crm"
-    skill_dir.mkdir()
+def test_bootstrap_writes_generated_and_stubs_first_time():
     _mock_all_categories()
     respx.get(f"{_BASE}/users").mock(return_value=httpx.Response(200, json={"users": []}))
     respx.get(f"{_BASE}/me").mock(
         return_value=_me_response(user_id=7, user_name="Adv", firm_id=100, firm_name="Firm")
     )
 
-    result = bootstrap_skill_dir(skill_dir, token="t", generated_only=False)
+    result = bootstrap_firm(token="t", generated_only=False)
 
-    firm = skill_dir / "firm"
-    assert (firm / "categories.md").exists()
-    assert (firm / "custom-fields.md").exists()
-    assert (firm / "users.md").exists()
-    assert (skill_dir / "_meta.json").exists()
-    assert not (firm / "_meta.json").exists()
-    assert (firm / "_README.md").exists()
+    fd = firm_dir()
+    assert (fd / "categories.md").exists()
+    assert (fd / "custom-fields.md").exists()
+    assert (fd / "users.md").exists()
+    assert firm_meta_path().exists()
+    assert (fd / "_README.md").exists()
     for n in (
         "contacts.md", "tasks.md", "notes.md", "events.md",
         "opportunities.md", "projects.md", "workflows.md",
     ):
-        assert (firm / n).exists()
+        assert (fd / n).exists()
     assert result.wrote_stubs == 7
 
 
 @respx.mock
-def test_bootstrap_generated_only_preserves_stubs(tmp_path):
-    skill_dir = tmp_path / "wealthbox-crm"
-    skill_dir.mkdir()
-    firm = skill_dir / "firm"
-    firm.mkdir()
-    (firm / "contacts.md").write_text("MY EDITS\n")
+def test_bootstrap_generated_only_preserves_stubs():
+    fd = firm_dir()
+    fd.mkdir(parents=True, exist_ok=True)
+    (fd / "contacts.md").write_text("MY EDITS\n")
     _mock_all_categories()
     respx.get(f"{_BASE}/users").mock(return_value=httpx.Response(200, json={"users": []}))
     respx.get(f"{_BASE}/me").mock(
         return_value=_me_response(user_id=1, user_name="x", firm_id=2, firm_name="y")
     )
 
-    result = bootstrap_skill_dir(skill_dir, token="t", generated_only=True)
+    result = bootstrap_firm(token="t", generated_only=True)
 
-    assert (firm / "contacts.md").read_text() == "MY EDITS\n"
+    assert (fd / "contacts.md").read_text() == "MY EDITS\n"
     assert result.wrote_stubs == 0
-    assert (firm / "categories.md").exists()
+    assert (fd / "categories.md").exists()
 
 
 @respx.mock
-def test_bootstrap_paginates_categories_and_users(tmp_path):
+def test_bootstrap_paginates_categories_and_users():
     """Categories and users with >100 entries must paginate, not silently truncate."""
-    skill_dir = tmp_path / "wealthbox-crm"
-    skill_dir.mkdir()
-
     page1 = [{"id": i, "name": f"Tag{i}"} for i in range(1, 101)]   # 100 items
     page2 = [{"id": i, "name": f"Tag{i}"} for i in range(101, 151)]  # 50 items
 
@@ -131,47 +124,43 @@ def test_bootstrap_paginates_categories_and_users(tmp_path):
         return_value=_me_response(user_id=1, user_name="x", firm_id=2, firm_name="y")
     )
 
-    bootstrap_skill_dir(skill_dir, token="t", generated_only=False)
+    bootstrap_firm(token="t", generated_only=False)
 
-    categories_md = (skill_dir / "firm" / "categories.md").read_text()
-    assert "Tag150" in categories_md, "page-2 tag missing — pagination not happening"
+    fd = firm_dir()
+    categories_md = (fd / "categories.md").read_text()
+    assert "Tag150" in categories_md, "page-2 tag missing - pagination not happening"
     assert "Tag1 " in categories_md or "| 1 | Tag1 |" in categories_md
-    users_md = (skill_dir / "firm" / "users.md").read_text()
-    assert "User120" in users_md, "page-2 user missing — pagination not happening"
+    users_md = (fd / "users.md").read_text()
+    assert "User120" in users_md, "page-2 user missing - pagination not happening"
 
 
 @respx.mock
-def test_bootstrap_does_not_set_onboarded_at(tmp_path):
-    """`wbox skills bootstrap` populates the API-derived parts of `firm` only;
-    `firm.onboarded_at` is reserved for the agent-driven qualitative step."""
-    skill_dir = tmp_path / "wealthbox-crm"
-    skill_dir.mkdir()
+def test_bootstrap_does_not_set_onboarded_at():
+    """`wbox skills bootstrap` populates the API-derived parts of firm meta only;
+    `onboarded_at` is reserved for the agent-driven qualitative step."""
     _mock_all_categories()
     respx.get(f"{_BASE}/users").mock(return_value=httpx.Response(200, json={"users": []}))
     respx.get(f"{_BASE}/me").mock(
         return_value=_me_response(user_id=1, user_name="x", firm_id=2, firm_name="y")
     )
 
-    bootstrap_skill_dir(skill_dir, token="t", generated_only=False)
+    bootstrap_firm(token="t", generated_only=False)
 
-    meta = json.loads((skill_dir / "_meta.json").read_text())
-    assert "firm" in meta
-    assert "onboarded_at" not in meta["firm"]
+    meta = json.loads(firm_meta_path().read_text())
+    assert "identity" in meta
+    assert "onboarded_at" not in meta
 
 
 @respx.mock
-def test_bootstrap_preserves_existing_onboarded_at(tmp_path):
+def test_bootstrap_preserves_existing_onboarded_at():
     """A re-run of `wbox skills bootstrap` (e.g. refresh) must not clobber the
     onboarded_at marker the agent set after the qualitative Q&A."""
-    skill_dir = tmp_path / "wealthbox-crm"
-    skill_dir.mkdir()
-    (skill_dir / "_meta.json").write_text(json.dumps({
-        "firm": {
-            "identity": {"id": 2, "name": "y", "user_id": 1, "user_name": "x"},
-            "cli_version": "1.0.0",
-            "files": {"categories.md": "2026-01-01T00:00:00+00:00"},
-            "onboarded_at": "2026-04-15T12:00:00+00:00",
-        }
+    firm_meta_path().parent.mkdir(parents=True, exist_ok=True)
+    firm_meta_path().write_text(json.dumps({
+        "identity": {"id": 2, "name": "y", "user_id": 1, "user_name": "x"},
+        "cli_version": "1.0.0",
+        "files": {"categories.md": "2026-01-01T00:00:00+00:00"},
+        "onboarded_at": "2026-04-15T12:00:00+00:00",
     }))
     _mock_all_categories()
     respx.get(f"{_BASE}/users").mock(return_value=httpx.Response(200, json={"users": []}))
@@ -179,16 +168,14 @@ def test_bootstrap_preserves_existing_onboarded_at(tmp_path):
         return_value=_me_response(user_id=1, user_name="x", firm_id=2, firm_name="y")
     )
 
-    bootstrap_skill_dir(skill_dir, token="t", generated_only=False)
+    bootstrap_firm(token="t", generated_only=False)
 
-    meta = json.loads((skill_dir / "_meta.json").read_text())
-    assert meta["firm"]["onboarded_at"] == "2026-04-15T12:00:00+00:00"
+    meta = json.loads(firm_meta_path().read_text())
+    assert meta["onboarded_at"] == "2026-04-15T12:00:00+00:00"
 
 
 @respx.mock
-def test_bootstrap_records_firm_identity_in_meta(tmp_path):
-    skill_dir = tmp_path / "wealthbox-crm"
-    skill_dir.mkdir()
+def test_bootstrap_records_firm_identity_in_meta():
     _mock_all_categories()
     respx.get(f"{_BASE}/users").mock(return_value=httpx.Response(200, json={"users": []}))
     respx.get(f"{_BASE}/me").mock(
@@ -197,13 +184,13 @@ def test_bootstrap_records_firm_identity_in_meta(tmp_path):
         )
     )
 
-    bootstrap_skill_dir(skill_dir, token="t", generated_only=False)
+    bootstrap_firm(token="t", generated_only=False)
 
-    meta = json.loads((skill_dir / "_meta.json").read_text())
-    identity = meta["firm"]["identity"]
+    meta = json.loads(firm_meta_path().read_text())
+    identity = meta["identity"]
     assert identity["id"] == 31965
     assert identity["name"] == "Squire Wealth Advisors"
     assert identity["user_id"] == 42
     assert identity["user_name"] == "Kadin"
-    assert "cli_version" in meta["firm"]
-    assert meta["firm"]["files"]  # at least one generated-file timestamp
+    assert "cli_version" in meta
+    assert meta["files"]  # at least one generated-file timestamp

@@ -8,22 +8,34 @@ description: Use when the user wants to interact with Wealthbox CRM — creating
 Execute Wealthbox CRM operations via the `wbox` CLI. Supports contacts, tasks, notes, events,
 opportunities, projects, workflows, households, and read-only lookups (categories, users, activity, me).
 
+## Firm Configuration Path
+
+Firm-specific data (categories, custom-fields, users, hand-edited
+policy, identity, onboarded marker) lives at one canonical path per
+machine — **not** inside this skill's directory. Run:
+
+```bash
+wbox skills firm-path
+```
+
+to print the directory. Cache the result for the rest of the session.
+All references to `<firm>/<file>` below mean files inside that directory.
+
 ## First Run
 
-If `_meta.json.firm.onboarded_at` is missing in this skill's directory,
-the firm has not been onboarded yet on this machine. Before handling the
-user's request:
+If `<firm>/_meta.json` is missing, or it exists but has no
+`onboarded_at` key, the firm has not been onboarded yet on this machine.
+Before handling the user's request:
 
 1. Read `bootstrap.md` in this skill's directory.
 2. Follow it end-to-end.
-3. The final step writes `_meta.json.firm.onboarded_at`, which makes
+3. The final step writes `<firm>/_meta.json.onboarded_at`, which makes
    this check pass on subsequent runs.
 
-`firm.onboarded_at` is the qualitative-onboarding marker. The CLI
-bootstrap (`wbox skills bootstrap`) only populates the API-derived
-parts of `firm` (identity, generated files); it intentionally does
-*not* set `onboarded_at`, because that requires the per-firm Q&A in
-`bootstrap.md`.
+`onboarded_at` is the qualitative-onboarding marker. The CLI bootstrap
+(`wbox skills bootstrap`) only populates the API-derived parts of firm
+data (identity, generated files); it intentionally does *not* set
+`onboarded_at`, because that requires the per-firm Q&A in `bootstrap.md`.
 
 ## Staleness Check
 
@@ -45,7 +57,13 @@ across every installed platform while preserving `firm/`.
 
 ## Prerequisites
 
-- `wbox` CLI installed (`pip install wealthbox-cli`)
+- `wbox` CLI installed. If `wbox --version` fails, run the bootstrap installer:
+  ```bash
+  # macOS / Linux
+  curl -LsSf https://raw.githubusercontent.com/massive-value/wealthbox-cli/main/scripts/install.sh | bash
+  # Windows (PowerShell)
+  irm https://raw.githubusercontent.com/massive-value/wealthbox-cli/main/scripts/install.ps1 | iex
+  ```
 - Token configured via one of: `wbox config set-token`, `WEALTHBOX_TOKEN` env var, or `.env` file
 
 Verify with: `wbox me`
@@ -75,15 +93,15 @@ Verify with: `wbox me`
 
 1. **Parse intent** — identify which resource(s) and action(s) the user needs
 2. **Load reference** — read ONLY the relevant `references/<resource>.md` file(s) from this skill's directory
-3. **Check firm config** — read `firm/<resource>.md` for the resource(s) you're touching. Also read `firm/categories.md` and `firm/custom-fields.md` when you need valid values for category-constrained flags (avoid repeat API probes).
+3. **Check firm config** — read `<firm>/<resource>.md` for the resource(s) you're touching (where `<firm>` is the path returned by `wbox skills firm-path`). Also read `<firm>/categories.md` and `<firm>/custom-fields.md` when you need valid values for category-constrained flags (avoid repeat API probes).
 4. **Fill gaps** — if required information is missing, ask the user. Prefer multiple-choice when options are known (e.g., contact type, priority level). If the user is unfamiliar with Wealthbox, explain what the field means.
 5. **Execute** — run the `wbox` command(s) via Bash
 6. **Report** — show the result. For create/update, confirm what was created with the record ID.
 
 ## Multi-Step Workflows
 
-When `firm/workflows.md` defines named workflows (e.g., "onboarding", "meeting followup"):
-1. Read the workflow definition from `firm/workflows.md`
+When `<firm>/workflows.md` defines named workflows (e.g., "onboarding", "meeting followup"):
+1. Read the workflow definition from `<firm>/workflows.md`
 2. Load all referenced resource reference files
 3. Walk through each step, gathering input as needed
 4. Execute commands in sequence, passing IDs forward (e.g., new contact ID → linked note/task)

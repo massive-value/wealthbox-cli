@@ -120,7 +120,18 @@ The installer asks which platforms to target, copies the skill into the right di
 
 ### First agent run captures firm conventions
 
-`wbox skills bootstrap` populates the API-derived files (categories, custom fields, users) — that's the *quantitative* half. The *qualitative* half (firm defaults, naming conventions, named workflows, required fields) happens the first time an agent invokes the skill: it walks you through the questions in `bootstrap.md` and stamps `firm.onboarded_at` in `_meta.json` when done. On subsequent runs the bootstrap path is skipped automatically.
+`wbox skills bootstrap` populates the API-derived files (categories, custom fields, users) — that's the *quantitative* half. The *qualitative* half (firm defaults, naming conventions, named workflows, required fields) happens the first time an agent invokes the skill: it walks you through the questions in `bootstrap.md` and stamps `onboarded_at` in the canonical firm `_meta.json` when done. On subsequent runs the bootstrap path is skipped automatically.
+
+### Where firm data lives
+
+Firm data is stored at one canonical machine-level path — **not** inside each skill install. This way it survives plugin auto-updates, skill template upgrades, and works the same across Claude Code, Codex, or any other host:
+
+| Platform | Firm data path |
+|----------|----------------|
+| macOS / Linux | `~/.config/wbox/firm/` |
+| Windows | `%APPDATA%\wbox\firm\` |
+
+Run `wbox skills firm-path` to print the resolved path. The bundled SKILL.md tells the agent to call this command and read firm files from that directory.
 
 ### Refresh after firm changes
 
@@ -130,22 +141,20 @@ If your firm adds or renames category values, custom fields, or users:
 wbox skills refresh
 ```
 
-This updates the generated half of the skill's firm files; hand-edited policy is preserved.
+This updates the generated half (categories, custom-fields, users); hand-edited policy is preserved.
 
 ### Other commands
 
 ```bash
-wbox skills list             # show where the skill is installed + last bootstrap time
-wbox skills doctor           # diagnose install state + token
-wbox skills sync             # copy firm/ from one install to others (Claude Code <-> Codex)
-wbox skills upgrade          # refresh template files (SKILL.md, references/, ...) preserving firm/
-wbox skills mark-onboarded   # stamp firm.onboarded_at after qualitative Q&A (the agent calls this for you)
-wbox skills uninstall        # remove the skill
+wbox skills list             # show install state per platform + canonical firm path
+wbox skills doctor           # diagnose install state + token + firm state
+wbox skills firm-path        # print canonical firm directory (for the agent)
+wbox skills upgrade          # refresh template files in every install; firm data is unaffected
+wbox skills mark-onboarded   # stamp onboarded_at in firm meta (the agent calls this for you)
+wbox skills uninstall        # remove the skill template; firm data is preserved
 ```
 
-When the CLI ships a newer template (improved SKILL.md, new reference docs, etc.), `wbox skills upgrade` re-copies the bundled template into every installed platform without touching your firm-specific data in `firm/`. Each install records the template's CLI version in `_meta.json`, so the agent can detect drift and prompt you to upgrade when needed.
-
-`wbox skills sync` is useful if you maintain firm conventions in one platform's install (e.g., your Claude Code user scope) and want the same `firm/` files mirrored to Codex or to a project-scoped `.claude/skills/` folder. The command runs as a wizard by default; pass `--source`, `--target`, and `--yes` for non-interactive use.
+When the CLI ships a newer template (improved SKILL.md, new reference docs, etc.), `wbox skills upgrade` re-copies the bundled template into every installed platform. Firm data lives outside the skill dir, so it's untouched. Each install records the template's CLI version in its own `_meta.json`, so the agent can detect drift and prompt you to upgrade when needed.
 
 ### Works with other agents too
 

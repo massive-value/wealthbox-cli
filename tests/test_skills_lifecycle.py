@@ -3,6 +3,7 @@ from __future__ import annotations
 import httpx
 import respx
 
+from wealthbox_tools.cli._skill_paths import firm_dir, firm_meta_path
 from wealthbox_tools.cli.main import app
 from wealthbox_tools.models.enums import CategoryType, DocumentType
 
@@ -45,22 +46,32 @@ def test_full_lifecycle(runner, tmp_path, monkeypatch):
     assert r.exit_code == 0, r.stdout
     dest = tmp_path / ".claude" / "skills" / "wealthbox-crm"
     assert (dest / "SKILL.md").exists()
+    # Firm/ no longer ships inside the skill install
+    assert not (dest / "firm").exists()
+    # Per-install meta has only the template section
+    assert (dest / "_meta.json").exists()
 
-    # bootstrap
+    # bootstrap (writes to canonical firm path, not into the skill dir)
     r = runner.invoke(app, ["skills", "bootstrap"])
     assert r.exit_code == 0, r.stdout
-    firm = dest / "firm"
-    assert (dest / "_meta.json").exists()
-    assert not (firm / "_meta.json").exists()
+    fd = firm_dir()
+    assert firm_meta_path().exists()
+    assert (fd / "categories.md").exists()
+    assert (fd / "contacts.md").exists()  # stub
 
-    # mutate hand-edited file
-    (firm / "contacts.md").write_text("# user policy\n")
+    # mutate hand-edited file at canonical
+    (fd / "contacts.md").write_text("# user policy\n")
 
     # refresh — hand-edited file survives, generated files re-written
     r = runner.invoke(app, ["skills", "refresh"])
     assert r.exit_code == 0, r.stdout
-    assert (firm / "contacts.md").read_text() == "# user policy\n"
-    assert (firm / "categories.md").exists()
+    assert (fd / "contacts.md").read_text() == "# user policy\n"
+    assert (fd / "categories.md").exists()
+
+    # firm-path command
+    r = runner.invoke(app, ["skills", "firm-path"])
+    assert r.exit_code == 0
+    assert str(fd) in r.stdout
 
     # doctor — green
     r = runner.invoke(app, ["skills", "doctor"])
@@ -68,12 +79,14 @@ def test_full_lifecycle(runner, tmp_path, monkeypatch):
     assert "installed" in r.stdout.lower()
     assert "token ok" in r.stdout.lower()
 
-    # uninstall
+    # uninstall (firm/ at canonical is preserved)
     r = runner.invoke(app, ["skills", "uninstall", "--yes"])
     assert r.exit_code == 0, r.stdout
     assert not dest.exists()
+    assert (fd / "contacts.md").read_text() == "# user policy\n"
 
-    # list shows not installed
+    # list shows not installed but firm path still tracked
     r = runner.invoke(app, ["skills", "list"])
     assert r.exit_code == 0
     assert "not installed" in r.stdout.lower()
+    assert "firm-path" in r.stdout.lower()

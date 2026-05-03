@@ -6,6 +6,7 @@ from datetime import datetime, timedelta, timezone
 import httpx
 import respx
 
+from wealthbox_tools.cli._skill_paths import firm_dir, firm_meta_path
 from wealthbox_tools.cli.main import app
 from wealthbox_tools.models.enums import CategoryType, DocumentType
 
@@ -34,37 +35,46 @@ def _setup_api_mocks():
     )
 
 
-def _install_and_bootstrap(runner, tmp_path, monkeypatch):
+def _bootstrap(runner, tmp_path, monkeypatch):
     monkeypatch.setenv("HOME", str(tmp_path))
     monkeypatch.setenv("USERPROFILE", str(tmp_path))
     monkeypatch.chdir(tmp_path)
-    runner.invoke(
-        app, ["skills", "install", "--platform", "claude-code-user", "--no-bootstrap"]
-    )
     _setup_api_mocks()
     runner.invoke(app, ["skills", "bootstrap"])
 
 
 @respx.mock
 def test_refresh_preserves_handedited_files(runner, tmp_path, monkeypatch):
-    _install_and_bootstrap(runner, tmp_path, monkeypatch)
-    firm = tmp_path / ".claude" / "skills" / "wealthbox-crm" / "firm"
-    (firm / "contacts.md").write_text("MY POLICY\n")
+    _bootstrap(runner, tmp_path, monkeypatch)
+    fd = firm_dir()
+    (fd / "contacts.md").write_text("MY POLICY\n")
     result = runner.invoke(app, ["skills", "refresh"])
     assert result.exit_code == 0, result.stdout
-    assert (firm / "contacts.md").read_text() == "MY POLICY\n"
+    assert (fd / "contacts.md").read_text() == "MY POLICY\n"
 
 
 @respx.mock
 def test_refresh_warns_when_meta_is_stale(runner, tmp_path, monkeypatch):
-    _install_and_bootstrap(runner, tmp_path, monkeypatch)
-    skill_root = tmp_path / ".claude" / "skills" / "wealthbox-crm"
-    meta_path = skill_root / "_meta.json"
-    meta = json.loads(meta_path.read_text())
+    _bootstrap(runner, tmp_path, monkeypatch)
+    meta = json.loads(firm_meta_path().read_text())
     stale = (datetime.now(timezone.utc) - timedelta(days=60)).isoformat()
-    meta["firm"]["files"] = {k: stale for k in meta["firm"]["files"]}
-    meta_path.write_text(json.dumps(meta) + "\n")
+    meta["files"] = {k: stale for k in meta["files"]}
+    firm_meta_path().write_text(json.dumps(meta) + "\n")
     result = runner.invoke(app, ["skills", "refresh", "--staleness-days", "30"])
     assert result.exit_code == 0, result.stdout
     output = (result.stdout or "") + (result.stderr or "")
     assert "stale" in output.lower()
+
+
+@respx.mock
+def test_refresh_errors_when_no_firm_meta(runner, tmp_path, monkeypatch):
+    """Refresh requires bootstrap to have run first."""
+    monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.setenv("USERPROFILE", str(tmp_path))
+    monkeypatch.chdir(tmp_path)
+    _setup_api_mocks()
+
+    result = runner.invoke(app, ["skills", "refresh"])
+    assert result.exit_code != 0
+    output = (result.stdout or "") + (result.stderr or "")
+    assert "bootstrap" in output.lower()
