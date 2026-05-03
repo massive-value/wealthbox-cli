@@ -21,7 +21,7 @@ def test_doctor_reports_not_installed(runner, tmp_path, monkeypatch):
     result = runner.invoke(app, ["skills", "doctor"])
     assert result.exit_code == 0
     assert "not installed" in result.stdout.lower()
-    assert "token ok" in result.stdout.lower()
+    assert "/me returned" in result.stdout.lower()  # smoke test passed
 
 
 @respx.mock

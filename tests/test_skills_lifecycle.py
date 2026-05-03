@@ -73,11 +73,11 @@ def test_full_lifecycle(runner, tmp_path, monkeypatch):
     assert r.exit_code == 0
     assert str(fd) in r.stdout
 
-    # doctor — green
+    # doctor (informational, exits 0 even when warnings are present)
     r = runner.invoke(app, ["skills", "doctor"])
     assert r.exit_code == 0, r.stdout
     assert "installed" in r.stdout.lower()
-    assert "token ok" in r.stdout.lower()
+    assert "/me returned" in r.stdout.lower()  # smoke test passed
 
     # uninstall (firm/ at canonical is preserved)
     r = runner.invoke(app, ["skills", "uninstall", "--yes"])
