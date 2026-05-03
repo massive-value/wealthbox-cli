@@ -416,6 +416,32 @@ def build_resource_filter(
     return result
 
 
+async def resolve_category_id(
+    client: WealthboxClient, category_type: CategoryType, value: str
+) -> int:
+    """Resolve a category name or numeric string to an integer ID.
+
+    If `value` is purely digits, returns int(value) without an API call.
+    Otherwise fetches all categories of the given type and case-insensitively
+    matches `name`. Raises typer.BadParameter on miss with available names.
+    """
+    if value.isdigit():
+        return int(value)
+    data = await client.list_all_categories(category_type)
+    items = data.get(category_type.value, [])
+    target = value.strip().casefold()
+    for item in items:
+        if str(item.get("name", "")).casefold() == target:
+            return int(item["id"])
+    available = sorted(str(i["name"]) for i in items if i.get("name"))
+    label = category_type.value.replace("_", " ")
+    if available:
+        raise typer.BadParameter(
+            f"Unknown {label} value '{value}'. Available: {', '.join(available)}"
+        )
+    raise typer.BadParameter(f"No {label} configured in this workspace.")
+
+
 def parse_more_fields(more_fields: str, reserved: set[str]) -> dict[str, Any]:
     """Parse --more-fields JSON and validate against reserved keys.
 
