@@ -46,11 +46,13 @@ wbox tasks add <NAME> [OPTIONS]
 | `--due-date` | STR | Due date (XOR with --frame) |
 | `--frame` | today\|tomorrow\|this-week\|next-week\|this-month\|next-month\|... | Relative due date (XOR with --due-date) |
 | `--priority` | Low\|Medium\|High | Priority level |
+| `--category` | STR | Task category by name or ID (e.g. "Follow-up"). See `wbox categories task-categories`. |
+| `--description` | STR | Task description |
 | `--assigned-to` | INT | Assign to user ID |
 | `--contact` | INT | Link to contact |
 | `--project` | INT | Link to project |
 | `--opportunity` | INT | Link to opportunity |
-| `--more-fields` | JSON | e.g. `{"category": 123, "description": "..."}` |
+| `--more-fields` | JSON | e.g. `{"complete": false, "assigned_to_team": 456}` |
 | `--format` | json\|table\|csv\|tsv | Output format |
 
 **Note:** `--due-date` and `--frame` are mutually exclusive. Use `--frame` for relative dates.
@@ -67,6 +69,7 @@ wbox tasks update <ID> [OPTIONS]
 | `--due-date` | STR | Change due date |
 | `--frame` | STR | Change relative due date |
 | `--priority` | Low\|Medium\|High | Change priority |
+| `--category` | STR | Task category by name or ID. See `wbox categories task-categories`. |
 | `--assigned-to` | INT | Reassign |
 | `--complete` / `--no-complete` | flag | Mark complete/incomplete |
 | `--description` | STR | Update description |

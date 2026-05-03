@@ -94,3 +94,37 @@ def test_update_task_name_only_no_date_required(runner) -> None:
     assert result.exit_code == 0
     sent = json.loads(route.calls[0].request.content)
     assert sent == {"name": "New name"}
+
+
+@respx.mock
+def test_update_task_with_category_numeric(runner) -> None:
+    route = respx.put("https://api.crmworkspace.com/v1/tasks/5").mock(
+        return_value=httpx.Response(200, json=_TASK_RESPONSE)
+    )
+    result = runner.invoke(app, ["tasks", "update", "5", "--category", "173277"])
+    assert result.exit_code == 0
+    sent = json.loads(route.calls[0].request.content)
+    assert sent == {"category": 173277}
+
+
+@respx.mock
+def test_update_task_with_category_name_resolves_to_id(runner) -> None:
+    respx.get("https://api.crmworkspace.com/v1/categories/task_categories").mock(
+        return_value=httpx.Response(
+            200,
+            json={
+                "task_categories": [
+                    {"id": 100, "name": "Phone"},
+                    {"id": 173277, "name": "Follow-up"},
+                ],
+                "meta": {"total_count": 2},
+            },
+        )
+    )
+    route = respx.put("https://api.crmworkspace.com/v1/tasks/5").mock(
+        return_value=httpx.Response(200, json=_TASK_RESPONSE)
+    )
+    result = runner.invoke(app, ["tasks", "update", "5", "--category", "Follow-up"])
+    assert result.exit_code == 0
+    sent = json.loads(route.calls[0].request.content)
+    assert sent == {"category": 173277}

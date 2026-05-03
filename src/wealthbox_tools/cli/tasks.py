@@ -25,6 +25,7 @@ from ._util import (
     make_resource_app,
     output_result,
     parse_more_fields,
+    resolve_category_id,
     run_client,
     run_client_with_comments,
     slim_comments,
@@ -47,7 +48,9 @@ _GET_JSON_FIELDS = [
     "category", "linked_to", "comments",
 ]
 
-_TASK_CREATE_RESERVED = {"name", "due_date", "frame", "priority", "assigned_to", "linked_to"}
+_TASK_CREATE_RESERVED = {
+    "name", "due_date", "frame", "priority", "assigned_to", "linked_to", "category", "description",
+}
 
 
 @app.command(
@@ -130,13 +133,18 @@ def add_task(
     ),
     frame: TaskFrame | None = typer.Option(None, "--frame", help="Friendly due timeframe"),
     priority: TaskPriority | None = typer.Option(None, "--priority", help="Low, Medium, or High"),
+    category: str | None = typer.Option(
+        None, "--category",
+        help="Task category by name or ID — see: wbox categories task-categories",
+    ),
+    description: str | None = typer.Option(None, "--description", help="Task description"),
     assigned_to: int | None = typer.Option(None, "--assigned-to", help="Assign to a user by ID"),
     contact: int | None = typer.Option(None, "--contact", help="Link to a Contact by ID"),
     project: int | None = typer.Option(None, "--project", help="Link to a Project by ID"),
     opportunity: int | None = typer.Option(None, "--opportunity", help="Link to an Opportunity by ID"),
     more_fields: str | None = typer.Option(
         None, "--more-fields",
-        help='JSON: {"category": 123, "complete": false, "assigned_to_team": 456, "description": "..."}',
+        help='JSON: {"complete": false, "assigned_to_team": 456}',
     ),
     token: str | None = typer.Option(None, envvar="WEALTHBOX_TOKEN", hidden=True),
     fmt: OutputFormat = typer.Option(OutputFormat.JSON, "--format"),
@@ -150,6 +158,7 @@ def add_task(
         "due_date": due_date,
         "frame": frame,
         "priority": priority,
+        "description": description,
         "assigned_to": assigned_to,
         "linked_to": build_linked_to(contact, project, opportunity),
     }
@@ -157,10 +166,14 @@ def add_task(
     if more_fields:
         payload.update(parse_more_fields(more_fields, _TASK_CREATE_RESERVED))
 
-    # Strip None before model construction (due_date XOR frame validator needs clean input)
-    input_model = TaskCreateInput(**{k: v for k, v in payload.items() if v is not None})
+    async def _create(client):  # type: ignore[no-untyped-def]
+        if category is not None:
+            payload["category"] = await resolve_category_id(client, CategoryType.TASK_CATEGORIES, category)
+        # Strip None before model construction (due_date XOR frame validator needs clean input)
+        clean = {k: v for k, v in payload.items() if v is not None}
+        return await client.create_task(TaskCreateInput(**clean))
 
-    output_result(run_client(token, lambda c: c.create_task(input_model)), fmt)
+    output_result(run_client(token, _create), fmt)
 
 
 @app.command("update", help="Update an existing task. Pass only the fields you want to change.")
@@ -171,6 +184,10 @@ def update_task(
     due_date: str | None = typer.Option(None, "--due-date", help="ISO 8601 datetime, e.g. '2026-04-01T09:00:00-07:00'"),
     frame: TaskFrame | None = typer.Option(None, "--frame", help="Friendly due timeframe"),
     priority: TaskPriority | None = typer.Option(None, "--priority", help="Low, Medium, or High"),
+    category: str | None = typer.Option(
+        None, "--category",
+        help="Task category by name or ID — see: wbox categories task-categories",
+    ),
     assigned_to: int | None = typer.Option(None, "--assigned-to", help="Reassign to a user by ID"),
     complete: bool | None = typer.Option(None, "--complete/--no-complete", help="Mark as complete or incomplete"),
     description: str | None = typer.Option(None, "--description"),
@@ -193,9 +210,13 @@ def update_task(
     linked = build_linked_to(contact, project, opportunity)
     if linked is not None:
         payload["linked_to"] = linked
-    input_model = TaskUpdateInput(**payload)
 
-    output_result(run_client(token, lambda c: c.update_task(task_id, input_model)), fmt)
+    async def _update(client):  # type: ignore[no-untyped-def]
+        if category is not None:
+            payload["category"] = await resolve_category_id(client, CategoryType.TASK_CATEGORIES, category)
+        return await client.update_task(task_id, TaskUpdateInput(**payload))
+
+    output_result(run_client(token, _update), fmt)
 
 
 @app.command("delete", help="Delete a task by ID.")
