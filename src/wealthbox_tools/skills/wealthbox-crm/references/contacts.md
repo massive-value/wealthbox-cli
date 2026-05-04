@@ -36,7 +36,7 @@ wbox contacts <ID>
 wbox contacts get <ID>
 ```
 
-Returns full contact record including comments (use `--no-comments` to omit).
+Returns the full contact record. Contacts do not carry comments in Wealthbox — to read comments, fetch the related task, note, event, opportunity, project, or workflow with its `get` command (those default to including comments and accept `--no-comments` to suppress).
 
 ## Create Contact
 
