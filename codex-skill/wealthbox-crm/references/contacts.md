@@ -69,6 +69,7 @@ wbox contacts add person [OPTIONS]
 | `--email-type` | STR | Work, Personal, etc. |
 | `--phone` | STR | Phone number |
 | `--phone-type` | STR | Work, Mobile, etc. |
+| `--tags` | STR | Comma-separated tag names (e.g. "VIP,Q1-Outreach"). New tags are auto-created. |
 | `--more-fields` | JSON | Additional fields as JSON object |
 | `--format` | json\|table\|csv\|tsv | Output format |
 
@@ -76,7 +77,7 @@ wbox contacts add person [OPTIONS]
 ```bash
 wbox contacts add household --name <NAME> [OPTIONS]
 ```
-`--name` is required. Supports: `--contact-type`, `--contact-source`, `--active/--inactive`, `--assigned-to`, `--email`, `--email-type`, `--more-fields`, `--format`.
+`--name` is required. Supports: `--contact-type`, `--contact-source`, `--active/--inactive`, `--assigned-to`, `--email`, `--email-type`, `--tags`, `--more-fields`, `--format`.
 
 ### Organization
 ```bash
@@ -110,6 +111,7 @@ Only pass the fields you want to change:
 | `--contact-source` | STR | Source |
 | `--active` / `--inactive` | flag | Active status |
 | `--assigned-to` | INT | Reassign to user ID |
+| `--tags` | STR | Comma-separated tag names. Replaces all tags — include existing ones to keep. |
 | `--json` | STR | Full JSON for nested/complex fields |
 | `--format` | json\|table\|csv\|tsv | Output format |
 

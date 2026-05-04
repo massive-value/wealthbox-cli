@@ -1,7 +1,7 @@
 {
   "name": "wealthbox-crm",
   "description": "Wealthbox CRM agent skill — drive contacts, tasks, notes, events, and households via natural language. Bundles SKILL.md, references, and firm-bootstrap workflow. Requires the `wbox` CLI (auto-install instructions in SKILL.md).",
-  "version": "1.4.0",
+  "version": "1.5.0",
   "author": {
     "name": "Kadin Bullock"
   },

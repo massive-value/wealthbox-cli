@@ -44,16 +44,20 @@ wbox tasks add <NAME> [OPTIONS]
 |------|------|-------------|
 | `<NAME>` | positional | Task name (required) |
 | `--due-date` | STR | Due date (XOR with --frame) |
-| `--frame` | today\|tomorrow\|this-week\|next-week\|this-month\|next-month\|... | Relative due date (XOR with --due-date) |
+| `--frame` | today\|tomorrow\|this-week\|next-week\|future\|specific | Relative due date (XOR with --due-date). Both kebab-case (`next-week`) and snake_case (`next_week`) are accepted. |
 | `--priority` | Low\|Medium\|High | Priority level |
+| `--category` | STR | Task category by name or ID (e.g. "Follow-up"). See `wbox categories task-categories`. |
+| `--description` | STR | Task description |
 | `--assigned-to` | INT | Assign to user ID |
 | `--contact` | INT | Link to contact |
 | `--project` | INT | Link to project |
 | `--opportunity` | INT | Link to opportunity |
-| `--more-fields` | JSON | e.g. `{"category": 123, "description": "..."}` |
+| `--more-fields` | JSON | e.g. `{"complete": false, "assigned_to_team": 456}` |
 | `--format` | json\|table\|csv\|tsv | Output format |
 
 **Note:** `--due-date` and `--frame` are mutually exclusive. Use `--frame` for relative dates.
+
+**Note (Wealthbox quirk):** `--frame next_week` resolves on the API side to the Monday of the calendar week *after* today. **If today is Sunday, `next_week` is tomorrow** (Monday) — only one day away, not seven. Wealthbox treats Sunday as the last day of the current week. If precise control matters (e.g. an advisor said "next week" expecting 7+ days out), use `--due-date YYYY-MM-DDTHH:MM:SS-07:00` with an explicit date instead of `--frame`.
 
 ## Update Task
 
@@ -65,8 +69,9 @@ wbox tasks update <ID> [OPTIONS]
 |------|------|-------------|
 | `--name` | STR | Rename |
 | `--due-date` | STR | Change due date |
-| `--frame` | STR | Change relative due date |
+| `--frame` | STR | Change relative due date. Accepts kebab-case (`next-week`) or snake_case (`next_week`); see Note above re: Sunday boundary. |
 | `--priority` | Low\|Medium\|High | Change priority |
+| `--category` | STR | Task category by name or ID. See `wbox categories task-categories`. |
 | `--assigned-to` | INT | Reassign |
 | `--complete` / `--no-complete` | flag | Mark complete/incomplete |
 | `--description` | STR | Update description |
