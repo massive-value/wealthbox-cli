@@ -257,18 +257,18 @@ def test_complete_step_emits_advance_hint_to_stderr(runner) -> None:
 
 @respx.mock
 def test_complete_step_no_advance_hint_skips_followup(runner) -> None:
-    """`--no-advance-hint` opt-out skips the follow-up GET (for scripting)."""
+    """`--no-advance-hint` opt-out leaves stderr clean (no follow-up summary)."""
     respx.put("https://api.crmworkspace.com/v1/workflows/50/steps/101").mock(
         return_value=httpx.Response(200, json=_STEP_RESPONSE)
     )
-    get_route = respx.get("https://api.crmworkspace.com/v1/workflows/50").mock(
+    respx.get("https://api.crmworkspace.com/v1/workflows/50").mock(
         return_value=httpx.Response(200, json=_workflow_with_active_step(102, "x"))
     )
     result = runner.invoke(
         app, ["workflows", "complete-step", "50", "101", "--no-advance-hint"]
     )
     assert result.exit_code == 0
-    assert get_route.call_count == 0
+    assert result.stderr == ""
 
 
 _HEAVY_GET_RESPONSE = {

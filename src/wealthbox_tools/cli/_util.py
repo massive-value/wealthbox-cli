@@ -307,10 +307,7 @@ def _render_dsv(rows: list[dict], headers: list[str], sep: str) -> str:  # type:
 
 
 def _strip_html_keys(data: Any) -> Any:
-    """Return a copy of `data` with any dict key ending in `_html` removed,
-    recursively. Wealthbox returns an html duplicate of every plain text field
-    (description_html, content_html, body_html, …) — these are 3-5x larger
-    than the plain field and meaningless to a CLI consumer."""
+    """Recursively remove dict keys ending in `_html`."""
     if isinstance(data, dict):
         return {
             k: _strip_html_keys(v)
@@ -324,10 +321,11 @@ def _strip_html_keys(data: Any) -> Any:
 
 def output_result(data: Any, fmt: OutputFormat = OutputFormat.JSON, fields: list[str] | None = None) -> None:
     """Print result to stdout in the requested format."""
-    if os.environ.get("WBOX_BRIEF"):
-        data = _strip_html_keys(data)
+    # Project before stripping so we don't recurse into fields we're dropping anyway.
     if fields is not None:
         data = _filter_fields(data, fields)
+    if os.environ.get("WBOX_BRIEF"):
+        data = _strip_html_keys(data)
     if fmt == OutputFormat.JSON:
         typer.echo(json.dumps(data, indent=2, default=str))
         return
