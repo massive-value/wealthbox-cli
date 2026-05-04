@@ -53,6 +53,32 @@ _TASK_CREATE_RESERVED = {
 }
 
 
+def _normalize_frame(value: str | None) -> TaskFrame | None:
+    """Accept both kebab-case and snake_case for --frame; return a TaskFrame.
+
+    The CLI uses kebab-case for every other multi-word value (--contact-type,
+    --assigned-to, etc.), so users naturally try `--frame next-week`. The API
+    requires snake_case (``next_week``); we normalize before validating.
+    """
+    if value is None:
+        return None
+    normalized = value.replace("-", "_").lower()
+    try:
+        return TaskFrame(normalized)
+    except ValueError as exc:
+        choices = ", ".join(repr(m.value) for m in TaskFrame)
+        raise typer.BadParameter(
+            f"{value!r} is not one of {choices}.",
+            param_hint="'--frame'",
+        ) from exc
+
+
+_FRAME_HELP = (
+    "Friendly due timeframe. One of: today, tomorrow, this-week / this_week, "
+    "next-week / next_week, future, specific."
+)
+
+
 @app.command(
     "list",
     help=(
@@ -131,7 +157,12 @@ def add_task(
     due_date: str | None = typer.Option(
         None, "--due-date", help="Example: '2025-05-24 10:00 AM -0700' (must match Wealthbox format)"
     ),
-    frame: TaskFrame | None = typer.Option(None, "--frame", help="Friendly due timeframe"),
+    frame: TaskFrame | None = typer.Option(
+        None, "--frame",
+        help=_FRAME_HELP,
+        parser=_normalize_frame,
+        metavar="FRAME",
+    ),
     priority: TaskPriority | None = typer.Option(None, "--priority", help="Low, Medium, or High"),
     category: str | None = typer.Option(
         None, "--category",
@@ -182,7 +213,12 @@ def update_task(
     task_id: int = typer.Argument(..., help="Task ID"),
     name: str | None = typer.Option(None, "--name", help="Task name"),
     due_date: str | None = typer.Option(None, "--due-date", help="ISO 8601 datetime, e.g. '2026-04-01T09:00:00-07:00'"),
-    frame: TaskFrame | None = typer.Option(None, "--frame", help="Friendly due timeframe"),
+    frame: TaskFrame | None = typer.Option(
+        None, "--frame",
+        help=_FRAME_HELP,
+        parser=_normalize_frame,
+        metavar="FRAME",
+    ),
     priority: TaskPriority | None = typer.Option(None, "--priority", help="Low, Medium, or High"),
     category: str | None = typer.Option(
         None, "--category",

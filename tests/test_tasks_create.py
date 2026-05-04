@@ -197,6 +197,48 @@ def test_add_task_with_description(runner) -> None:
     assert sent["description"] == "Send the Q2 proposal deck."
 
 
+@respx.mock
+def test_add_task_with_frame_kebab_case(runner) -> None:
+    """--frame next-week (kebab) is accepted and normalized to next_week before sending."""
+    route = respx.post("https://api.crmworkspace.com/v1/tasks").mock(
+        return_value=httpx.Response(200, json=_TASK_RESPONSE)
+    )
+    result = runner.invoke(app, ["tasks", "add", "Follow up", "--frame", "next-week"])
+    assert result.exit_code == 0
+    sent = json.loads(route.calls[0].request.content)
+    assert sent["frame"] == "next_week"
+
+
+@respx.mock
+def test_add_task_with_frame_snake_case(runner) -> None:
+    """--frame next_week (snake) is also accepted, sent as-is."""
+    route = respx.post("https://api.crmworkspace.com/v1/tasks").mock(
+        return_value=httpx.Response(200, json=_TASK_RESPONSE)
+    )
+    result = runner.invoke(app, ["tasks", "add", "Follow up", "--frame", "next_week"])
+    assert result.exit_code == 0
+    sent = json.loads(route.calls[0].request.content)
+    assert sent["frame"] == "next_week"
+
+
+@respx.mock
+def test_add_task_with_frame_this_week_kebab(runner) -> None:
+    """Kebab normalization also works for this-week."""
+    route = respx.post("https://api.crmworkspace.com/v1/tasks").mock(
+        return_value=httpx.Response(200, json=_TASK_RESPONSE)
+    )
+    result = runner.invoke(app, ["tasks", "add", "Follow up", "--frame", "this-week"])
+    assert result.exit_code == 0
+    sent = json.loads(route.calls[0].request.content)
+    assert sent["frame"] == "this_week"
+
+
+def test_add_task_with_frame_invalid_value(runner) -> None:
+    """An invalid frame value still errors cleanly."""
+    result = runner.invoke(app, ["tasks", "add", "Follow up", "--frame", "bogus"])
+    assert result.exit_code != 0
+
+
 def test_add_task_missing_due_date_and_frame(runner) -> None:
     result = runner.invoke(app, ["tasks", "add", "Send proposal"])
     assert result.exit_code != 0
