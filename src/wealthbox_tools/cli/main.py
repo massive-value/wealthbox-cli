@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from importlib.metadata import version as _pkg_version
 
 import typer
@@ -30,10 +31,18 @@ app = typer.Typer(context_settings={"help_option_names": ["-h", "--help"]},
 def _main(
     ctx: typer.Context,
     version: bool = typer.Option(False, "--version", "-v", is_eager=True, help="Show version and exit."),
+    brief: bool = typer.Option(
+        False, "--brief",
+        help="Strip *_html fields from output (also via WBOX_BRIEF=1). "
+             "Wealthbox duplicates every text field as html ~3-5x larger; "
+             "agents and pipelines almost never want it.",
+    ),
 ) -> None:
     if version:
         typer.echo(_pkg_version("wealthbox-cli"))
         raise typer.Exit()
+    if brief:
+        os.environ["WBOX_BRIEF"] = "1"
 
 
 app.command(

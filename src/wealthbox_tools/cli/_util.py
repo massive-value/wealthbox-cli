@@ -4,6 +4,7 @@ import asyncio
 import csv
 import io
 import json
+import os
 from collections.abc import Awaitable, Callable
 from enum import StrEnum
 from functools import wraps
@@ -305,8 +306,26 @@ def _render_dsv(rows: list[dict], headers: list[str], sep: str) -> str:  # type:
     return buf.getvalue()
 
 
+def _strip_html_keys(data: Any) -> Any:
+    """Return a copy of `data` with any dict key ending in `_html` removed,
+    recursively. Wealthbox returns an html duplicate of every plain text field
+    (description_html, content_html, body_html, …) — these are 3-5x larger
+    than the plain field and meaningless to a CLI consumer."""
+    if isinstance(data, dict):
+        return {
+            k: _strip_html_keys(v)
+            for k, v in data.items()
+            if not (isinstance(k, str) and k.endswith("_html"))
+        }
+    if isinstance(data, list):
+        return [_strip_html_keys(item) for item in data]
+    return data
+
+
 def output_result(data: Any, fmt: OutputFormat = OutputFormat.JSON, fields: list[str] | None = None) -> None:
     """Print result to stdout in the requested format."""
+    if os.environ.get("WBOX_BRIEF"):
+        data = _strip_html_keys(data)
     if fields is not None:
         data = _filter_fields(data, fields)
     if fmt == OutputFormat.JSON:

@@ -29,14 +29,37 @@ def _mock_all_categories():
         )
 
 
-def _me_response(*, user_id: int, user_name: str, firm_id: int, firm_name: str) -> httpx.Response:
-    """Build a /me response matching the real Wealthbox API shape."""
+def _me_response(
+    *,
+    user_id: int,
+    user_name: str,
+    firm_id: int,
+    firm_name: str,
+    workspace_user_id: int | None = None,
+    workspace_user_name: str | None = None,
+) -> httpx.Response:
+    """Build a /me response matching the real Wealthbox API shape.
+
+    `user_id` / `user_name` populate the top-level `id` / `name` (the global
+    account-user identity). `workspace_user_id` / `workspace_user_name` populate
+    `current_user` (the per-workspace user that appears in record fields like
+    `assigned_to`, `creator`, `completer_id`). When omitted, they mirror the
+    top-level values for backward compatibility with older tests.
+    """
+    cu_id = workspace_user_id if workspace_user_id is not None else user_id
+    cu_name = workspace_user_name if workspace_user_name is not None else user_name
     return httpx.Response(
         200,
         json={
             "id": user_id,
             "name": user_name,
             "email": "u@example.com",
+            "current_user": {
+                "id": cu_id,
+                "name": cu_name,
+                "email": "u@example.com",
+                "account": firm_id,
+            },
             "accounts": [{"id": firm_id, "name": firm_name}],
         },
     )
@@ -172,6 +195,31 @@ def test_bootstrap_preserves_existing_onboarded_at():
 
     meta = json.loads(firm_meta_path().read_text())
     assert meta["onboarded_at"] == "2026-04-15T12:00:00+00:00"
+
+
+@respx.mock
+def test_bootstrap_captures_workspace_user_id_not_account_id():
+    """`me.id` is the global account-user id; `me.current_user.id` is the workspace
+    user that appears in record fields (assigned_to, creator, completer_id).
+    Bootstrap must capture the workspace id so firm filters like "records assigned
+    to me" actually match anything.
+    """
+    _mock_all_categories()
+    respx.get(f"{_BASE}/users").mock(return_value=httpx.Response(200, json={"users": []}))
+    respx.get(f"{_BASE}/me").mock(
+        return_value=_me_response(
+            user_id=70416, user_name="Kadin",
+            firm_id=31965, firm_name="Squire",
+            workspace_user_id=152760, workspace_user_name="Kadin",
+        )
+    )
+
+    bootstrap_firm(token="t", generated_only=False)
+
+    meta = json.loads(firm_meta_path().read_text())
+    assert meta["identity"]["user_id"] == 152760, (
+        "captured top-level me.id instead of me.current_user.id"
+    )
 
 
 @respx.mock

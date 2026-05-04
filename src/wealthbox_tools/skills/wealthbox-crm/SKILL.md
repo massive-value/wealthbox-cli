@@ -82,7 +82,7 @@ Verify with: `wbox me`
 | List/get/add/update events | events | `wbox events {list\|get\|add\|update\|delete} ...` |
 | Opportunities | opportunities | `wbox opportunities {list\|get\|add\|update\|delete} ...` |
 | Projects | projects | `wbox projects {list\|get\|add\|update} ...` |
-| Workflows | workflows | `wbox workflows {list\|get\|add\|complete-step\|revert-step} ...` |
+| Workflows | workflows | `wbox workflows {list\|get\|next\|add\|complete-step\|revert-step} ...` |
 | Household members | households | `wbox households {add-member\|remove-member} ...` |
 | Categories/tags | lookups | `wbox categories ...` or `wbox <resource> categories` |
 | Users | lookups | `wbox users list` |
@@ -111,6 +111,10 @@ When `<firm>/workflows.md` defines named workflows (e.g., "onboarding", "meeting
 - Default to `--format json` for single records, `--format table` for lists
 - If the user asks to "show" or "display", use `--format table`
 - If the user is piping or scripting, use `--format json`
+- **Token efficiency:** for any read where the html duplicates aren't needed
+  (almost always), pass `--brief` (or set `WBOX_BRIEF=1`). It strips every
+  `*_html` field recursively from the JSON output. Wealthbox returns html
+  3-5x larger than the plain text counterpart.
 
 ## Common Recipes
 

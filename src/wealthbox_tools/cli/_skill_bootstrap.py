@@ -345,11 +345,16 @@ async def _fetch_all(
     me = await client.get_me()
     accounts = me.get("accounts") or []
     primary_account = accounts[0] if accounts else {}
+    # `me.id` is the global account-user id; `me.current_user.id` is the
+    # workspace user that appears in record fields (assigned_to, creator,
+    # completer_id). Capture the workspace identity so firm-cached user_id
+    # actually matches records.
+    current_user = me.get("current_user") or {}
     firm = {
         "id": primary_account.get("id"),
         "name": primary_account.get("name"),
-        "user_id": me.get("id"),
-        "user_name": me.get("name"),
+        "user_id": current_user.get("id") or me.get("id"),
+        "user_name": current_user.get("name") or me.get("name"),
     }
     return categories, custom_fields, users, firm
 

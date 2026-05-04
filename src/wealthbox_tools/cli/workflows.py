@@ -35,7 +35,11 @@ templates_app = typer.Typer(
 )
 app.add_typer(templates_app, name="templates")
 
-_DEFAULT_FIELDS = ["id", "label", "status", "workflow_template", "linked_to", "created_at"]
+_DEFAULT_FIELDS = ["id", "label", "linked_to", "created_at", "completed_at"]
+_GET_DEFAULT_FIELDS = [
+    "id", "name", "label", "completed_at", "started_at",
+    "linked_to", "active_step", "workflow_steps",
+]
 _TEMPLATE_DEFAULT_FIELDS = ["id", "name", "description", "status"]
 
 
@@ -76,6 +80,7 @@ def list_workflows(
 def get_workflow(
     workflow_id: int = typer.Argument(..., help="Workflow ID"),
     no_comments: bool = typer.Option(False, "--no-comments", help="Omit comments from output"),
+    verbose: bool = typer.Option(False, "--verbose", "-v", help="Show all fields including the full template"),
     token: str | None = typer.Option(None, envvar="WEALTHBOX_TOKEN", hidden=True),
     fmt: OutputFormat = typer.Option(OutputFormat.JSON, "--format"),
 ) -> None:
@@ -83,7 +88,8 @@ def get_workflow(
         token, lambda c: c.get_workflow(workflow_id),
         COMMENT_RESOURCE_TYPES["workflows"], workflow_id, include_comments=not no_comments,
     )
-    output_get_result(result, fmt)
+    fields = None if verbose else (_GET_DEFAULT_FIELDS + (["comments"] if not no_comments else []))
+    output_get_result(result, fmt, fields=fields)
 
 
 @app.command("add", help="Create a new workflow from a template.")
@@ -118,6 +124,25 @@ def add_workflow(
     output_result(run_client(token, lambda c: c.create_workflow(input_model)), fmt)
 
 
+@app.command("next", help="Show the active step (or completion status) of a workflow.")
+@handle_errors
+def next_workflow_step(
+    workflow_id: int = typer.Argument(..., help="Workflow ID"),
+    token: str | None = typer.Option(None, envvar="WEALTHBOX_TOKEN", hidden=True),
+    fmt: OutputFormat = typer.Option(OutputFormat.JSON, "--format"),
+) -> None:
+    workflow = run_client(token, lambda c: c.get_workflow(workflow_id))
+    if workflow.get("completed_at"):
+        # Wealthbox doesn't clear `active_step` when a workflow completes — it
+        # still points at the final step. Echoing that is misleading. Emit a
+        # completion marker instead so callers can branch on a stable shape.
+        output_result(
+            {"completed": True, "completed_at": workflow["completed_at"]}, fmt
+        )
+        return
+    output_result(workflow.get("active_step") or {}, fmt)
+
+
 @app.command("complete-step", help="Mark a workflow step as complete.")
 @handle_errors
 def complete_workflow_step(
@@ -130,6 +155,10 @@ def complete_workflow_step(
         None, "--due-date", help="Due date when restarting a step (requires --due-date-set)"
     ),
     due_date_set: bool = typer.Option(False, "--due-date-set", help="Whether the restarted step has a due date"),
+    no_advance_hint: bool = typer.Option(
+        False, "--no-advance-hint",
+        help="Skip the follow-up workflow fetch + stderr summary of the new active step",
+    ),
     token: str | None = typer.Option(None, envvar="WEALTHBOX_TOKEN", hidden=True),
     fmt: OutputFormat = typer.Option(OutputFormat.JSON, "--format"),
 ) -> None:
@@ -139,6 +168,26 @@ def complete_workflow_step(
         due_date=due_date,
     )
     output_result(run_client(token, lambda c: c.complete_workflow_step(workflow_id, step_id, data)), fmt)
+    if not no_advance_hint:
+        workflow = run_client(token, lambda c: c.get_workflow(workflow_id))
+        _emit_advance_hint(workflow)
+
+
+def _emit_advance_hint(workflow: dict[str, Any]) -> None:
+    """Print a one-line summary of the workflow's new state to stderr.
+
+    The Wealthbox `complete-step` response doesn't say which outcome was
+    selected or where the workflow advanced to, so we follow up with a
+    workflow fetch and surface that signal here.
+    """
+    if workflow.get("completed_at"):
+        typer.echo("✓ Workflow completed.", err=True)
+        return
+    active = workflow.get("active_step") or {}
+    active_id = active.get("id")
+    active_name = active.get("name")
+    if active_id and active_name:
+        typer.echo(f"→ Active step: {active_name} (id {active_id})", err=True)
 
 
 @app.command("revert-step", help="Revert a completed workflow step.")
