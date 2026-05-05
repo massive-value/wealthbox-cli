@@ -32,11 +32,19 @@ def _detect_token_source(token_arg: str | None) -> tuple[str | None, str]:
         return token_arg, "--token flag"
     env_token = os.environ.get("WEALTHBOX_TOKEN")
     if env_token:
-        return env_token, "env var (WEALTHBOX_TOKEN or .env)"
+        return env_token, "env var (WEALTHBOX_TOKEN)"
     cfg = load_config()
     cfg_token = cfg.get("token")
     if cfg_token:
         return cfg_token, f"config file ({_config_path()})"
+    try:
+        from dotenv import load_dotenv
+        load_dotenv()
+        dotenv_token = os.environ.get("WEALTHBOX_TOKEN")
+        if dotenv_token:
+            return dotenv_token, ".env file in working directory"
+    except ImportError:
+        pass
     return None, "not set"
 
 

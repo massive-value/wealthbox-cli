@@ -143,6 +143,11 @@ def install_cmd(
         )
         raise typer.Exit(code=2)
 
+    # Migrate before installing: install_skill(force=True) deletes the
+    # existing skill dir (including any legacy <skill_dir>/firm/) before
+    # the copy. Migrating first preserves pre-1.2 firm data on upgrade.
+    _ensure_firm_migrated()
+
     with as_file(files("wealthbox_tools").joinpath("skills/wealthbox-crm")) as src:
         for target in targets:
             try:
@@ -152,8 +157,6 @@ def install_cmd(
                 raise typer.Exit(code=1) from e
             update_template_meta(skill_dir(target), cli_version=_pkg_version("wealthbox-cli"))
             typer.echo(f"OK installed to {skill_dir(target)}")
-
-    _ensure_firm_migrated()
 
     if not no_bootstrap:
         if typer.confirm("Run 'wbox skills bootstrap' now?", default=True):
@@ -347,6 +350,10 @@ def uninstall_cmd(
     platforms_flag: list[str] = typer.Option([], "--platform", "-p"),
     yes: bool = typer.Option(False, "--yes", "-y", help="Skip confirmation."),
 ) -> None:
+    # Migrate before removing: pre-1.2 installs still have firm/ inside the
+    # skill dir, so uninstall_skill() would wipe it without this step.
+    _ensure_firm_migrated()
+
     if platforms_flag:
         targets = _resolve_platforms(platforms_flag)
     else:
