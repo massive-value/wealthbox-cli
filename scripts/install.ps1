@@ -174,4 +174,7 @@ finally {
         Write-Host "Press Enter to close this window..." -ForegroundColor DarkGray
     }
     try { $null = Read-Host } catch { Start-Sleep -Seconds 30 }
+    # Surface failure to callers (CI wrappers, `powershell -File ...`,
+    # bootstrap scripts) so they can detect install failures via exit code.
+    if ($state -eq 'errored') { exit 1 }
 }
