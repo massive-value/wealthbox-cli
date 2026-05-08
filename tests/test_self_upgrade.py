@@ -183,6 +183,39 @@ def test_build_powershell_command_returns_expected_argv_shape(tmp_path: Path) ->
     assert "wbox.upgrade.status" in script
 
 
+def test_build_powershell_command_rolls_back_backup_on_swap_failure(tmp_path: Path) -> None:
+    """If retries exhaust, the helper must move $backup → $current before failing.
+
+    Codex P2 on PR #68: when current→backup succeeds but partial→current keeps
+    failing, the user is left without a runnable wbox.exe and has no way to
+    recover. The helper must restore the original binary before declaring
+    failure so the user can at least run `wbox self upgrade` again.
+    """
+    argv = su._build_powershell_command(
+        parent_pid=12345,
+        current=tmp_path / "wbox.exe",
+        partial=tmp_path / "wbox.exe.partial.42",
+        backup=tmp_path / "wbox.exe.old.42",
+        status_path=tmp_path / "wbox.upgrade.status",
+        version="9.9.9",
+        timeout_seconds=30,
+    )
+
+    script = argv[argv.index("-Command") + 1]
+
+    # Slice out the failure-handling block — everything after the retry loop's
+    # exit when $swapped is false. Look for the move-backup-to-current pattern.
+    rename_failed_idx = script.find("rename failed")
+    assert rename_failed_idx != -1, "expected the rename-failed reason string in script"
+
+    # The rollback should appear in the failure block: Move-Item with $backup
+    # as the source (LiteralPath) and $current as the destination.
+    pre_status_block = script[: rename_failed_idx]
+    assert "Move-Item -LiteralPath $backup" in pre_status_block, (
+        f"expected backup → current rollback before failure status; script:\n{script}"
+    )
+
+
 def test_build_powershell_command_handles_paths_with_spaces(tmp_path: Path) -> None:
     """Paths with spaces must be safely quoted so the rename doesn't shell-explode."""
     spaced_dir = tmp_path / "Program Files" / "wbox"

@@ -347,6 +347,9 @@ else {{
         $status.result = 'ok'
     }}
     else {{
+        if ((Test-Path -LiteralPath $backup) -and (-not (Test-Path -LiteralPath $current))) {{
+            try {{ Move-Item -LiteralPath $backup -Destination $current -Force }} catch {{ }}
+        }}
         $status.result = 'failed'
         $status.reason = 'rename failed after retries'
     }}
