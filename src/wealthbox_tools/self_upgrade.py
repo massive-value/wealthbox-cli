@@ -47,6 +47,7 @@ __all__ = [
     "UpgradeResult",
     "check",
     "apply",
+    "_cleanup_stale_backups",
 ]
 
 _RELEASES_LATEST_URL = (
@@ -54,6 +55,13 @@ _RELEASES_LATEST_URL = (
 )
 _CHECKSUMS_ASSET_NAME = "checksums.txt"
 _HTTP_TIMEOUT = httpx.Timeout(30.0)
+
+# Retention window for `<binary>.old.<unix_ts>` rollback breadcrumbs. After
+# 24 hours the user has either rolled back manually or the upgrade is
+# stable; the file is then disposable. Fixed by design (issue #39) — not
+# a parameter, so behavior is identical between `apply()` and `wbox
+# doctor` and there's no "policy" surface to diverge.
+_BACKUP_RETENTION_SECONDS = 24 * 3600
 
 
 # ---------------------------------------------------------------------------
@@ -396,6 +404,42 @@ def _schedule_deferred_swap(
     )
 
 
+def _cleanup_stale_backups(
+    install_root: Path, *, now: float | None = None
+) -> list[Path]:
+    """Remove ``<binary>.old.<unix_ts>`` files older than 24 h.
+
+    Sweeps the install directory for rollback breadcrumbs left by prior
+    successful :func:`apply` calls and unlinks any whose timestamp is
+    older than :data:`_BACKUP_RETENTION_SECONDS` relative to ``now``
+    (default: ``time.time()``). Returns the list of paths actually
+    removed so callers (``wbox doctor``) can report the count.
+
+    Defensive: a file whose trailing component cannot be parsed as an
+    integer is left alone — we never want a typo / unrelated
+    ``.old.something`` to be deleted by surprise.
+    """
+    install_root = Path(install_root)
+    cutoff = (now if now is not None else time.time()) - _BACKUP_RETENTION_SECONDS
+    pattern = f"{_binary_name()}.old.*"
+    removed: list[Path] = []
+    for path in install_root.glob(pattern):
+        suffix = path.name.rsplit(".", 1)[-1]
+        try:
+            ts = int(suffix)
+        except ValueError:
+            continue
+        if ts < cutoff:
+            try:
+                path.unlink(missing_ok=True)
+            except OSError:
+                # Stale handle / permission issue — best effort, the
+                # next sweep will retry.
+                continue
+            removed.append(path)
+    return removed
+
+
 # ---------------------------------------------------------------------------
 # Public API
 # ---------------------------------------------------------------------------
@@ -479,6 +523,16 @@ def apply(version: NewVersion, install_root: Path) -> UpgradeResult:
         except OSError:
             pass
         raise
+
+    # Sweep stale `.old.<ts>` breadcrumbs from prior successful upgrades
+    # (#39). Only runs on success — on failure the freshly-renamed
+    # backup IS the recovery path, and we don't want to risk the sweep
+    # catching it via a clock skew. Best-effort: any error here is
+    # swallowed because the upgrade itself succeeded.
+    try:
+        _cleanup_stale_backups(install_root)
+    except OSError:
+        pass
 
     return UpgradeResult(
         version=version.version,

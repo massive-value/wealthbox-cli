@@ -14,6 +14,7 @@ from importlib.metadata import version as _pkg_version
 
 import typer
 
+from .. import self_upgrade
 from ._config import _config_path, load_config
 from ._skill_bootstrap import migrate_legacy_firm, read_firm_meta, read_meta
 from ._skill_paths import firm_dir, firm_meta_path
@@ -23,6 +24,7 @@ from ._skill_platforms import (
     is_installed,
     skill_dir,
 )
+from .self_cmd import _default_install_root
 
 
 def _detect_token_source(token_arg: str | None) -> tuple[str | None, str]:
@@ -176,6 +178,24 @@ def run_doctor(token: str | None = None) -> int:
                     typer.echo(f"  oldest:   {oldest}")
                 except (ValueError, TypeError):
                     pass
+
+    # --- Self-upgrade backups --------------------------------------------
+    # Sweep stale `<binary>.old.<ts>` rollback breadcrumbs (#39). Same
+    # 24h threshold as `apply()` — doctor is the second sweep so users
+    # who haven't upgraded recently still get cleanup. Best-effort: if
+    # the install root isn't writable (system-managed install) we
+    # report 0 swept rather than failing the doctor.
+    typer.echo("\n# Self-upgrade backups")
+    install_root = _default_install_root()
+    typer.echo(f"  root:     {install_root}")
+    try:
+        removed = self_upgrade._cleanup_stale_backups(install_root)
+        if removed:
+            typer.echo(f"  swept:    {len(removed)} stale .old.<ts> files")
+        else:
+            typer.echo("  swept:    none")
+    except OSError as e:
+        typer.echo(f"  swept:    skipped ({e})")
 
     # --- Summary ----------------------------------------------------------
     typer.echo("\n# Summary")
