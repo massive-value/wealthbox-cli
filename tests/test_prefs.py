@@ -17,7 +17,9 @@ def test_prefs_path_prints_canonical_path(tmp_path, monkeypatch, runner):
     result = runner.invoke(app, ["prefs", "path"])
     assert result.exit_code == 0
 
-    expected = tmp_path / "wbox" / "user" / "preferences.md"
+    # _user_dir() resolves the path, which may canonicalise symlinks on
+    # platforms where tmp_path lives under one (e.g. macOS /var → /private/var).
+    expected = (tmp_path / "wbox" / "user").resolve() / "preferences.md"
     printed = result.stdout.strip()
     assert printed == str(expected)
     # Path must be absolute regardless of OS/cwd.
@@ -34,7 +36,8 @@ def test_prefs_path_uses_appdata_on_windows(tmp_path, monkeypatch, runner):
 
     result = runner.invoke(app, ["prefs", "path"])
     assert result.exit_code == 0
-    assert result.stdout.strip() == str(tmp_path / "wbox" / "user" / "preferences.md")
+    expected = (tmp_path / "wbox" / "user").resolve() / "preferences.md"
+    assert result.stdout.strip() == str(expected)
 
 
 def test_prefs_show_prints_contents_when_file_exists(tmp_path, monkeypatch, runner):
@@ -100,8 +103,42 @@ def test_prefs_path_does_not_create_user_dir(tmp_path, monkeypatch, runner):
 
 
 def test_user_prefs_path_helper_matches_config_dir():
-    """The helper used by `prefs` must mirror `_config_dir()` exactly."""
+    """The helper used by `prefs` must mirror `_config_dir()` exactly.
+
+    _user_dir() applies .resolve() to guarantee an absolute path even when
+    XDG_CONFIG_HOME / APPDATA is set to a relative value, so we compare
+    against the resolved equivalent here.
+    """
     from wealthbox_tools.cli._config import _config_dir, _user_prefs_path
 
-    assert _user_prefs_path() == _config_dir() / "user" / "preferences.md"
+    expected = (_config_dir() / "user").resolve() / "preferences.md"
+    assert _user_prefs_path() == expected
     assert isinstance(_user_prefs_path(), Path)
+
+
+def test_prefs_path_is_absolute_when_xdg_relative(tmp_path, monkeypatch, runner):
+    """`wbox prefs path` must print an absolute path even when the env var is relative.
+
+    Codex P2 (PR #66): if XDG_CONFIG_HOME / APPDATA is set to a relative
+    value, the underlying _config_dir() preserves that base, so the prefs
+    helpers would otherwise return a path that depends on the caller's cwd.
+    The new prefs slot's contract guarantees an absolute path; verify that
+    by chdir'ing into a tmp dir and pointing the env var at a relative
+    sibling directory.
+    """
+    # Run from inside tmp_path so a relative env var is interpretable but
+    # the meaning depends on cwd (which is exactly what we want to defeat).
+    monkeypatch.chdir(tmp_path)
+    # "rel-config" is a relative path — without .resolve() in the helper,
+    # _user_prefs_path() would return Path("rel-config/wbox/user/preferences.md").
+    monkeypatch.setenv("XDG_CONFIG_HOME", "rel-config")
+    monkeypatch.setenv("APPDATA", "rel-config")
+
+    result = runner.invoke(app, ["prefs", "path"])
+    assert result.exit_code == 0
+
+    printed = result.stdout.strip()
+    assert Path(printed).is_absolute(), f"expected absolute path, got: {printed!r}"
+    # The resolved path must point inside our tmp_path (cwd) — confirms the
+    # relative base was anchored to cwd at resolve time.
+    assert printed.endswith(str(Path("rel-config") / "wbox" / "user" / "preferences.md"))
