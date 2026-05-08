@@ -238,6 +238,39 @@ def test_internals_regen_skill_refs_runs(refs_dir: Path, monkeypatch: pytest.Mon
 
 
 # ---------------------------------------------------------------------------
+# Map-typo guard — a stale RESOURCE_REFERENCE_MAP entry must fail loudly,
+# not silently overwrite a reference file with an empty flag block.
+# ---------------------------------------------------------------------------
+
+def test_unknown_mapped_resource_raises(
+    refs_dir: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """If RESOURCE_REFERENCE_MAP names a resource that is not registered on the
+    root Typer app (typo, rename, or removed sub-app), regenerate_all must
+    raise rather than rewrite the target file with empty content."""
+    # Seed a markdown file with markers around real content so we can verify
+    # it is not mutated when the generator raises.
+    bogus_md = refs_dir / "no-such-resource.md"
+    bogus_md.write_text(
+        f"{OPEN_MARKER}\nplaceholder content that must survive\n{CLOSE_MARKER}\n",
+        encoding="utf-8",
+    )
+    before = bogus_md.read_text(encoding="utf-8")
+
+    monkeypatch.setattr(
+        skill_ref_gen,
+        "RESOURCE_REFERENCE_MAP",
+        {"no-such-resource": "no-such-resource.md"},
+    )
+
+    with pytest.raises(KeyError, match="no-such-resource"):
+        regenerate_all(references_dir=refs_dir)
+
+    # File untouched.
+    assert bogus_md.read_text(encoding="utf-8") == before
+
+
+# ---------------------------------------------------------------------------
 # Self-check — guarantee the suite was actually pulled into pytest
 # ---------------------------------------------------------------------------
 

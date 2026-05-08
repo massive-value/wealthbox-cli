@@ -334,7 +334,14 @@ def _rewrite_between_markers(content: str, new_block: str) -> str | None:
 # ---------------------------------------------------------------------------
 
 def _collect_commands_for_resource(resource: str) -> list[CommandInfo]:
-    """Return the leaf commands rooted at ``wbox <resource>``."""
+    """Return the leaf commands rooted at ``wbox <resource>``.
+
+    Raises:
+        KeyError: if ``resource`` is not registered under the root Typer app.
+            This catches typos and stale entries in
+            :data:`RESOURCE_REFERENCE_MAP` before we silently overwrite a
+            reference file with an empty flag block.
+    """
     from wealthbox_tools.cli.main import app as _root_app
 
     click_root = typer.main.get_command(_root_app)
@@ -342,7 +349,11 @@ def _collect_commands_for_resource(resource: str) -> list[CommandInfo]:
         return []
     sub = click_root.commands.get(resource)
     if sub is None:
-        return []
+        raise KeyError(
+            f"skill-ref auto-gen: resource {resource!r} is mapped in "
+            "RESOURCE_REFERENCE_MAP but not registered on the root Typer app. "
+            "Fix the map entry or register the sub-app before regenerating."
+        )
     return _walk_commands(sub, path=(resource,))
 
 
