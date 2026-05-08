@@ -546,6 +546,90 @@ def test_read_and_clear_upgrade_status_handles_malformed_json(tmp_path: Path) ->
 
 
 # ---------------------------------------------------------------------------
+# _cleanup_stale_backups()
+# ---------------------------------------------------------------------------
+
+
+def test_cleanup_stale_backups_removes_old_keeps_recent(
+    tmp_path: Path, monkeypatch
+) -> None:
+    """Older-than-24h `.old.<ts>` is unlinked; recent breadcrumb is kept.
+
+    Defensively: a sibling file whose trailing component is non-numeric
+    must not be touched — we only sweep parseable timestamps.
+    """
+    monkeypatch.setattr(su, "_binary_name", lambda: "wbox")
+
+    frozen_now = 1_700_000_000
+    old_ts = frozen_now - (su._BACKUP_RETENTION_SECONDS + 60)  # >24h old
+    recent_ts = frozen_now - 60  # well within 24h
+
+    old_backup = tmp_path / f"wbox.old.{old_ts}"
+    recent_backup = tmp_path / f"wbox.old.{recent_ts}"
+    junk_backup = tmp_path / "wbox.old.notanumber"
+    old_backup.write_bytes(b"old")
+    recent_backup.write_bytes(b"recent")
+    junk_backup.write_bytes(b"junk")
+
+    removed = su._cleanup_stale_backups(tmp_path, now=frozen_now)
+
+    assert not old_backup.exists()
+    assert recent_backup.exists()
+    assert junk_backup.exists(), "non-numeric suffix must not be deleted"
+    assert old_backup in removed
+    assert recent_backup not in removed
+    assert junk_backup not in removed
+
+
+@respx.mock
+def test_apply_sweeps_stale_backups_on_success(tmp_path: Path, monkeypatch) -> None:
+    """A successful `apply()` sweeps prior `.old.<ts>` files older than 24h.
+
+    The freshly-created backup from this run (timestamp = frozen now) must
+    survive — it's the rollback path for THIS upgrade.
+    """
+    monkeypatch.setattr(su, "_binary_name", lambda: "wbox")
+    # Force the in-process Unix swap path so apply() actually performs the
+    # rename here; on a Windows runner the real `_is_windows()` would
+    # dispatch to `_schedule_deferred_swap` (PowerShell helper) and the
+    # cleanup-after-rename behavior we're asserting wouldn't be observable.
+    monkeypatch.setattr(su, "_is_windows", lambda: False)
+
+    install_root = tmp_path
+    current = install_root / "wbox"
+    current.write_bytes(b"old-binary-bytes")
+
+    # Pre-seed a very old `.old.<ts>` from a previous upgrade.
+    frozen_now = 1_700_000_000
+    stale_ts = frozen_now - (su._BACKUP_RETENTION_SECONDS + 3600)
+    stale_backup = install_root / f"wbox.old.{stale_ts}"
+    stale_backup.write_bytes(b"ancient-backup")
+
+    new_bytes = b"new-binary-bytes-v9-9-9"
+    digest = hashlib.sha256(new_bytes).hexdigest()
+    binary_url = "https://example.com/wbox-linux-x64"
+    respx.get(binary_url).mock(return_value=httpx.Response(200, content=new_bytes))
+
+    monkeypatch.setattr(su.time, "time", lambda: frozen_now)
+
+    candidate = su.NewVersion(
+        version="9.9.9",
+        binary_url=binary_url,
+        sha256=digest,
+        asset_name="wbox-linux-x64",
+    )
+
+    su.apply(candidate, install_root=install_root)
+
+    # Stale breadcrumb is gone…
+    assert not stale_backup.exists(), "apply() should have swept the stale backup"
+    # …but the freshly-created backup from THIS run survives.
+    fresh_backup = install_root / f"wbox.old.{frozen_now}"
+    assert fresh_backup.exists()
+    assert fresh_backup.read_bytes() == b"old-binary-bytes"
+
+
+# ---------------------------------------------------------------------------
 # CLI smoke
 # ---------------------------------------------------------------------------
 
