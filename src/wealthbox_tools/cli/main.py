@@ -17,6 +17,7 @@ from .internals import app as internals_app
 from .me import app as me_app
 from .notes import app as notes_app
 from .opportunities import app as opportunities_app
+from .prefs import app as prefs_app
 from .projects import app as projects_app
 from .self_cmd import app as self_app
 from .skills import app as skills_app
@@ -65,6 +66,7 @@ app.add_typer(internals_app, name="internals", hidden=True)
 app.add_typer(me_app, name="me")
 app.add_typer(notes_app, name="notes")
 app.add_typer(opportunities_app, name="opportunities")
+app.add_typer(prefs_app, name="prefs")
 app.add_typer(projects_app, name="projects")
 app.add_typer(self_app, name="self")
 app.add_typer(skills_app, name="skills")
