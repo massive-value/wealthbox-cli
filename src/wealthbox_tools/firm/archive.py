@@ -122,6 +122,28 @@ class ApplyMode(StrEnum):
     ABORT_ON_CONFLICT = "abort-on-conflict"
 
 
+def _is_safe_archive_name(name: str) -> bool:
+    """Return ``True`` if ``name`` is safe to write under a target directory.
+
+    Rejects path-traversal (``..``), absolute paths, Windows drive letters,
+    and backslashes. The zip spec uses forward slashes, but malicious
+    archives may use backslashes specifically to bypass naive POSIX checks
+    on Windows — so we reject either form.
+    """
+    if not name:
+        return False
+    if "\\" in name:
+        return False
+    if name.startswith("/"):
+        return False
+    if len(name) >= 2 and name[1] == ":":
+        return False
+    parts = name.split("/")
+    if any(p == ".." for p in parts):
+        return False
+    return True
+
+
 @dataclass(frozen=True)
 class ImportPlan:
     """The contents of a successfully-unpacked archive, ready to apply.
@@ -162,13 +184,20 @@ def unpack(source: Path | str) -> ImportPlan:
                 raise ArchiveError(
                     f"{path}: archive is missing {MANIFEST_NAME}; not a firm archive."
                 ) from exc
-            files = {
-                name: zf.read(name)
-                for name in zf.namelist()
-                if name != MANIFEST_NAME
-            }
+            entry_names = [n for n in zf.namelist() if n != MANIFEST_NAME]
+            for entry in entry_names:
+                if not _is_safe_archive_name(entry):
+                    raise ArchiveError(
+                        f"{path}: archive contains unsafe entry path {entry!r}; "
+                        "refusing to import."
+                    )
+            files = {name: zf.read(name) for name in entry_names}
     except zipfile.BadZipFile as exc:
         raise ArchiveError(f"{path}: not a valid zip archive.") from exc
+    except FileNotFoundError as exc:
+        raise ArchiveError(f"{path}: archive file not found.") from exc
+    except OSError as exc:
+        raise ArchiveError(f"{path}: cannot read archive: {exc}") from exc
 
     try:
         manifest = json.loads(manifest_raw.decode("utf-8"))
@@ -214,6 +243,10 @@ def apply(
 
     written: list[str] = []
     for name, content in plan.files.items():
+        if not _is_safe_archive_name(name):
+            raise ArchiveError(
+                f"plan contains unsafe entry path {name!r}; refusing to write."
+            )
         target = firm_dir / name
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_bytes(content)

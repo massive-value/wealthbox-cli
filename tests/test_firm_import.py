@@ -173,6 +173,84 @@ def test_unpack_rejects_unknown_format_version(tmp_path: Path) -> None:
     assert "99" in msg
 
 
+def test_unpack_wraps_missing_file_as_archive_error(tmp_path: Path) -> None:
+    """A non-existent path raises ArchiveError, not FileNotFoundError, so the
+    CLI's ``except ArchiveError`` branch is reached and the user sees a clean
+    BadParameter rather than a stack trace."""
+    missing = tmp_path / "does_not_exist.zip"
+    with pytest.raises(ArchiveError) as excinfo:
+        unpack(missing)
+    assert "does_not_exist.zip" in str(excinfo.value)
+
+
+@pytest.mark.parametrize(
+    "evil_name",
+    [
+        "../escape.md",                # parent traversal
+        "subdir/../../escape.md",      # nested traversal
+        "/abs/path.md",                # posix absolute
+        "C:/Windows/system.md",        # windows drive letter
+        "..\\escape.md",               # backslash traversal (zip spec is /, but
+                                       # malicious archives may use \\ to bypass
+                                       # naive checks on Windows)
+    ],
+)
+def test_unpack_rejects_unsafe_archive_entry_paths(
+    tmp_path: Path, evil_name: str
+) -> None:
+    """Path-traversal and absolute entries must not survive unpack.
+
+    Without this guard, ``apply`` would write outside ``firm_dir`` — once #45
+    lets URLs be the source, an attacker-crafted archive could overwrite any
+    file the user can write."""
+    archive = _zip_with_manifest(
+        tmp_path / "evil.zip",
+        manifest={
+            "format_version": 1,
+            "exported_at": "2026-01-01T00:00:00+00:00",
+            "source_firm_name": None,
+            "source_cli_version": "1.0.0",
+        },
+        bodies={evil_name: "# pwned\n"},
+    )
+    with pytest.raises(ArchiveError) as excinfo:
+        unpack(archive)
+    assert "unsafe" in str(excinfo.value).lower() or "path" in str(excinfo.value).lower()
+
+
+def test_apply_rejects_unsafe_paths_in_hand_built_plan(tmp_path: Path) -> None:
+    """Defense in depth: ImportPlan is a public dataclass, so apply also guards.
+
+    If a caller constructs a plan whose ``files`` dict contains an unsafe
+    name (bypassing ``unpack``), ``apply`` must refuse to write outside
+    ``firm_dir`` rather than trust the plan blindly.
+    """
+    from wealthbox_tools.firm.archive import ImportPlan
+
+    dst = tmp_path / "firm"
+    dst.mkdir()
+    plan = ImportPlan(
+        manifest={"format_version": 1},
+        files={"../escape.md": b"# pwned\n"},
+    )
+    with pytest.raises(ArchiveError):
+        apply(plan, dst, ApplyMode.OVERWRITE)
+    assert not (tmp_path / "escape.md").exists()
+
+
+def test_firm_import_cli_surfaces_clear_error_on_missing_file(
+    runner, tmp_path: Path
+) -> None:
+    """A missing archive path must exit cleanly via BadParameter, not crash."""
+    missing = tmp_path / "nope.zip"
+
+    result = runner.invoke(app, ["firm", "import", str(missing), "--yes"])
+
+    assert result.exit_code != 0
+    combined = (result.stdout or "") + (result.stderr or "")
+    assert "Traceback" not in combined
+
+
 def test_apply_mode_enum_has_three_values() -> None:
     """The enum carries the three modes named in the brief, even though only
     overwrite is implemented in this slice — sibling issues #46/#47 wire the
