@@ -213,3 +213,31 @@ def test_firm_export_cli_errors_when_firm_dir_missing(
     result = runner.invoke(app, ["firm", "export", "--out", str(out)])
     assert result.exit_code != 0
     assert not out.exists()
+
+
+def test_pack_skips_symlinked_policy_files(tmp_path: Path) -> None:
+    """Reject symlinked policy files so they cannot leak content from outside firm_dir.
+
+    The whitelist trusts that ``firm_dir / name`` is a regular file under the
+    firm directory. A symlink — even one pointing within firm_dir — could
+    redirect to ``~/.config/wbox/user/preferences.md`` or other host content,
+    breaking the "user prefs unreachable" guarantee. ``pack`` skips them.
+    """
+    firm = tmp_path / "firm"
+    _populated_firm_dir(firm)
+
+    # Replace contacts.md with a symlink pointing at a file outside firm_dir.
+    outside = tmp_path / "outside.md"
+    outside.write_text("# leaked secret content\n", encoding="utf-8")
+    (firm / "contacts.md").unlink()
+    try:
+        (firm / "contacts.md").symlink_to(outside)
+    except (OSError, NotImplementedError):
+        pytest.skip("symlinks not supported on this platform/test environment")
+
+    blob = pack(firm, now=datetime(2026, 1, 1, tzinfo=timezone.utc))
+    names = _names_in(blob)
+
+    assert "contacts.md" not in names
+    # Other whitelisted files still present.
+    assert "tasks.md" in names

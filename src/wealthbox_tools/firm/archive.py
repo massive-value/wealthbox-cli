@@ -127,7 +127,7 @@ def pack(firm_dir: Path, *, now: datetime | None = None) -> bytes:
             zf.writestr("_meta.json", json.dumps(meta_policy, indent=2) + "\n")
         for name in HAND_EDITED_FILES:
             src = firm_dir / name
-            if not src.is_file():
+            if src.is_symlink() or not src.is_file():
                 continue
             zf.writestr(name, src.read_text(encoding="utf-8"))
     return buf.getvalue()

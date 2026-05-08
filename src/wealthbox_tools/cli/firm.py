@@ -7,6 +7,7 @@ import typer
 
 from ..firm import pack as _pack
 from ._skill_paths import firm_dir as _firm_dir
+from .skills import _ensure_firm_migrated
 
 app = typer.Typer(
     context_settings={"help_option_names": ["-h", "--help"]},
@@ -31,6 +32,7 @@ def export_firm(
     ``custom-fields.md``, ``users.md``) and API-derived metadata
     (refresh timestamps, ``cli_version``) are excluded by construction.
     """
+    _ensure_firm_migrated()
     src = _firm_dir()
     if not src.is_dir():
         raise typer.BadParameter(
