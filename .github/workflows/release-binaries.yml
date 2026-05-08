@@ -1,0 +1,215 @@
+# Per-platform PyInstaller build + GitHub Release upload.
+#
+# Triggered on v* tags (and manually via workflow_dispatch for fork
+# validation). Builds a single-file ``wbox`` binary for each of the four
+# supported targets, computes its SHA-256, and uploads the binaries plus
+# a combined manifest as assets on the GitHub Release for the tag.
+#
+# The PyPI publish job lives in ci.yml and is intentionally not touched
+# here — both workflows fire on ``v*`` tags but operate independently.
+#
+# ----------------------------------------------------------------------
+# Manifest contract (LOCKED — downstream consumers: issue #42 install.sh
+# rewrite, issue #43 install.ps1 parity)
+# ----------------------------------------------------------------------
+# Manifest filename: SHA256SUMS.txt
+# Format:            standard sha256sum-compatible. One record per line:
+#                    <hex-sha256><two-spaces><filename>
+# Sort order:        ASCII-sorted by filename (stable across runs)
+# Binary filenames:
+#   wbox-linux-x64
+#   wbox-macos-arm64
+#   wbox-macos-x64
+#   wbox-windows-x64.exe
+# Manifest assets are attached to the same GitHub Release as the four
+# binaries. Install scripts can fetch SHA256SUMS.txt and a single binary
+# from the same release URL prefix and verify the binary against the
+# matching line.
+# ----------------------------------------------------------------------
+
+name: Release Binaries
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build ${{ matrix.target }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            target: linux-x64
+            binary: wbox-linux-x64
+            shell: bash
+          - os: macos-13          # Intel runner (x86_64)
+            target: macos-x64
+            binary: wbox-macos-x64
+            shell: bash
+          - os: macos-14          # Apple Silicon runner (arm64)
+            target: macos-arm64
+            binary: wbox-macos-arm64
+            shell: bash
+          - os: windows-latest
+            target: windows-x64
+            binary: wbox-windows-x64.exe
+            shell: pwsh
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install runtime + build deps
+        shell: ${{ matrix.shell }}
+        run: |
+          python -m pip install --upgrade pip
+          pip install .
+          pip install pyinstaller
+
+      - name: Build single-file binary (Unix)
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          pyinstaller \
+            --onefile \
+            --name "${{ matrix.binary }}" \
+            --noconfirm \
+            scripts/wbox_entry.py
+          test -f "dist/${{ matrix.binary }}"
+          chmod +x "dist/${{ matrix.binary }}"
+
+      - name: Build single-file binary (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          pyinstaller `
+            --onefile `
+            --name "${{ matrix.binary }}" `
+            --noconfirm `
+            scripts/wbox_entry.py
+          if (-not (Test-Path "dist/${{ matrix.binary }}")) {
+            throw "expected dist/${{ matrix.binary }} to exist"
+          }
+
+      - name: Smoke-test binary
+        shell: ${{ matrix.shell }}
+        run: |
+          ./dist/${{ matrix.binary }} --version
+
+      - name: Compute SHA-256 (Unix)
+        if: runner.os != 'Windows'
+        shell: bash
+        working-directory: dist
+        run: |
+          if command -v sha256sum >/dev/null 2>&1; then
+            sha256sum "${{ matrix.binary }}" > "${{ matrix.binary }}.sha256"
+          else
+            # macOS: shasum -a 256 emits sha256sum-compatible "<hash>  <name>"
+            shasum -a 256 "${{ matrix.binary }}" > "${{ matrix.binary }}.sha256"
+          fi
+          cat "${{ matrix.binary }}.sha256"
+
+      - name: Compute SHA-256 (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        working-directory: dist
+        run: |
+          $hash = (Get-FileHash -Algorithm SHA256 "${{ matrix.binary }}").Hash.ToLower()
+          # sha256sum format: "<hex>  <filename>" (two spaces, LF line ending)
+          $line = "$hash  ${{ matrix.binary }}`n"
+          [System.IO.File]::WriteAllText(
+            (Join-Path $PWD "${{ matrix.binary }}.sha256"),
+            $line
+          )
+          Get-Content "${{ matrix.binary }}.sha256"
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: wbox-${{ matrix.target }}
+          path: |
+            dist/${{ matrix.binary }}
+            dist/${{ matrix.binary }}.sha256
+          if-no-files-found: error
+          retention-days: 7
+
+  manifest-and-release:
+    name: Combine manifest and upload to release
+    needs: [build]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download all build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Stage release files
+        shell: bash
+        run: |
+          mkdir -p release
+          # Each artifact directory contains one binary + one .sha256 file.
+          find artifacts -type f \( -name 'wbox-*' -a ! -name '*.sha256' \) -exec cp -v {} release/ \;
+          find artifacts -type f -name '*.sha256' -exec cp -v {} release/ \;
+          ls -la release
+
+      - name: Build combined SHA256SUMS.txt
+        shell: bash
+        working-directory: release
+        run: |
+          # Concatenate per-binary sums into a single sha256sum-compatible
+          # manifest, ASCII-sorted by filename for stability.
+          # Each .sha256 file is already in "<hex>  <filename>" form.
+          cat *.sha256 | LC_ALL=C sort -k 2 > SHA256SUMS.txt
+          echo "----- SHA256SUMS.txt -----"
+          cat SHA256SUMS.txt
+          echo "--------------------------"
+          # Verify the manifest against the staged binaries as a sanity check.
+          sha256sum -c SHA256SUMS.txt
+
+      - name: Upload combined manifest artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: SHA256SUMS
+          path: release/SHA256SUMS.txt
+          if-no-files-found: error
+
+      - name: Upload assets to GitHub Release
+        if: startsWith(github.ref, 'refs/tags/')
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.ref_name }}
+          GH_REPO: ${{ github.repository }}
+        shell: bash
+        working-directory: release
+        run: |
+          # Ensure a release exists for the tag. If the PyPI publish job in
+          # ci.yml or a manual release-create created it first, --clobber on
+          # upload handles re-runs cleanly.
+          if ! gh release view "$TAG" >/dev/null 2>&1; then
+            gh release create "$TAG" \
+              --title "$TAG" \
+              --notes "Automated release for $TAG. Binaries built by release-binaries.yml; PyPI wheel published by ci.yml."
+          fi
+          # Upload all four binaries + the combined manifest. Per-platform
+          # .sha256 sidecars are intentionally not uploaded — SHA256SUMS.txt
+          # is the single source of truth for installers.
+          gh release upload "$TAG" \
+            wbox-linux-x64 \
+            wbox-macos-arm64 \
+            wbox-macos-x64 \
+            wbox-windows-x64.exe \
+            SHA256SUMS.txt \
+            --clobber
