@@ -261,6 +261,39 @@ def test_unpack_rejects_unsafe_archive_entry_paths(
     assert "unsafe" in str(excinfo.value).lower() or "path" in str(excinfo.value).lower()
 
 
+@pytest.mark.parametrize(
+    "stray_name",
+    [
+        "categories.md",        # generated; would poison the local cache
+        "custom-fields.md",     # generated
+        "users.md",             # generated
+        "subdir/policy.md",     # nested anything
+        "firm.zip",             # arbitrary
+    ],
+)
+def test_unpack_rejects_non_policy_entries(tmp_path: Path, stray_name: str) -> None:
+    """``pack`` is whitelist-only (HAND_EDITED_FILES + _meta.json); ``unpack``
+    must enforce the same whitelist so a tampered archive can't smuggle
+    generated files (``categories.md``, ``users.md``) past apply and poison
+    caches that the skill bootstrap relies on."""
+    archive = _zip_with_manifest(
+        tmp_path / "tampered.zip",
+        manifest={
+            "format_version": 1,
+            "exported_at": "2026-01-01T00:00:00+00:00",
+            "source_firm_name": None,
+            "source_cli_version": "1.0.0",
+        },
+        bodies={
+            "contacts.md": "# Contacts policy\n",
+            stray_name: "# tampered payload\n",
+        },
+    )
+    with pytest.raises(ArchiveError) as excinfo:
+        unpack(archive)
+    assert stray_name in str(excinfo.value)
+
+
 def test_apply_rejects_unsafe_paths_in_hand_built_plan(tmp_path: Path) -> None:
     """Defense in depth: ImportPlan is a public dataclass, so apply also guards.
 

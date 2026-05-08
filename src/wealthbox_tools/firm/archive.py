@@ -199,11 +199,17 @@ def unpack(source: Path | str) -> ImportPlan:
                     f"{path}: archive is missing {MANIFEST_NAME}; not a firm archive."
                 ) from exc
             entry_names = [n for n in zf.namelist() if n != MANIFEST_NAME]
+            allowed = set(HAND_EDITED_FILES) | {META_FILENAME}
             for entry in entry_names:
                 if not _is_safe_archive_name(entry):
                     raise ArchiveError(
                         f"{path}: archive contains unsafe entry path {entry!r}; "
                         "refusing to import."
+                    )
+                if entry not in allowed:
+                    raise ArchiveError(
+                        f"{path}: archive contains non-policy entry {entry!r}; "
+                        "only hand-edited policy files and _meta.json are accepted."
                     )
             files = {name: zf.read(name) for name in entry_names}
     except zipfile.BadZipFile as exc:
