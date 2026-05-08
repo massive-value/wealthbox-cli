@@ -8,6 +8,43 @@ description: Use when the user wants to interact with Wealthbox CRM — creating
 Execute Wealthbox CRM operations via the `wbox` CLI. Supports contacts, tasks, notes, events,
 opportunities, projects, workflows, households, and read-only lookups (categories, users, activity, me).
 
+## Context layers
+
+Every `wbox` invocation resolves data and behavior from four layers. When
+they conflict, the higher-priority layer wins:
+
+1. **Explicit override** (highest) — values passed on the CLI for the
+   current invocation by the user or agent (flags, positional args, env
+   vars set for this call). Always wins.
+2. **L3 user preferences** — the user's hand-edited
+   `~/.config/wbox/user/preferences.md` (`%APPDATA%\wbox\user\preferences.md`
+   on Windows). Personal taste: defaults, phrasing, idioms. Optional —
+   the file may be absent.
+3. **L2 firm policy** — the firm directory at `~/.config/wbox/firm/`
+   (path returned by `wbox skills firm-path`). Shared firm-wide data:
+   categories, custom-fields, users, workflows, identity. See "Firm
+   Configuration Path" below.
+4. **L1 Wealthbox default** (lowest) — the shape of the API itself.
+   Whatever the Wealthbox API returns or requires when no override,
+   user pref, or firm policy applies.
+
+### Reading and writing L3 user preferences
+
+Two CLI commands expose the L3 file directly:
+
+- `wbox prefs path` — prints the absolute path to `preferences.md`
+  (the file itself need not exist). Useful for opening in an editor or
+  resolving where to write.
+- `wbox prefs show` — prints the file's contents to stdout. Exits 0 with
+  empty output if the file or its parent directory is missing — the
+  file is optional and treated as such.
+
+An agent may run `wbox prefs show` to read the user's standing
+preferences before acting. Writes to `preferences.md` are hand-edited;
+`wbox` never writes to it implicitly. An agent may edit the file
+directly with the user's confirmation as patterns emerge (e.g. "you've
+asked for `--brief` three times — want me to add it as a default?").
+
 ## Firm Configuration Path
 
 Firm-specific data (categories, custom-fields, users, hand-edited
