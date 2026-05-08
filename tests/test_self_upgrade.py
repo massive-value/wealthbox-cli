@@ -166,6 +166,51 @@ def test_apply_atomic_rename_unix(tmp_path: Path, monkeypatch) -> None:
 
 
 @respx.mock
+def test_apply_does_not_swap_when_checksum_mismatches(
+    tmp_path: Path, monkeypatch
+) -> None:
+    """Regression for #38: a corrupted download must not touch the install.
+
+    When the downloaded bytes do not match the manifest's SHA-256, ``apply()``
+    must raise :class:`ChecksumMismatchError` BEFORE any rename happens.
+    The pre-existing binary stays in place verbatim, no ``.old.<ts>``
+    breadcrumb is created, and the partial download is cleaned up.
+    """
+    monkeypatch.setattr(su, "_binary_name", lambda: "wbox")
+
+    install_root = tmp_path
+    current = install_root / "wbox"
+    current.write_bytes(b"old-binary-bytes")
+
+    # Server returns these bytes...
+    served_bytes = b"corrupted-or-tampered-bytes"
+    binary_url = "https://example.com/wbox-linux-x64"
+    respx.get(binary_url).mock(return_value=httpx.Response(200, content=served_bytes))
+
+    # ...but the manifest claims a different (deliberately wrong) digest.
+    wrong_digest = "0" * 64
+    candidate = su.NewVersion(
+        version="9.9.9",
+        binary_url=binary_url,
+        sha256=wrong_digest,
+        asset_name="wbox-linux-x64",
+    )
+
+    with pytest.raises(su.ChecksumMismatchError):
+        su.apply(candidate, install_root=install_root)
+
+    # Pre-existing binary is untouched, byte-for-byte.
+    assert current.exists()
+    assert current.read_bytes() == b"old-binary-bytes"
+
+    # No backup breadcrumb was created — the rename never ran.
+    assert list(install_root.glob("wbox.old.*")) == []
+
+    # The except branch in apply() cleans up the partial download.
+    assert list(install_root.glob("wbox.partial.*")) == []
+
+
+@respx.mock
 @pytest.mark.skipif(
     sys.platform == "win32",
     reason="Execute bits are a POSIX concept; Windows has no equivalent.",
