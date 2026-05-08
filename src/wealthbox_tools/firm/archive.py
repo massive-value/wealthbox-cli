@@ -212,6 +212,21 @@ def unpack(source: Path | str) -> ImportPlan:
                         "only hand-edited policy files and _meta.json are accepted."
                     )
             files = {name: zf.read(name) for name in entry_names}
+            # _meta.json must be a JSON object if present — otherwise the
+            # apply-side merge would have to fall back to writing raw
+            # bytes, bypassing META_POLICY_KEYS filtering and corrupting
+            # the destination's identity/cli_version/files cache.
+            if META_FILENAME in files:
+                try:
+                    meta_obj = json.loads(files[META_FILENAME].decode("utf-8"))
+                except (json.JSONDecodeError, UnicodeDecodeError) as exc:
+                    raise ArchiveError(
+                        f"{path}: {META_FILENAME} is not valid JSON."
+                    ) from exc
+                if not isinstance(meta_obj, dict):
+                    raise ArchiveError(
+                        f"{path}: {META_FILENAME} must be a JSON object."
+                    )
     except zipfile.BadZipFile as exc:
         raise ArchiveError(f"{path}: not a valid zip archive.") from exc
     except FileNotFoundError as exc:
@@ -279,34 +294,28 @@ def apply(
 def _merge_meta_bytes(target: Path, incoming: bytes) -> bytes:
     """Merge the archive's ``_meta.json`` policy subset into the existing one.
 
-    ``pack`` only stores policy-shaped keys in ``_meta.json``. Wholesale
-    overwrite would delete generated keys (``identity``, ``cli_version``,
-    ``files``) that survive on the destination side. We merge the incoming
-    keys on top of the existing document so policy values come from the
-    archive while generated values persist locally. If either document is
-    missing or malformed, we fall back to writing the incoming bytes
-    verbatim — the same behavior as before the merge was introduced.
+    ``unpack`` already validated that ``incoming`` is a JSON object, so we
+    skip the malformed-incoming branch. Filter to META_POLICY_KEYS — the
+    same key whitelist ``pack`` enforces — so a tampered archive whose
+    ``_meta.json`` includes ``identity`` / ``cli_version`` / ``files``
+    cannot overwrite the destination's generated metadata. Generated keys
+    on the destination always survive; only policy keys come from the
+    archive.
+
+    If the destination ``_meta.json`` is missing or itself malformed, the
+    filtered policy subset is what gets written.
     """
-    try:
-        incoming_obj = json.loads(incoming.decode("utf-8"))
-    except (json.JSONDecodeError, UnicodeDecodeError):
-        return incoming
-    if not isinstance(incoming_obj, dict):
-        return incoming
-    # Filter to the same key whitelist that ``pack`` enforces — otherwise a
-    # tampered archive whose ``_meta.json`` includes ``identity`` /
-    # ``cli_version`` / ``files`` would let those forged values overwrite
-    # the destination's generated metadata. The file-level whitelist alone
-    # isn't sufficient for ``_meta.json``; we also need the key-level one.
-    incoming_policy = {k: incoming_obj[k] for k in META_POLICY_KEYS if k in incoming_obj}
-    if not target.exists():
-        return (json.dumps(incoming_policy, indent=2) + "\n").encode("utf-8")
-    try:
-        existing_obj = json.loads(target.read_text(encoding="utf-8"))
-    except (json.JSONDecodeError, OSError):
-        return (json.dumps(incoming_policy, indent=2) + "\n").encode("utf-8")
-    if not isinstance(existing_obj, dict):
-        return (json.dumps(incoming_policy, indent=2) + "\n").encode("utf-8")
+    incoming_policy = {
+        k: v for k, v in json.loads(incoming).items() if k in META_POLICY_KEYS
+    }
+    existing_obj: dict[str, Any] = {}
+    if target.exists():
+        try:
+            loaded = json.loads(target.read_text(encoding="utf-8"))
+        except (json.JSONDecodeError, OSError):
+            loaded = None
+        if isinstance(loaded, dict):
+            existing_obj = loaded
     merged = {**existing_obj, **incoming_policy}
     return (json.dumps(merged, indent=2) + "\n").encode("utf-8")
 

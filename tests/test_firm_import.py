@@ -163,6 +163,35 @@ def test_apply_overwrite_merges_meta_instead_of_replacing(tmp_path: Path) -> Non
     assert merged["files"] == {"categories.md": "2026-04-01T00:00:00+00:00"}
 
 
+@pytest.mark.parametrize(
+    "bad_meta_body",
+    [
+        "not json at all",                # JSONDecodeError
+        "[1, 2, 3]",                      # JSON array, not object
+        '"a string"',                     # JSON string, not object
+        "null",                           # JSON null
+    ],
+)
+def test_unpack_rejects_malformed_meta_json(tmp_path: Path, bad_meta_body: str) -> None:
+    """A tampered ``_meta.json`` with invalid JSON or a non-object payload
+    must be rejected at unpack time. The previous fallback wrote the raw
+    bytes verbatim, which bypassed META_POLICY_KEYS filtering and could
+    corrupt the destination's identity/cli_version/files cache."""
+    archive = _zip_with_manifest(
+        tmp_path / "evil.zip",
+        manifest={
+            "format_version": 1,
+            "exported_at": "2026-01-01T00:00:00+00:00",
+            "source_firm_name": None,
+            "source_cli_version": "1.0.0",
+        },
+        bodies={"_meta.json": bad_meta_body},
+    )
+    with pytest.raises(ArchiveError) as excinfo:
+        unpack(archive)
+    assert "_meta.json" in str(excinfo.value)
+
+
 def test_apply_filters_incoming_meta_to_policy_keys(tmp_path: Path) -> None:
     """A tampered ``_meta.json`` that includes generated keys (identity,
     cli_version, files) must NOT overwrite the destination's values for
