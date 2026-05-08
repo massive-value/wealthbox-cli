@@ -252,6 +252,15 @@ def apply(version: NewVersion, install_root: Path) -> UpgradeResult:
 
         if current_path.exists():
             os.replace(current_path, backup_path)
+        # Codex P1: ensure the new binary is executable on Unix/macOS.
+        # `Path.open("wb")` in `_download` creates the partial with the
+        # process umask (typically 0644), which would strip the execute
+        # bit and make the upgraded `wbox` un-runnable until manual
+        # `chmod`. Confined to non-Windows because Windows has no
+        # execute-bit concept; the orchestrator stays branch-free
+        # everywhere else.
+        if sys.platform != "win32":
+            partial_path.chmod(0o755)
         os.replace(partial_path, current_path)
     except BaseException:
         # Best-effort cleanup of the partial download. Do NOT touch the

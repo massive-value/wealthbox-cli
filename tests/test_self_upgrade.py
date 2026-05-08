@@ -12,9 +12,11 @@ so the Windows test in #37 can slot in without touching this file.
 from __future__ import annotations
 
 import hashlib
+import sys
 from pathlib import Path
 
 import httpx
+import pytest
 import respx
 
 import wealthbox_tools.self_upgrade as su
@@ -161,6 +163,45 @@ def test_apply_atomic_rename_unix(tmp_path: Path, monkeypatch) -> None:
     assert result.version == "9.9.9"
     assert result.installed_path == current
     assert result.backup_path == backup
+
+
+@respx.mock
+@pytest.mark.skipif(
+    sys.platform == "win32",
+    reason="Execute bits are a POSIX concept; Windows has no equivalent.",
+)
+def test_apply_sets_executable_mode_unix(tmp_path: Path, monkeypatch) -> None:
+    """apply() must leave the installed binary executable on Unix/macOS.
+
+    Regression for Codex P1: `Path.open("wb")` in `_download` creates the
+    partial with the process umask (usually 0644), so without an explicit
+    chmod the upgraded `wbox` would silently lose its execute bit and
+    fail to run after upgrade.
+    """
+    monkeypatch.setattr(su, "_binary_name", lambda: "wbox")
+
+    install_root = tmp_path
+    current = install_root / "wbox"
+    current.write_bytes(b"old-binary-bytes")
+
+    new_bytes = b"new-binary-bytes-v9-9-9"
+    digest = hashlib.sha256(new_bytes).hexdigest()
+    binary_url = "https://example.com/wbox-linux-x64"
+
+    respx.get(binary_url).mock(return_value=httpx.Response(200, content=new_bytes))
+
+    candidate = su.NewVersion(
+        version="9.9.9",
+        binary_url=binary_url,
+        sha256=digest,
+        asset_name="wbox-linux-x64",
+    )
+
+    su.apply(candidate, install_root=install_root)
+
+    # Any execute bit (owner/group/other) is sufficient to confirm the
+    # fix; we set 0o755 unconditionally so all three should be present.
+    assert current.stat().st_mode & 0o111
 
 
 # ---------------------------------------------------------------------------
