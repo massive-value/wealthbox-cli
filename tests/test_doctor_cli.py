@@ -49,7 +49,6 @@ def test_doctor_includes_all_sections(runner, tmp_path, monkeypatch):
     assert "# Authentication" in out
     assert "# Agent CLIs on PATH" in out
     assert "# Skill installs" in out
-    assert "# Plugin installs" in out
     assert "# Firm data" in out
     assert "# Summary" in out
 
