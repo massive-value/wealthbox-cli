@@ -13,6 +13,7 @@ from .doctor import doctor_cmd as _doctor_cmd
 from .events import app as events_app
 from .firm import app as firm_app
 from .households import app as households_app
+from .internals import app as internals_app
 from .me import app as me_app
 from .notes import app as notes_app
 from .opportunities import app as opportunities_app
@@ -59,6 +60,7 @@ app.add_typer(contacts_app, name="contacts")
 app.add_typer(events_app, name="events")
 app.add_typer(firm_app, name="firm")
 app.add_typer(households_app, name="households")
+app.add_typer(internals_app, name="internals", hidden=True)
 app.add_typer(me_app, name="me")
 app.add_typer(notes_app, name="notes")
 app.add_typer(opportunities_app, name="opportunities")
