@@ -47,6 +47,15 @@ def upgrade_cmd() -> None:
     typer.echo(f"Upgrading to v{candidate.version} ({candidate.asset_name})...")
     result = self_upgrade.apply(candidate, install_root=_default_install_root())
 
-    typer.echo(f"Installed v{result.version} at {result.installed_path}.")
-    typer.echo(f"Previous binary preserved at {result.backup_path}.")
-    typer.echo("Restart `wbox` to use the new version.")
+    if self_upgrade._is_windows():
+        # The rename is deferred to a helper that runs after this process
+        # exits, so we cannot honestly claim the upgrade is "installed" yet.
+        # The helper writes a status file that next-launch wbox reports.
+        typer.echo(
+            f"Scheduled v{result.version} — wbox will exit and complete the upgrade."
+        )
+        typer.echo("Run `wbox --version` after restart to confirm.")
+    else:
+        typer.echo(f"Installed v{result.version} at {result.installed_path}.")
+        typer.echo(f"Previous binary preserved at {result.backup_path}.")
+        typer.echo("Restart `wbox` to use the new version.")

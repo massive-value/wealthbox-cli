@@ -23,7 +23,9 @@ guaranteed atomic (no cross-device fallback to copy-then-delete).
 from __future__ import annotations
 
 import hashlib
+import json
 import os
+import subprocess
 import sys
 import time
 from dataclasses import dataclass
@@ -32,6 +34,13 @@ from pathlib import Path
 import httpx
 
 from wealthbox_tools import __version__
+
+# Subprocess creation flags used by the Windows deferred-swap helper.
+# Looked up via getattr so this module imports cleanly on POSIX (where the
+# constants don't exist on the subprocess module). The actual values come
+# from MSDN Process Creation Flags.
+_DETACHED_PROCESS = getattr(subprocess, "DETACHED_PROCESS", 0x00000008)
+_CREATE_NEW_PROCESS_GROUP = getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0x00000200)
 
 __all__ = [
     "NewVersion",
@@ -179,6 +188,211 @@ class ChecksumMismatchError(RuntimeError):
     """Raised by :func:`_verify_sha256` when the downloaded bytes are wrong."""
 
 
+def _perform_swap(current: Path, partial: Path, backup: Path) -> None:
+    """Rename ``current`` → ``backup`` (if it exists) and ``partial`` → ``current``.
+
+    The pure swap unit shared by the Unix in-process path and the Windows
+    deferred-swap helper. Platform-uniform except for the Unix-only chmod
+    that restores the execute bit (Windows has no execute-bit concept).
+
+    The Unix-only chmod is needed because ``Path.open("wb")`` in
+    :func:`_download` creates the partial with the process umask (typically
+    ``0644``); without restoring ``0o755`` the upgraded binary would lose
+    its execute bit and fail to run after upgrade.
+    """
+    if current.exists():
+        os.replace(current, backup)
+    if sys.platform != "win32":
+        partial.chmod(0o755)
+    os.replace(partial, current)
+
+
+def _is_windows() -> bool:
+    """Hook for the platform-policy dispatch in :func:`_schedule_swap`.
+
+    Indirected (rather than reading ``sys.platform`` inline) so tests can
+    exercise both branches against a Unix runner without monkeypatching
+    ``sys.platform`` itself, which would also affect unrelated stdlib
+    behavior (path separators, environment lookup, etc.).
+    """
+    return sys.platform == "win32"
+
+
+def _schedule_swap(
+    current: Path, partial: Path, backup: Path, parent_pid: int, version: str
+) -> None:
+    """Single platform-dispatch seam for the swap step in :func:`apply`.
+
+    On Unix, runs :func:`_perform_swap` synchronously and returns. On
+    Windows, the running ``wbox.exe`` is locked by the OS so the rename
+    must be deferred to a child process that waits for the parent to exit.
+    See :func:`_schedule_deferred_swap`. ``version`` flows through to the
+    Windows helper so it can write the upgrade outcome to the status file.
+    """
+    if _is_windows():
+        _schedule_deferred_swap(current, partial, backup, parent_pid, version)
+    else:
+        _perform_swap(current, partial, backup)
+
+
+_STATUS_FILENAME = "wbox.upgrade.status"
+
+
+def _read_and_clear_upgrade_status(install_root: Path) -> dict | None:
+    """Read + clear the upgrade status file written by the Windows helper.
+
+    Called on every CLI startup. Returns the parsed JSON dict if a status
+    file is present and well-formed; ``None`` otherwise. Deletes the file
+    in both the well-formed and malformed cases (the malformed file would
+    otherwise nag the user every launch).
+
+    Never raises: the caller is the root-callback hook in :mod:`cli.main`,
+    where any exception would crash every ``wbox`` invocation until the
+    user manually cleared the file.
+    """
+    status_path = install_root / _STATUS_FILENAME
+    if not status_path.exists():
+        return None
+    try:
+        data = json.loads(status_path.read_text())
+    except (OSError, json.JSONDecodeError):
+        try:
+            status_path.unlink(missing_ok=True)
+        except OSError:
+            pass
+        return None
+    try:
+        status_path.unlink(missing_ok=True)
+    except OSError:
+        pass
+    if not isinstance(data, dict):
+        return None
+    return data
+
+
+def _ps_single_quote(s: str) -> str:
+    """Wrap ``s`` in PowerShell single-quote string literal syntax.
+
+    Inside a single-quoted PS string, ``''`` (two single quotes) is the
+    only escape needed — backslashes, ``$``, and backticks are all literal.
+    Used to embed Windows paths into the inline helper script safely.
+    """
+    return "'" + s.replace("'", "''") + "'"
+
+
+def _build_powershell_command(
+    parent_pid: int,
+    current: Path,
+    partial: Path,
+    backup: Path,
+    status_path: Path,
+    version: str,
+    timeout_seconds: int = 30,
+) -> list[str]:
+    """Build argv for ``subprocess.Popen`` to run the deferred-swap helper.
+
+    The returned list is passed to Popen verbatim. The helper:
+
+    1. Polls ``Get-Process -Id <parent_pid>`` every 100ms until the parent
+       exits or ``timeout_seconds`` elapses.
+    2. If the parent exited in time: retries the rename pair (current →
+       backup, partial → current) for up to 3 seconds to absorb the brief
+       window between process exit and OS file-lock release.
+    3. Writes a JSON status file atomically (``.tmp`` + Move-Item) so the
+       next ``wbox`` launch can surface the outcome.
+    """
+    cur_q = _ps_single_quote(str(current))
+    par_q = _ps_single_quote(str(partial))
+    bak_q = _ps_single_quote(str(backup))
+    sta_q = _ps_single_quote(str(status_path))
+    ver_q = _ps_single_quote(version)
+
+    script = f"""\
+$parentPid = {parent_pid}
+$current = {cur_q}
+$partial = {par_q}
+$backup = {bak_q}
+$statusPath = {sta_q}
+$version = {ver_q}
+$timeoutSeconds = {timeout_seconds}
+$start = Get-Date
+while (
+    (Get-Process -Id $parentPid -ErrorAction SilentlyContinue) -and
+    (((Get-Date) - $start).TotalSeconds -lt $timeoutSeconds)
+) {{
+    Start-Sleep -Milliseconds 100
+}}
+$ts = [int][double]::Parse((Get-Date -UFormat %s))
+$status = @{{ result = ''; version = $version; reason = $null; ts = $ts }}
+if (Get-Process -Id $parentPid -ErrorAction SilentlyContinue) {{
+    $status.result = 'failed'
+    $status.reason = 'timeout waiting for parent exit'
+}}
+else {{
+    $swapped = $false
+    for ($i = 0; $i -lt 30; $i++) {{
+        try {{
+            if (Test-Path -LiteralPath $current) {{
+                Move-Item -LiteralPath $current -Destination $backup -Force
+            }}
+            Move-Item -LiteralPath $partial -Destination $current -Force
+            $swapped = $true
+            break
+        }} catch {{
+            Start-Sleep -Milliseconds 100
+        }}
+    }}
+    $status.ts = [int][double]::Parse((Get-Date -UFormat %s))
+    if ($swapped) {{
+        $status.result = 'ok'
+    }}
+    else {{
+        $status.result = 'failed'
+        $status.reason = 'rename failed after retries'
+    }}
+}}
+$statusJson = $status | ConvertTo-Json -Compress
+$tmpStatus = $statusPath + '.tmp'
+Set-Content -Path $tmpStatus -Value $statusJson -NoNewline
+Move-Item -LiteralPath $tmpStatus -Destination $statusPath -Force
+"""
+
+    return [
+        "powershell",
+        "-NoProfile",
+        "-WindowStyle", "Hidden",
+        "-Command", script,
+    ]
+
+
+def _schedule_deferred_swap(
+    current: Path, partial: Path, backup: Path, parent_pid: int, version: str
+) -> None:
+    """Spawn a detached PowerShell helper to perform the swap after parent exit.
+
+    The detached creation flags (DETACHED_PROCESS + CREATE_NEW_PROCESS_GROUP)
+    plus DEVNULL stdio ensure the helper survives the parent's exit; without
+    them the helper would inherit the parent's console and die with it.
+    """
+    status_path = current.with_name(_STATUS_FILENAME)
+    argv = _build_powershell_command(
+        parent_pid=parent_pid,
+        current=current,
+        partial=partial,
+        backup=backup,
+        status_path=status_path,
+        version=version,
+    )
+    subprocess.Popen(
+        argv,
+        creationflags=_DETACHED_PROCESS | _CREATE_NEW_PROCESS_GROUP,
+        stdin=subprocess.DEVNULL,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+        close_fds=True,
+    )
+
+
 # ---------------------------------------------------------------------------
 # Public API
 # ---------------------------------------------------------------------------
@@ -250,18 +464,9 @@ def apply(version: NewVersion, install_root: Path) -> UpgradeResult:
         _download(version.binary_url, partial_path)
         _verify_sha256(partial_path, version.sha256)
 
-        if current_path.exists():
-            os.replace(current_path, backup_path)
-        # Codex P1: ensure the new binary is executable on Unix/macOS.
-        # `Path.open("wb")` in `_download` creates the partial with the
-        # process umask (typically 0644), which would strip the execute
-        # bit and make the upgraded `wbox` un-runnable until manual
-        # `chmod`. Confined to non-Windows because Windows has no
-        # execute-bit concept; the orchestrator stays branch-free
-        # everywhere else.
-        if sys.platform != "win32":
-            partial_path.chmod(0o755)
-        os.replace(partial_path, current_path)
+        _schedule_swap(
+            current_path, partial_path, backup_path, os.getpid(), version.version
+        )
     except BaseException:
         # Best-effort cleanup of the partial download. Do NOT touch the
         # backup — if step 3 succeeded but step 4 failed the user still
