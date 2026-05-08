@@ -126,6 +126,43 @@ def test_apply_overwrite_replaces_existing_content(tmp_path: Path) -> None:
     assert (dst / "contacts.md").read_text(encoding="utf-8") == bodies["contacts.md"]
 
 
+def test_apply_overwrite_merges_meta_instead_of_replacing(tmp_path: Path) -> None:
+    """``_meta.json`` is the only archive entry that needs merge semantics.
+
+    ``pack`` deliberately strips ``_meta.json`` down to the policy subset
+    (just ``onboarded_at``). If ``apply`` wrote that subset wholesale, it
+    would destroy the destination's ``identity``, ``cli_version``, and
+    ``files`` timestamps that ``wbox doctor`` and the skill bootstrap
+    machinery depend on. Apply must merge the policy keys *into* the
+    existing meta, not replace it.
+    """
+    src = tmp_path / "src"
+    _populated_firm_dir(src)
+    archive = tmp_path / "firm.zip"
+    archive.write_bytes(pack(src, now=_PINNED_NOW))
+
+    dst = tmp_path / "dst"
+    dst.mkdir()
+    pre_existing = {
+        "identity": {"id": 42, "name": "Local Firm", "user_id": 7},
+        "cli_version": "1.6.0",
+        "files": {"categories.md": "2026-04-01T00:00:00+00:00"},
+        "onboarded_at": "2025-01-01T00:00:00+00:00",
+    }
+    (dst / "_meta.json").write_text(json.dumps(pre_existing, indent=2), encoding="utf-8")
+
+    plan = unpack(archive)
+    apply(plan, dst, ApplyMode.OVERWRITE)
+
+    merged = json.loads((dst / "_meta.json").read_text(encoding="utf-8"))
+    # Policy keys from the archive overwrite the destination's values.
+    assert merged["onboarded_at"] == "2024-02-15T12:34:56+00:00"
+    # Generated/identity keys survive.
+    assert merged["identity"] == {"id": 42, "name": "Local Firm", "user_id": 7}
+    assert merged["cli_version"] == "1.6.0"
+    assert merged["files"] == {"categories.md": "2026-04-01T00:00:00+00:00"}
+
+
 def test_apply_overwrite_leaves_unrelated_files_alone(tmp_path: Path) -> None:
     """Generated files that weren't in the archive must not be touched.
 

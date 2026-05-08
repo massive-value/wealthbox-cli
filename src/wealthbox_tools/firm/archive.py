@@ -104,6 +104,13 @@ def _build_manifest(
 #: Manifest filename inside the archive.
 MANIFEST_NAME = ".manifest.json"
 
+#: Filename of the per-firm metadata document. ``pack`` only includes the
+#: policy subset of this file (currently just ``onboarded_at``); ``apply``
+#: therefore merges that subset into the destination's existing meta rather
+#: than overwriting it, so generated keys (``identity``, ``cli_version``,
+#: ``files`` timestamps) that ``wbox doctor`` relies on survive.
+META_FILENAME = "_meta.json"
+
 
 class ArchiveError(Exception):
     """Raised when an archive cannot be unpacked or applied."""
@@ -249,9 +256,38 @@ def apply(
             )
         target = firm_dir / name
         target.parent.mkdir(parents=True, exist_ok=True)
+        if name == META_FILENAME:
+            content = _merge_meta_bytes(target, content)
         target.write_bytes(content)
         written.append(name)
     return ApplyResult(written=tuple(written))
+
+
+def _merge_meta_bytes(target: Path, incoming: bytes) -> bytes:
+    """Merge the archive's ``_meta.json`` policy subset into the existing one.
+
+    ``pack`` only stores policy-shaped keys in ``_meta.json``. Wholesale
+    overwrite would delete generated keys (``identity``, ``cli_version``,
+    ``files``) that survive on the destination side. We merge the incoming
+    keys on top of the existing document so policy values come from the
+    archive while generated values persist locally. If either document is
+    missing or malformed, we fall back to writing the incoming bytes
+    verbatim — the same behavior as before the merge was introduced.
+    """
+    try:
+        incoming_obj = json.loads(incoming.decode("utf-8"))
+    except (json.JSONDecodeError, UnicodeDecodeError):
+        return incoming
+    if not isinstance(incoming_obj, dict) or not target.exists():
+        return incoming
+    try:
+        existing_obj = json.loads(target.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError):
+        return incoming
+    if not isinstance(existing_obj, dict):
+        return incoming
+    merged = {**existing_obj, **incoming_obj}
+    return (json.dumps(merged, indent=2) + "\n").encode("utf-8")
 
 
 def pack(firm_dir: Path, *, now: datetime | None = None) -> bytes:
