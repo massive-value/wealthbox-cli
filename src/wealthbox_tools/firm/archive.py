@@ -291,15 +291,23 @@ def _merge_meta_bytes(target: Path, incoming: bytes) -> bytes:
         incoming_obj = json.loads(incoming.decode("utf-8"))
     except (json.JSONDecodeError, UnicodeDecodeError):
         return incoming
-    if not isinstance(incoming_obj, dict) or not target.exists():
+    if not isinstance(incoming_obj, dict):
         return incoming
+    # Filter to the same key whitelist that ``pack`` enforces — otherwise a
+    # tampered archive whose ``_meta.json`` includes ``identity`` /
+    # ``cli_version`` / ``files`` would let those forged values overwrite
+    # the destination's generated metadata. The file-level whitelist alone
+    # isn't sufficient for ``_meta.json``; we also need the key-level one.
+    incoming_policy = {k: incoming_obj[k] for k in META_POLICY_KEYS if k in incoming_obj}
+    if not target.exists():
+        return (json.dumps(incoming_policy, indent=2) + "\n").encode("utf-8")
     try:
         existing_obj = json.loads(target.read_text(encoding="utf-8"))
     except (json.JSONDecodeError, OSError):
-        return incoming
+        return (json.dumps(incoming_policy, indent=2) + "\n").encode("utf-8")
     if not isinstance(existing_obj, dict):
-        return incoming
-    merged = {**existing_obj, **incoming_obj}
+        return (json.dumps(incoming_policy, indent=2) + "\n").encode("utf-8")
+    merged = {**existing_obj, **incoming_policy}
     return (json.dumps(merged, indent=2) + "\n").encode("utf-8")
 
 

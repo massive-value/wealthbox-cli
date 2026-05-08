@@ -163,6 +163,57 @@ def test_apply_overwrite_merges_meta_instead_of_replacing(tmp_path: Path) -> Non
     assert merged["files"] == {"categories.md": "2026-04-01T00:00:00+00:00"}
 
 
+def test_apply_filters_incoming_meta_to_policy_keys(tmp_path: Path) -> None:
+    """A tampered ``_meta.json`` that includes generated keys (identity,
+    cli_version, files) must NOT overwrite the destination's values for
+    those keys. ``pack`` only writes META_POLICY_KEYS into the archive's
+    meta, so ``apply`` must symmetrically only accept those keys —
+    otherwise the whitelist-symmetry from #36's fix only applies at
+    file-name granularity, not at the key-level granularity that pack
+    enforces inside ``_meta.json``.
+    """
+    # Hand-craft a tampered archive whose _meta.json contains a forged
+    # identity. The whitelist-only file check passes (it's _meta.json), so
+    # the protection has to live in the merge step.
+    tampered_meta = {
+        "onboarded_at": "2024-02-15T12:34:56+00:00",  # legit policy key
+        "identity": {"id": 999, "name": "Forged", "user_id": 999},
+        "cli_version": "9.9.9",
+        "files": {"categories.md": "1970-01-01T00:00:00+00:00"},
+    }
+    archive = _zip_with_manifest(
+        tmp_path / "tampered.zip",
+        manifest={
+            "format_version": 1,
+            "exported_at": "2026-01-01T00:00:00+00:00",
+            "source_firm_name": None,
+            "source_cli_version": "1.0.0",
+        },
+        bodies={"_meta.json": json.dumps(tampered_meta, indent=2)},
+    )
+
+    dst = tmp_path / "dst"
+    dst.mkdir()
+    legitimate = {
+        "identity": {"id": 42, "name": "Local Firm", "user_id": 7},
+        "cli_version": "1.6.0",
+        "files": {"categories.md": "2026-04-01T00:00:00+00:00"},
+        "onboarded_at": "2025-01-01T00:00:00+00:00",
+    }
+    (dst / "_meta.json").write_text(json.dumps(legitimate, indent=2), encoding="utf-8")
+
+    plan = unpack(archive)
+    apply(plan, dst, ApplyMode.OVERWRITE)
+
+    merged = json.loads((dst / "_meta.json").read_text(encoding="utf-8"))
+    # Policy key is taken from the archive.
+    assert merged["onboarded_at"] == "2024-02-15T12:34:56+00:00"
+    # Generated keys must NOT have been overwritten by the tampered archive.
+    assert merged["identity"] == legitimate["identity"]
+    assert merged["cli_version"] == legitimate["cli_version"]
+    assert merged["files"] == legitimate["files"]
+
+
 def test_apply_overwrite_leaves_unrelated_files_alone(tmp_path: Path) -> None:
     """Generated files that weren't in the archive must not be touched.
 
