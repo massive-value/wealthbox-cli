@@ -363,26 +363,29 @@ def test_apply_windows_defers_swap_to_helper(tmp_path: Path, monkeypatch) -> Non
 
 
 @respx.mock
-def test_apply_atomic_rename_unix(tmp_path: Path, monkeypatch) -> None:
+@pytest.mark.parametrize("binary_filename", ["wbox", "wbox.exe"])
+def test_apply_atomic_rename(
+    tmp_path: Path, monkeypatch, binary_filename: str
+) -> None:
     """apply() renames current binary to .old.<ts> and installs new bytes.
 
-    Uses tmp_path as the install root so this is filesystem-isolated and
-    platform-agnostic. The orchestrator must NOT branch on sys.platform.
+    Parameterized over the binary filename so a single test exercises both
+    the POSIX (`wbox`) and Windows (`wbox.exe`) layouts via the
+    `_binary_name()` seam. `_is_windows()` is also pinned to False so the
+    parameterized run on a Windows CI runner exercises the in-process
+    Unix swap path here; the deferred-swap orchestration is covered by
+    `test_apply_windows_defers_swap_to_helper`.
     """
-    # Pin the binary filename and platform policy to the Unix variant. On a
-    # Windows CI runner this test still exercises the Unix code path; the
-    # Windows-specific orchestration is covered by
-    # `test_apply_windows_defers_swap_to_helper`.
-    monkeypatch.setattr(su, "_binary_name", lambda: "wbox")
+    monkeypatch.setattr(su, "_binary_name", lambda: binary_filename)
     monkeypatch.setattr(su, "_is_windows", lambda: False)
 
     install_root = tmp_path
-    current = install_root / "wbox"
+    current = install_root / binary_filename
     current.write_bytes(b"old-binary-bytes")
 
     new_bytes = b"new-binary-bytes-v9-9-9"
     digest = hashlib.sha256(new_bytes).hexdigest()
-    binary_url = "https://example.com/wbox-linux-x64"
+    binary_url = f"https://example.com/{binary_filename}"
 
     respx.get(binary_url).mock(return_value=httpx.Response(200, content=new_bytes))
 
@@ -394,7 +397,7 @@ def test_apply_atomic_rename_unix(tmp_path: Path, monkeypatch) -> None:
         version="9.9.9",
         binary_url=binary_url,
         sha256=digest,
-        asset_name="wbox-linux-x64",
+        asset_name=binary_filename,
     )
 
     result = su.apply(candidate, install_root=install_root)
@@ -404,12 +407,12 @@ def test_apply_atomic_rename_unix(tmp_path: Path, monkeypatch) -> None:
     assert current.read_bytes() == new_bytes
 
     # Old binary preserved under the timestamped breadcrumb.
-    backup = install_root / f"wbox.old.{frozen_ts}"
+    backup = install_root / f"{binary_filename}.old.{frozen_ts}"
     assert backup.exists()
     assert backup.read_bytes() == b"old-binary-bytes"
 
     # And no leftover partial-download files in the install root.
-    leftovers = list(install_root.glob("wbox.partial.*"))
+    leftovers = list(install_root.glob(f"{binary_filename}.partial.*"))
     assert leftovers == [], f"unexpected partial leftovers: {leftovers}"
 
     # UpgradeResult exposes useful breadcrumbs for callers / future cleanup.
@@ -501,6 +504,110 @@ def test_apply_sets_executable_mode_unix(tmp_path: Path, monkeypatch) -> None:
     # Any execute bit (owner/group/other) is sufficient to confirm the
     # fix; we set 0o755 unconditionally so all three should be present.
     assert current.stat().st_mode & 0o111
+
+
+@respx.mock
+@pytest.mark.skipif(
+    sys.platform != "win32",
+    reason="Open-handle rename semantics are Windows-specific.",
+)
+def test_apply_rename_succeeds_with_open_handle_on_windows(
+    tmp_path: Path, monkeypatch
+) -> None:
+    """apply() must complete the swap when a handle on the source path mirrors
+    how Windows holds a running ``.exe``.
+
+    Windows opens executable images with ``FILE_SHARE_READ |
+    FILE_SHARE_DELETE``, which is what makes ``os.replace`` of a running
+    binary feasible (the rename targets the directory entry, not the
+    handle). Python's :func:`open` does NOT pass ``FILE_SHARE_DELETE``, so
+    we acquire a handle via ``CreateFileW`` with the same share mode as
+    the loader, then exercise :func:`apply` and assert the swap completes.
+
+    Pin this contract with a regression test so a future refactor (e.g. a
+    naive ``os.rename`` swap, or dropping ``FILE_SHARE_DELETE``) trips the
+    test rather than shipping broken behavior.
+    """
+    import ctypes
+    from ctypes import wintypes
+
+    monkeypatch.setattr(su, "_binary_name", lambda: "wbox.exe")
+    # Force the in-process Unix swap path so the test exercises the actual
+    # `os.replace` against the held FILE_SHARE_DELETE handle. With the real
+    # `_is_windows()` apply() would dispatch to `_schedule_deferred_swap`,
+    # which polls for parent exit and is covered separately.
+    monkeypatch.setattr(su, "_is_windows", lambda: False)
+
+    install_root = tmp_path
+    current = install_root / "wbox.exe"
+    current.write_bytes(b"old-binary-bytes")
+
+    new_bytes = b"new-binary-bytes-v9-9-9"
+    digest = hashlib.sha256(new_bytes).hexdigest()
+    binary_url = "https://example.com/wbox.exe"
+
+    respx.get(binary_url).mock(return_value=httpx.Response(200, content=new_bytes))
+
+    frozen_ts = 1_700_000_000
+    monkeypatch.setattr(su.time, "time", lambda: frozen_ts)
+
+    candidate = su.NewVersion(
+        version="9.9.9",
+        binary_url=binary_url,
+        sha256=digest,
+        asset_name="wbox.exe",
+    )
+
+    GENERIC_READ = 0x80000000
+    FILE_SHARE_READ = 0x00000001
+    FILE_SHARE_DELETE = 0x00000004
+    OPEN_EXISTING = 3
+    FILE_ATTRIBUTE_NORMAL = 0x80
+    INVALID_HANDLE_VALUE = wintypes.HANDLE(-1).value
+
+    CreateFileW = ctypes.windll.kernel32.CreateFileW
+    CreateFileW.restype = wintypes.HANDLE
+    CreateFileW.argtypes = [
+        wintypes.LPCWSTR,
+        wintypes.DWORD,
+        wintypes.DWORD,
+        ctypes.c_void_p,
+        wintypes.DWORD,
+        wintypes.DWORD,
+        wintypes.HANDLE,
+    ]
+    CloseHandle = ctypes.windll.kernel32.CloseHandle
+    CloseHandle.argtypes = [wintypes.HANDLE]
+    CloseHandle.restype = wintypes.BOOL
+
+    handle = CreateFileW(
+        str(current),
+        GENERIC_READ,
+        FILE_SHARE_READ | FILE_SHARE_DELETE,
+        None,
+        OPEN_EXISTING,
+        FILE_ATTRIBUTE_NORMAL,
+        None,
+    )
+    assert handle != INVALID_HANDLE_VALUE, (
+        f"CreateFileW failed with error {ctypes.get_last_error()}"
+    )
+    try:
+        result = su.apply(candidate, install_root=install_root)
+    finally:
+        CloseHandle(handle)
+
+    # New binary in place with new contents.
+    assert current.exists()
+    assert current.read_bytes() == new_bytes
+
+    # Old binary preserved under the timestamped breadcrumb.
+    backup = install_root / f"wbox.exe.old.{frozen_ts}"
+    assert backup.exists()
+    assert backup.read_bytes() == b"old-binary-bytes"
+
+    assert result.installed_path == current
+    assert result.backup_path == backup
 
 
 # ---------------------------------------------------------------------------
