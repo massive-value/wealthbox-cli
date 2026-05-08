@@ -5,6 +5,8 @@ from importlib.metadata import version as _pkg_version
 
 import typer
 
+from .. import self_upgrade
+from . import self_cmd
 from .activity import app as activity_app
 from .categories import app as categories_app
 from .config import app as config_app
@@ -25,6 +27,33 @@ from .tasks import app as tasks_app
 from .users import app as users_app
 from .workflows import app as workflows_app
 
+
+def _check_pending_upgrade_status() -> None:
+    """Surface the outcome of a deferred self-upgrade swap, if any.
+
+    The Windows deferred-swap helper writes ``wbox.upgrade.status`` next to
+    the binary after the swap (or after timing out). On the next ``wbox``
+    launch — that is, here — we read it, print a one-line summary to stderr,
+    and unlink it. Never raises; a corrupt status file would otherwise nag
+    the user every invocation.
+
+    Resolves ``_default_install_root`` through the module reference so tests
+    can monkeypatch it on :mod:`cli.self_cmd` and have the change take
+    effect here.
+    """
+    status = self_upgrade._read_and_clear_upgrade_status(self_cmd._default_install_root())
+    if status is None:
+        return
+    version = status.get("version") or "?"
+    if status.get("result") == "ok":
+        typer.echo(f"wbox: upgrade to v{version} completed.", err=True)
+    else:
+        reason = status.get("reason") or "unknown error"
+        typer.echo(
+            f"wbox: upgrade to v{version} failed ({reason}). Old binary still in place.",
+            err=True,
+        )
+
 app = typer.Typer(context_settings={"help_option_names": ["-h", "--help"]}, 
     name="wbox",
     help="Wealthbox CRM CLI — interact with contacts, households, tasks, events, opportunities, and notes.",
@@ -42,6 +71,7 @@ def _main(
              "agents and pipelines almost never want it.",
     ),
 ) -> None:
+    _check_pending_upgrade_status()
     if version:
         typer.echo(_pkg_version("wealthbox-cli"))
         raise typer.Exit()
