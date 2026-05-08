@@ -132,10 +132,15 @@ class ApplyMode(StrEnum):
 def _is_safe_archive_name(name: str) -> bool:
     """Return ``True`` if ``name`` is safe to write under a target directory.
 
-    Rejects path-traversal (``..``), absolute paths, Windows drive letters,
-    and backslashes. The zip spec uses forward slashes, but malicious
-    archives may use backslashes specifically to bypass naive POSIX checks
-    on Windows — so we reject either form.
+    Rejects path-traversal (``..``), current-dir aliases (``.``), absolute
+    paths, Windows drive letters, backslashes, directory entries (trailing
+    slash), and empty path components. Anything that survives this check
+    can be safely joined onto ``firm_dir`` and written as a regular file.
+
+    ``.`` matters specifically because ``firm_dir / "."`` resolves to
+    ``firm_dir`` itself; ``write_bytes`` on a directory raises
+    ``IsADirectoryError``, which would bypass the CLI's clean-error path.
+    Trailing-slash directory entries have the same failure mode.
     """
     if not name:
         return False
@@ -143,10 +148,12 @@ def _is_safe_archive_name(name: str) -> bool:
         return False
     if name.startswith("/"):
         return False
+    if name.endswith("/"):
+        return False
     if len(name) >= 2 and name[1] == ":":
         return False
     parts = name.split("/")
-    if any(p == ".." for p in parts):
+    if any(p in ("", ".", "..") for p in parts):
         return False
     return True
 

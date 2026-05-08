@@ -230,6 +230,12 @@ def test_unpack_wraps_missing_file_as_archive_error(tmp_path: Path) -> None:
         "..\\escape.md",               # backslash traversal (zip spec is /, but
                                        # malicious archives may use \\ to bypass
                                        # naive checks on Windows)
+        ".",                           # current-dir; would resolve onto firm_dir
+        "./contacts.md",               # leading-dot segment
+        "contacts/./policy.md",        # mid-path-dot segment
+        "subdir/",                     # directory entry; write_bytes on a dir
+                                       # raises IsADirectoryError otherwise
+        "foo//bar.md",                 # empty middle segment
     ],
 )
 def test_unpack_rejects_unsafe_archive_entry_paths(
