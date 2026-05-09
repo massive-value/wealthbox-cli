@@ -206,6 +206,18 @@ def write_firm_meta(data: dict[str, Any]) -> None:
     p.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
 
 
+#: Top-level firm-meta keys that must survive a regenerate (`wbox skills
+#: refresh` / re-bootstrap). These are user-state, not derived data:
+#: ``onboarded_at`` is set by the agent after qualitative Q&A; the
+#: ``last_imported_*`` pair is set by `wbox firm import` (#48) and powers
+#: the doctor's 90-day staleness warning.
+_PRESERVED_FIRM_META_KEYS: tuple[str, ...] = (
+    "onboarded_at",
+    "last_imported_from",
+    "last_imported_at",
+)
+
+
 def update_firm_meta(
     *,
     identity: dict[str, Any],
@@ -214,7 +226,9 @@ def update_firm_meta(
 ) -> None:
     """Write firm identity + generated-file timestamps to canonical firm meta.
 
-    Preserves `onboarded_at` (set by the agent via `wbox skills mark-onboarded`).
+    Preserves user-state keys (``onboarded_at`` from `wbox skills mark-onboarded`,
+    ``last_imported_from`` / ``last_imported_at`` from `wbox firm import`) so a
+    regenerate doesn't drop them.
     """
     now = datetime.now(timezone.utc).isoformat()
     existing = read_firm_meta()
@@ -223,9 +237,9 @@ def update_firm_meta(
         "cli_version": cli_version,
         "files": {name: now for name in generated_files},
     }
-    onboarded_at = existing.get("onboarded_at")
-    if onboarded_at:
-        new_meta["onboarded_at"] = onboarded_at
+    for key in _PRESERVED_FIRM_META_KEYS:
+        if existing.get(key):
+            new_meta[key] = existing[key]
     write_firm_meta(new_meta)
 
 
