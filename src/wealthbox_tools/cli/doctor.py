@@ -28,7 +28,7 @@ from .self_cmd import _default_install_root
 
 def _detect_token_source(token_arg: str | None) -> tuple[str | None, str]:
     """Return (token, source_label) matching get_client's resolution order:
-    --token flag > WEALTHBOX_TOKEN env > config file > .env (loaded as env)."""
+    --token flag > WEALTHBOX_TOKEN env > config file."""
     if token_arg:
         return token_arg, "--token flag"
     env_token = os.environ.get("WEALTHBOX_TOKEN")
@@ -38,14 +38,6 @@ def _detect_token_source(token_arg: str | None) -> tuple[str | None, str]:
     cfg_token = cfg.get("token")
     if cfg_token:
         return cfg_token, f"config file ({_config_path()})"
-    try:
-        from dotenv import load_dotenv
-        load_dotenv()
-        dotenv_token = os.environ.get("WEALTHBOX_TOKEN")
-        if dotenv_token:
-            return dotenv_token, ".env file in working directory"
-    except ImportError:
-        pass
     return None, "not set"
 
 
@@ -257,7 +249,7 @@ def _ensure_firm_migrated():
 def doctor_cmd(
     token: str | None = typer.Option(
         None, "--token",
-        help="Override the API token for the smoke test. Overrides env var, config, .env.",
+        help="Override the API token for the smoke test. Overrides env var and config.",
     ),
 ) -> None:
     """Run the comprehensive doctor.
@@ -266,6 +258,6 @@ def doctor_cmd(
     is informational, not a CI gate. (A future --strict flag could change
     this for scripting.) Token is intentionally NOT bound to
     `envvar=WEALTHBOX_TOKEN` so the doctor can report whether the token came
-    from the flag, env var, config file, or .env file.
+    from the flag, env var, or config file.
     """
     run_doctor(token=token)

@@ -18,7 +18,7 @@ You will receive a response within 5 business days. If the issue is confirmed, a
 
 Your Wealthbox API token grants access to your CRM data. Keep it safe:
 
-- **Never commit your token to version control.** Use `.env` (already in `.gitignore`) or `wbox config set-token` to store it securely.
+- **Never commit your token to version control.** Use `wbox config set-token` to store it securely (written to your platform config dir, not the repo).
 - **Never share your token** in issues, PRs, or chat.
 - If a token is accidentally exposed, regenerate it immediately in your Wealthbox account settings under **Settings > API Access**.
 

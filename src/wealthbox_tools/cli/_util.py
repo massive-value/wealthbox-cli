@@ -49,25 +49,17 @@ COMMENT_RESOURCE_TYPES: dict[str, str] = {
 
 
 def get_client(token: str | None = None) -> WealthboxClient:
-    """Create a WealthboxClient with token resolution: --token flag > env var > config file > .env."""
+    """Create a WealthboxClient with token resolution: --token flag > env var > config file."""
     import os
     if token is None:
         token = os.environ.get("WEALTHBOX_TOKEN")
     if token is None:
         from ._config import get_stored_token
         token = get_stored_token()
-    if token is None:
-        try:
-            from dotenv import load_dotenv
-            load_dotenv()
-            token = os.environ.get("WEALTHBOX_TOKEN")
-        except ImportError:
-            pass
     if not token:
         raise ValueError(
             "Wealthbox token required. Provide one via any of: "
-            "--token flag, WEALTHBOX_TOKEN env var, "
-            "`wbox config set-token`, or a .env file in the working directory."
+            "--token flag, WEALTHBOX_TOKEN env var, or `wbox config set-token`."
         )
     return WealthboxClient(token=token)
 

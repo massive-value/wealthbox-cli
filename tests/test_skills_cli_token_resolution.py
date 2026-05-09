@@ -1,5 +1,5 @@
 """Regression tests: skills bootstrap must honor every token source the rest of
-the CLI honors (--token > WEALTHBOX_TOKEN > config file > .env).
+the CLI honors (--token > WEALTHBOX_TOKEN > config file).
 
 Before v1.1.5, ``bootstrap_skill_dir`` constructed ``WealthboxClient`` directly
 and only fell back to the env var, ignoring tokens stored via

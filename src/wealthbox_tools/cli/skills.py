@@ -295,7 +295,7 @@ def doctor_cmd(
     # canonical top-level form. Both call the same function so the output
     # never drifts. Token is intentionally not bound to envvar= so the
     # doctor can report whether the token came from the flag, env var,
-    # config file, or .env file.
+    # or config file.
     from .doctor import run_doctor
     run_doctor(token=token)
 

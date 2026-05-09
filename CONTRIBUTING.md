@@ -6,38 +6,46 @@ Thank you for your interest in contributing to **wealthbox-cli**!
 
 ## Development Setup
 
+This project uses [uv](https://docs.astral.sh/uv/) for dependency management. Install it first if you don't have it:
+
+```bash
+# macOS / Linux
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# Windows (PowerShell)
+irm https://astral.sh/uv/install.ps1 | iex
+```
+
+Then clone and sync:
+
 ```bash
 git clone https://github.com/massive-value/wealthbox-cli
 cd wealthbox-cli
-python -m venv .venv
+uv sync --extra dev
 ```
 
-Activate the virtual environment:
-
-| Platform | Command |
-|----------|---------|
-| macOS/Linux | `source .venv/bin/activate` |
-| Windows (PowerShell) | `.venv\Scripts\Activate.ps1` |
-| Windows (Command Prompt) | `.venv\Scripts\activate.bat` |
-
-Then install with dev dependencies:
+`uv sync` creates a project-local `.venv/` and installs the package in editable mode with dev dependencies. There is nothing to "activate" — prefix commands with `uv run`:
 
 ```bash
-pip install -e ".[dev]"
+uv run wbox --version
+uv run pytest
+uv run ruff check src/ tests/
 ```
 
 Configure your Wealthbox API token (optional — tests don't require a real token):
 
 ```bash
-wbox config set-token
+uv run wbox config set-token
 ```
+
+> Prefer plain `pip`? `pip install -e ".[dev]"` still works — `pyproject.toml` is the source of truth for both tools.
 
 ---
 
 ## Running Tests
 
 ```bash
-pytest
+uv run pytest
 ```
 
 Tests use [respx](https://lundberg.github.io/respx/) to mock HTTP at the transport layer — no real API calls are made.
@@ -45,7 +53,7 @@ Tests use [respx](https://lundberg.github.io/respx/) to mock HTTP at the transpo
 ## Code Style
 
 ```bash
-ruff check src/ tests/
+uv run ruff check src/ tests/
 ```
 
 - **ruff** for linting (E, F, I rules; 120-char line length)

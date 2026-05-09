@@ -4,6 +4,33 @@ All notable changes to `wealthbox-cli` are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.0] - 2026-05-09
+
+Repository simplification release. Drops a runtime dep, retires `.env` support,
+and switches dev tooling to [uv](https://docs.astral.sh/uv/).
+
+### Breaking
+- **Removed `.env` file support.** Token resolution is now a 3-tier chain:
+  `--token` flag → `WEALTHBOX_TOKEN` env var → config file. Users relying on a
+  working-directory `.env` should migrate to `wbox config set-token` (preferred)
+  or export `WEALTHBOX_TOKEN` in their shell. The `python-dotenv` runtime
+  dependency was dropped.
+
+### Changed
+- Development tooling moved to [uv](https://docs.astral.sh/uv/). `uv sync
+  --extra dev` replaces the manual `python -m venv` + activate + `pip install
+  -e` dance, and `uv run wbox …` replaces direct `.venv/bin/wbox` invocation.
+  CI now uses `astral-sh/setup-uv@v6` and `uv build` for the publish job. Plain
+  `pip install -e ".[dev]"` continues to work — `pyproject.toml` is the source
+  of truth for both tools.
+- `scripts/run-wbox.sh` and `scripts/smoke_test.sh` invoke via `uv run` and no
+  longer source a `.env` file.
+
+### Removed
+- `.env` and `.env.example` files at the repo root.
+- `.python-version` file. `requires-python = ">=3.11"` in `pyproject.toml` is
+  the authoritative interpreter constraint; uv reads it directly.
+
 ## [2.0.0] - 2026-05-09
 
 v2 retires the Claude marketplace plugin distribution and ships `wbox` as a

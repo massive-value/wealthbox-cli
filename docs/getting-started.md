@@ -89,19 +89,13 @@ For CI, scripting, or containers:
     export WEALTHBOX_TOKEN="your_api_token_here"
     ```
 
-=== ".env file"
-
-    ```bash
-    echo 'WEALTHBOX_TOKEN=your_api_token_here' > .env
-    ```
-
 === "Per-command flag"
 
     ```bash
     wbox contacts list --token your_api_token_here
     ```
 
-Token is resolved in this order: `--token` flag → `WEALTHBOX_TOKEN` env var → config file → `.env` file.
+Token is resolved in this order: `--token` flag → `WEALTHBOX_TOKEN` env var → config file.
 
 ---
 

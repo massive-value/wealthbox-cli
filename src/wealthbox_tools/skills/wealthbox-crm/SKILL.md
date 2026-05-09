@@ -101,7 +101,7 @@ across every installed platform while preserving `firm/`.
   # Windows (PowerShell)
   irm https://raw.githubusercontent.com/massive-value/wealthbox-cli/main/scripts/install.ps1 | iex
   ```
-- Token configured via one of: `wbox config set-token`, `WEALTHBOX_TOKEN` env var, or `.env` file
+- Token configured via one of: `wbox config set-token` or `WEALTHBOX_TOKEN` env var
 
 Verify with: `wbox me`
 
