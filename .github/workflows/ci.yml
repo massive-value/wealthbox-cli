@@ -31,8 +31,20 @@ jobs:
       - run: pip install -e ".[dev]"
       - run: pytest
 
-  publish:
+  skill-ref-drift:
     needs: [lint, test]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -e ".[dev]"
+      - run: wbox internals regen-skill-refs
+      - run: git diff --exit-code -- src/wealthbox_tools/skills/wealthbox-crm/references/
+
+  publish:
+    needs: [lint, test, skill-ref-drift]
     if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     permissions:
