@@ -263,3 +263,105 @@ def test_doctor_soft_warning_on_network_error(runner, tmp_path, monkeypatch):
     assert "could not check for updates" in out
     # The soft warning must NOT appear in the issues list.
     assert "wbox self upgrade" not in out
+
+
+# ---------------------------------------------------------------------------
+# Firm-import freshness: 90-days-stale warning (#48)
+# ---------------------------------------------------------------------------
+
+
+def _seed_firm_meta(tmp_path, extra: dict) -> None:
+    """Write a fully-bootstrapped firm meta plus ``extra`` overrides.
+
+    The doctor's firm-data section requires identity + onboarded_at to
+    reach the freshness branch, so the helper bakes in a healthy baseline
+    and lets each test add ``last_imported_*`` (or omit them) on top.
+    """
+    from wealthbox_tools.cli._skill_paths import firm_meta_path
+    base = {
+        "identity": {"id": 1, "name": "Firm", "user_id": 1, "user_name": "Adv"},
+        "cli_version": "1.2.0",
+        "files": {"categories.md": "2026-05-01T00:00:00+00:00"},
+        "onboarded_at": "2026-05-02T00:00:00+00:00",
+    }
+    base.update(extra)
+    p = firm_meta_path()
+    p.parent.mkdir(parents=True, exist_ok=True)
+    import json
+    p.write_text(json.dumps(base, indent=2))
+
+
+@respx.mock
+def test_doctor_warns_when_firm_data_imported_more_than_90_days_ago(
+    runner, tmp_path, monkeypatch
+):
+    """``last_imported_at`` >90 days old → doctor prints the freshness warning."""
+    monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.setenv("USERPROFILE", str(tmp_path))
+    monkeypatch.chdir(tmp_path)
+    _mock_me()
+
+    stale = (datetime.now(timezone.utc) - timedelta(days=120)).isoformat()
+    _seed_firm_meta(
+        tmp_path,
+        {
+            "last_imported_from": "/path/to/firm-export.zip",
+            "last_imported_at": stale,
+        },
+    )
+
+    result = runner.invoke(app, ["doctor"])
+    out = result.stdout
+    assert "# Firm data" in out
+    assert "90 days" in out or "ask your admin" in out
+    # The warning must surface in the summary issues list, not exit non-zero.
+    assert "issue(s) found" in out
+
+
+@respx.mock
+def test_doctor_no_freshness_warning_when_never_imported(
+    runner, tmp_path, monkeypatch
+):
+    """A firm meta without ``last_imported_*`` (never imported) produces
+    no freshness warning — bootstrapped firms that haven't pulled an
+    archive yet are a perfectly normal state."""
+    monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.setenv("USERPROFILE", str(tmp_path))
+    monkeypatch.chdir(tmp_path)
+    _mock_me()
+
+    _seed_firm_meta(tmp_path, {})  # baseline only — no last_imported_*
+
+    result = runner.invoke(app, ["doctor"])
+    out = result.stdout
+    # Freshness warning must NOT appear.
+    assert "ask your admin" not in out
+    assert "more than 90 days" not in out
+
+
+@respx.mock
+def test_doctor_no_freshness_warning_when_imported_recently(
+    runner, tmp_path, monkeypatch
+):
+    """A recent ``last_imported_at`` (well under 90 days) records the
+    breadcrumb but does not warn."""
+    monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.setenv("USERPROFILE", str(tmp_path))
+    monkeypatch.chdir(tmp_path)
+    _mock_me()
+
+    fresh = (datetime.now(timezone.utc) - timedelta(days=10)).isoformat()
+    _seed_firm_meta(
+        tmp_path,
+        {
+            "last_imported_from": "/path/to/firm-export.zip",
+            "last_imported_at": fresh,
+        },
+    )
+
+    result = runner.invoke(app, ["doctor"])
+    out = result.stdout
+    # Breadcrumb still rendered for transparency...
+    assert "imported:" in out
+    # ...but no warning fired.
+    assert "ask your admin" not in out

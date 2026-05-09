@@ -482,3 +482,98 @@ def test_firm_import_cli_surfaces_clear_error_on_bad_format_version(
     combined = (result.stdout or "") + (result.stderr or "")
     assert "format_version" in combined
     assert "Traceback" not in combined
+
+
+# --------------------------------------------------------------------------- #
+# Post-import provenance (#48)                                                #
+# --------------------------------------------------------------------------- #
+
+
+def test_apply_writes_last_imported_provenance(tmp_path: Path) -> None:
+    """A successful ``apply`` stamps ``last_imported_from`` /
+    ``last_imported_at`` into the destination's ``_meta.json`` so the
+    doctor can warn when the data goes stale (#48)."""
+    src = tmp_path / "src"
+    _populated_firm_dir(src)
+    archive = tmp_path / "firm.zip"
+    archive.write_bytes(pack(src, now=_PINNED_NOW))
+
+    dst = tmp_path / "dst"
+    dst.mkdir()
+    plan = unpack(archive)
+
+    pinned = datetime(2026, 5, 9, 12, 0, 0, tzinfo=timezone.utc)
+    apply(plan, dst, ApplyMode.OVERWRITE, source=str(archive), now=pinned)
+
+    meta = json.loads((dst / "_meta.json").read_text(encoding="utf-8"))
+    assert meta["last_imported_from"] == str(archive)
+    assert meta["last_imported_at"] == pinned.isoformat()
+    # Policy keys carried in the archive still merge through.
+    assert meta["onboarded_at"] == "2024-02-15T12:34:56+00:00"
+
+
+def test_apply_provenance_preserves_existing_generated_keys(tmp_path: Path) -> None:
+    """Provenance stamping must not clobber identity / cli_version / files
+    on the destination — those are generated keys that ``wbox doctor`` and
+    the bootstrap machinery rely on."""
+    src = tmp_path / "src"
+    _populated_firm_dir(src)
+    archive = tmp_path / "firm.zip"
+    archive.write_bytes(pack(src, now=_PINNED_NOW))
+
+    dst = tmp_path / "dst"
+    dst.mkdir()
+    pre_existing = {
+        "identity": {"id": 42, "name": "Local Firm", "user_id": 7},
+        "cli_version": "1.6.0",
+        "files": {"categories.md": "2026-04-01T00:00:00+00:00"},
+        "onboarded_at": "2025-01-01T00:00:00+00:00",
+    }
+    (dst / "_meta.json").write_text(json.dumps(pre_existing, indent=2), encoding="utf-8")
+
+    plan = unpack(archive)
+    pinned = datetime(2026, 5, 9, 12, 0, 0, tzinfo=timezone.utc)
+    apply(plan, dst, ApplyMode.OVERWRITE, source="https://firm.example/export.zip", now=pinned)
+
+    meta = json.loads((dst / "_meta.json").read_text(encoding="utf-8"))
+    assert meta["identity"] == pre_existing["identity"]
+    assert meta["cli_version"] == pre_existing["cli_version"]
+    assert meta["files"] == pre_existing["files"]
+    assert meta["last_imported_from"] == "https://firm.example/export.zip"
+    assert meta["last_imported_at"] == pinned.isoformat()
+
+
+def test_apply_without_source_does_not_write_provenance(tmp_path: Path) -> None:
+    """Library callers that omit ``source`` (e.g. internal tests) get the
+    pre-#48 behavior — no provenance is stamped."""
+    src = tmp_path / "src"
+    _populated_firm_dir(src)
+    archive = tmp_path / "firm.zip"
+    archive.write_bytes(pack(src, now=_PINNED_NOW))
+
+    dst = tmp_path / "dst"
+    dst.mkdir()
+    plan = unpack(archive)
+    apply(plan, dst, ApplyMode.OVERWRITE)  # no source kwarg
+
+    meta = json.loads((dst / "_meta.json").read_text(encoding="utf-8"))
+    assert "last_imported_from" not in meta
+    assert "last_imported_at" not in meta
+
+
+def test_firm_import_cli_stamps_provenance(runner, tmp_path: Path) -> None:
+    """The CLI passes the archive path through to ``apply`` so the user's
+    firm dir picks up the freshness fields after a real ``wbox firm import``."""
+    from wealthbox_tools.cli._skill_paths import firm_meta_path
+
+    src = tmp_path / "src"
+    _populated_firm_dir(src)
+    archive = tmp_path / "firm.zip"
+    archive.write_bytes(pack(src, now=_PINNED_NOW))
+
+    result = runner.invoke(app, ["firm", "import", str(archive), "--yes"])
+    assert result.exit_code == 0, result.stdout
+
+    meta = json.loads(firm_meta_path().read_text(encoding="utf-8"))
+    assert meta["last_imported_from"] == str(archive)
+    assert isinstance(meta.get("last_imported_at"), str) and meta["last_imported_at"]

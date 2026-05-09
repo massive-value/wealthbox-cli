@@ -81,7 +81,7 @@ def import_firm(
         )
 
     try:
-        result = _apply(plan, dest, ApplyMode.OVERWRITE)
+        result = _apply(plan, dest, ApplyMode.OVERWRITE, source=str(path))
     except ArchiveError as exc:
         raise typer.BadParameter(str(exc)) from exc
     typer.echo(f"Wrote {len(result.written)} file(s) to {dest}.", err=True)

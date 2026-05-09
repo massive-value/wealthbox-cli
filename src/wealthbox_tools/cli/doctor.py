@@ -9,7 +9,7 @@ import os
 import platform as _platform_module
 import shutil
 import sys
-from datetime import datetime
+from datetime import datetime, timezone
 from importlib.metadata import version as _pkg_version
 
 import typer
@@ -161,6 +161,40 @@ def run_doctor(token: str | None = None) -> int:
                     typer.echo(f"  oldest:   {oldest}")
                 except (ValueError, TypeError):
                     pass
+
+        # Firm-import freshness (#48). Soft check: warn if the firm dir
+        # was last imported >90 days ago and nudge the user to ask their
+        # admin for a fresh export. Absent fields (never-imported case)
+        # produce no warning — same shape as the release-age soft check
+        # above. Same defensive parse: a malformed timestamp is treated
+        # as "no signal" rather than a hard fail.
+        last_imported_at = firm_meta.get("last_imported_at")
+        last_imported_from = firm_meta.get("last_imported_from")
+        if isinstance(last_imported_at, str) and last_imported_at:
+            try:
+                imported_dt = datetime.fromisoformat(
+                    last_imported_at.replace("Z", "+00:00")
+                )
+            except ValueError:
+                imported_dt = None
+            if imported_dt is not None:
+                if imported_dt.tzinfo is None:
+                    imported_dt = imported_dt.replace(tzinfo=timezone.utc)
+                age_days = (datetime.now(timezone.utc) - imported_dt).days
+                typer.echo(
+                    f"  imported: {last_imported_at} ({age_days}d ago)"
+                    + (f" from {last_imported_from}" if last_imported_from else "")
+                )
+                if age_days > 90:
+                    typer.echo(
+                        "  warning:  firm data is more than 90 days old - "
+                        "ask your admin for the latest export and "
+                        "re-run 'wbox firm import'"
+                    )
+                    issues.append(
+                        f"firm data was last imported {age_days} days ago - "
+                        "ask your admin for the latest export"
+                    )
 
     # --- Release age (30-days-behind warning, #41) -----------------------
     # Soft check: a network error here yields a "could not check for
