@@ -41,7 +41,18 @@ class RateLimiter:
         self._limit = limit
         self._timestamps: collections.deque[float] = collections.deque()
         self._lock = asyncio.Lock()
-        self._state_file = state_file or pathlib.Path.home() / ".wbox_rate_limit.json"
+        if state_file is not None:
+            self._state_file = state_file
+        else:
+            # WBOX_RATE_LIMIT_STATE_FILE lets tests (or callers) redirect the
+            # persistent rate-limit state away from ~/.wbox_rate_limit.json,
+            # which otherwise bleeds across process invocations and breaks
+            # full pytest runs on dev machines (#56).
+            override = os.environ.get("WBOX_RATE_LIMIT_STATE_FILE")
+            if override:
+                self._state_file = pathlib.Path(override)
+            else:
+                self._state_file = pathlib.Path.home() / ".wbox_rate_limit.json"
         self._load_state()
 
     def _load_state(self) -> None:
