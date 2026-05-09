@@ -31,5 +31,7 @@ def regen_skill_refs() -> None:
         typer.echo(f"skipped (no markers) {path}", err=True)
     for path in result.missing:
         typer.echo(f"missing {path}", err=True)
+    for path in result.unmapped:
+        typer.echo(f"unmapped (no resource binding) {path}", err=True)
     if not result.modified:
         typer.echo("no changes")
