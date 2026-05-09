@@ -59,13 +59,27 @@ def import_firm(
         "-y",
         help="Skip the overwrite confirmation prompt.",
     ),
+    mode: ApplyMode = typer.Option(
+        ApplyMode.OVERWRITE,
+        "--mode",
+        case_sensitive=False,
+        help=(
+            "How to reconcile the archive with the local firm directory: "
+            "'overwrite' (default) replaces every file; 'merge' writes only "
+            "files not already present locally; 'abort-on-conflict' refuses "
+            "to write anything if any file would be replaced."
+        ),
+    ),
 ) -> None:
-    """Import a firm-archive zip into the local firm directory (overwrite mode).
+    """Import a firm-archive zip into the local firm directory.
 
-    Overwrite is the default — every hand-edited policy file in the archive
-    replaces its counterpart in the firm directory. Files in the firm
+    The default mode is ``overwrite`` — every hand-edited policy file in the
+    archive replaces its counterpart in the firm directory. ``merge`` skips
+    files that already exist locally and writes only new ones.
+    ``abort-on-conflict`` refuses to write anything if any file in the
+    archive would replace an existing local file. Files in the firm
     directory that aren't in the archive (generated ``categories.md``,
-    ``custom-fields.md``, ``users.md``) are left untouched.
+    ``custom-fields.md``, ``users.md``) are left untouched in every mode.
     """
     _ensure_firm_migrated()
     try:
@@ -75,13 +89,20 @@ def import_firm(
 
     dest = _firm_dir()
     if not yes:
+        # The verb in the prompt should match the mode, since 'merge' and
+        # 'abort-on-conflict' don't actually overwrite anything.
+        verb = {
+            ApplyMode.OVERWRITE: "Overwrite",
+            ApplyMode.MERGE: "Merge",
+            ApplyMode.ABORT_ON_CONFLICT: "Import",
+        }[mode]
         typer.confirm(
-            f"Overwrite {len(plan.files)} file(s) in {dest}?",
+            f"{verb} {len(plan.files)} file(s) in {dest}?",
             abort=True,
         )
 
     try:
-        result = _apply(plan, dest, ApplyMode.OVERWRITE, source=str(path))
+        result = _apply(plan, dest, mode, source=str(path))
     except ArchiveError as exc:
         raise typer.BadParameter(str(exc)) from exc
     typer.echo(f"Wrote {len(result.written)} file(s) to {dest}.", err=True)

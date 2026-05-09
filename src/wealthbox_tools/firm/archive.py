@@ -13,9 +13,10 @@ The user preferences directory (``~/.config/wbox/user/``) is never reachable
 from this module by construction: ``pack`` only sees ``firm_dir``.
 
 Apply modes (overwrite, merge, abort-on-conflict) are exposed as
-:class:`ApplyMode`, but only ``OVERWRITE`` is implemented in the current
-slice — ``MERGE`` and ``ABORT_ON_CONFLICT`` exist as enum values so future
-slices (#46) can wire their behavior in without breaking the public surface.
+:class:`ApplyMode`. ``OVERWRITE`` replaces every file in the plan;
+``MERGE`` skips files that already exist locally and writes only new ones;
+``ABORT_ON_CONFLICT`` raises if any file in the plan would replace an
+existing local file, writing nothing in that case.
 """
 from __future__ import annotations
 
@@ -119,9 +120,13 @@ class ArchiveError(Exception):
 class ApplyMode(StrEnum):
     """How :func:`apply` reconciles archive contents with the firm directory.
 
-    Only ``OVERWRITE`` is implemented in the current slice (#36). ``MERGE``
-    and ``ABORT_ON_CONFLICT`` are placeholders that #46 will wire up against
-    the same :func:`apply` surface.
+    - ``OVERWRITE`` — every file in the plan replaces its destination
+      counterpart; whitelist-only, so files outside the plan stay put.
+    - ``MERGE`` — files that already exist locally are skipped; only
+      genuinely new files are written.
+    - ``ABORT_ON_CONFLICT`` — if any file in the plan would replace an
+      existing local file, raise before writing anything; either every new
+      file is written or none are.
     """
 
     OVERWRITE = "overwrite"
@@ -262,37 +267,69 @@ def apply(
 ) -> ApplyResult:
     """Write the files from ``plan`` into ``firm_dir`` according to ``mode``.
 
-    In ``OVERWRITE`` mode every file in the plan is written unconditionally;
-    files already in ``firm_dir`` that are not in the plan are left alone
-    (the archive is whitelist-only, so generated files like
-    ``categories.md`` survive untouched on the destination).
+    - ``OVERWRITE`` — every file in the plan is written unconditionally.
+    - ``MERGE`` — files that already exist locally are skipped; only
+      genuinely new files are written. ``_meta.json`` is special-cased: it
+      always merges (policy keys overwritten by the archive, generated keys
+      preserved) regardless of mode, since #36's whitelist-symmetry
+      guarantee depends on key-level merge semantics for that file.
+    - ``ABORT_ON_CONFLICT`` — if any file in the plan would replace an
+      existing local file, raise :class:`ArchiveError` before writing
+      anything. ``_meta.json`` is excluded from the conflict check for the
+      same reason it merges in MERGE mode — its policy subset is always
+      welcome to land on top of the existing file.
 
-    ``MERGE`` and ``ABORT_ON_CONFLICT`` are not implemented in this slice
-    and raise :class:`ArchiveError`. Issue #46 will fill them in.
+    Files already in ``firm_dir`` that are not in the plan are left alone
+    in every mode (the archive is whitelist-only, so generated files like
+    ``categories.md`` survive untouched on the destination).
 
     When ``source`` is provided, ``last_imported_from=source`` and
     ``last_imported_at=<now ISO>`` are stamped into ``_meta.json`` (#48).
     These provenance fields power the doctor's 90-day-stale warning. The
     write is read-modify-write into the existing meta — generated keys
     (identity, cli_version, files) survive untouched, just like a normal
-    ``_meta.json`` merge from the archive.
+    ``_meta.json`` merge from the archive. ``ABORT_ON_CONFLICT`` raises
+    before the file loop, so provenance is never stamped on a refused
+    import.
     """
-    if mode is not ApplyMode.OVERWRITE:
-        raise ArchiveError(
-            f"apply mode {mode.value!r} is not implemented yet; only "
-            f"{ApplyMode.OVERWRITE.value!r} is supported in this release."
-        )
-
     firm_dir = Path(firm_dir)
-    firm_dir.mkdir(parents=True, exist_ok=True)
 
-    written: list[str] = []
-    for name, content in plan.files.items():
+    # Validate every plan entry up front so ABORT_ON_CONFLICT can raise
+    # before any filesystem writes, and so MERGE / OVERWRITE never half-
+    # apply a tampered plan.
+    for name in plan.files:
         if not _is_safe_archive_name(name):
             raise ArchiveError(
                 f"plan contains unsafe entry path {name!r}; refusing to write."
             )
+
+    if mode is ApplyMode.ABORT_ON_CONFLICT:
+        # Only flag genuine file replacements. ``_meta.json`` is
+        # key-merged, not replaced, so it is never a conflict.
+        conflicts = [
+            name
+            for name in plan.files
+            if name != META_FILENAME and (firm_dir / name).exists()
+        ]
+        if conflicts:
+            raise ArchiveError(
+                "abort-on-conflict: refusing to import; the following file(s) "
+                f"already exist in {firm_dir}: {', '.join(sorted(conflicts))}."
+            )
+
+    firm_dir.mkdir(parents=True, exist_ok=True)
+
+    written: list[str] = []
+    for name, content in plan.files.items():
         target = firm_dir / name
+        if (
+            mode is ApplyMode.MERGE
+            and name != META_FILENAME
+            and target.exists()
+        ):
+            # MERGE skips files that already exist; only _meta.json keeps
+            # its merge-into-existing behavior so policy keys still land.
+            continue
         target.parent.mkdir(parents=True, exist_ok=True)
         if name == META_FILENAME:
             content = _merge_meta_bytes(target, content)

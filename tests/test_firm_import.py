@@ -1,8 +1,9 @@
 """Tests for ``wbox firm import`` and the underlying ``firm.archive`` unpack/apply.
 
-Issue #36 — overwrite mode only. Sibling slices (#45 URL fetch, #46 merge /
-abort-on-conflict, #47 diff, #48 post-import metadata) are blocked by this
-one and will extend the same ``unpack`` / ``apply`` / ``ApplyMode`` surface.
+Covers all three :class:`ApplyMode` values — ``overwrite`` (#36), and
+``merge`` / ``abort-on-conflict`` (#46) — against the same ``unpack`` /
+``apply`` / CLI surface. Sibling slices (#45 URL fetch, #47 diff, #48
+post-import metadata) extend the same surface separately.
 """
 from __future__ import annotations
 
@@ -408,9 +409,9 @@ def test_firm_import_cli_surfaces_clear_error_on_missing_file(
 
 
 def test_apply_mode_enum_has_three_values() -> None:
-    """The enum carries the three modes named in the brief, even though only
-    overwrite is implemented in this slice — sibling issues #46/#47 wire the
-    others up against the same surface."""
+    """The enum carries the three modes named in the brief: overwrite,
+    merge, and abort-on-conflict. All three are implemented and exposed
+    through the same :func:`apply` surface."""
     assert ApplyMode("overwrite") is ApplyMode.OVERWRITE
     assert ApplyMode("merge") is ApplyMode.MERGE
     assert ApplyMode("abort-on-conflict") is ApplyMode.ABORT_ON_CONFLICT
@@ -561,6 +562,148 @@ def test_apply_without_source_does_not_write_provenance(tmp_path: Path) -> None:
     assert "last_imported_at" not in meta
 
 
+# --------------------------------------------------------------------------- #
+# Apply: merge mode                                                            #
+# --------------------------------------------------------------------------- #
+
+
+def test_apply_merge_skips_existing_files_and_writes_new_ones(tmp_path: Path) -> None:
+    """``MERGE`` writes only files that don't already exist locally.
+
+    The destination has its own ``contacts.md`` and ``tasks.md`` — those
+    should be left untouched. The remaining hand-edited files in the plan
+    don't exist locally yet, so they should land verbatim.
+    """
+    src = tmp_path / "src"
+    bodies = _populated_firm_dir(src)
+    archive = tmp_path / "firm.zip"
+    archive.write_bytes(pack(src, now=_PINNED_NOW))
+
+    dst = tmp_path / "dst"
+    dst.mkdir()
+    local_contacts = "# locally curated contacts policy\n"
+    local_tasks = "# locally curated tasks policy\n"
+    (dst / "contacts.md").write_text(local_contacts, encoding="utf-8")
+    (dst / "tasks.md").write_text(local_tasks, encoding="utf-8")
+
+    plan = unpack(archive)
+    result = apply(plan, dst, ApplyMode.MERGE)
+
+    # Pre-existing local files are preserved.
+    assert (dst / "contacts.md").read_text(encoding="utf-8") == local_contacts
+    assert (dst / "tasks.md").read_text(encoding="utf-8") == local_tasks
+    # Files that didn't exist locally land from the archive.
+    for name in ("notes.md", "events.md", "opportunities.md", "projects.md", "workflows.md"):
+        assert (dst / name).read_text(encoding="utf-8") == bodies[name]
+    # ApplyResult only reports files actually written. _meta.json always
+    # merges (key-level), so it should appear in `written`; the two skipped
+    # markdown files should not.
+    assert "contacts.md" not in result.written
+    assert "tasks.md" not in result.written
+    assert "notes.md" in result.written
+    assert "_meta.json" in result.written
+
+
+def test_apply_merge_meta_still_merges_policy_keys(tmp_path: Path) -> None:
+    """``_meta.json`` is the one entry that key-merges in every mode.
+
+    ``pack`` strips ``_meta.json`` to just the policy subset
+    (``onboarded_at``); skipping it whole in MERGE would mean a firm that
+    re-imports an updated policy never picks up new policy keys, even
+    though no destination data is being clobbered. The key-level merge
+    (policy keys overwritten, generated keys preserved) is the right
+    behavior in MERGE mode too.
+    """
+    src = tmp_path / "src"
+    _populated_firm_dir(src)
+    archive = tmp_path / "firm.zip"
+    archive.write_bytes(pack(src, now=_PINNED_NOW))
+
+    dst = tmp_path / "dst"
+    dst.mkdir()
+    pre_existing = {
+        "identity": {"id": 42, "name": "Local Firm", "user_id": 7},
+        "cli_version": "1.6.0",
+        "files": {"categories.md": "2026-04-01T00:00:00+00:00"},
+        "onboarded_at": "2025-01-01T00:00:00+00:00",
+    }
+    (dst / "_meta.json").write_text(json.dumps(pre_existing, indent=2), encoding="utf-8")
+
+    plan = unpack(archive)
+    apply(plan, dst, ApplyMode.MERGE)
+
+    merged = json.loads((dst / "_meta.json").read_text(encoding="utf-8"))
+    # Policy key from the archive lands.
+    assert merged["onboarded_at"] == "2024-02-15T12:34:56+00:00"
+    # Generated keys survive.
+    assert merged["identity"] == pre_existing["identity"]
+    assert merged["cli_version"] == pre_existing["cli_version"]
+    assert merged["files"] == pre_existing["files"]
+
+
+# --------------------------------------------------------------------------- #
+# Apply: abort-on-conflict mode                                                #
+# --------------------------------------------------------------------------- #
+
+
+def test_apply_abort_on_conflict_raises_and_writes_nothing(tmp_path: Path) -> None:
+    """``ABORT_ON_CONFLICT`` refuses to write anything if any file would be
+    replaced. The whole import is aborted — no partial state, no files
+    written, no provenance stamped. ``_meta.json`` is excluded from the
+    conflict check (it always key-merges), so its presence on disk does
+    not on its own trigger an abort.
+    """
+    src = tmp_path / "src"
+    _populated_firm_dir(src)
+    archive = tmp_path / "firm.zip"
+    archive.write_bytes(pack(src, now=_PINNED_NOW))
+
+    dst = tmp_path / "dst"
+    dst.mkdir()
+    # One pre-existing local hand-edited file should be enough to abort.
+    local_contacts = "# locally curated contacts policy\n"
+    (dst / "contacts.md").write_text(local_contacts, encoding="utf-8")
+
+    plan = unpack(archive)
+    with pytest.raises(ArchiveError) as excinfo:
+        apply(plan, dst, ApplyMode.ABORT_ON_CONFLICT)
+    assert "contacts.md" in str(excinfo.value)
+
+    # The conflicting file must be untouched.
+    assert (dst / "contacts.md").read_text(encoding="utf-8") == local_contacts
+    # No other plan files should have been written either — the abort is
+    # all-or-nothing.
+    for name in ("tasks.md", "notes.md", "events.md", "opportunities.md", "projects.md", "workflows.md"):
+        assert not (dst / name).exists()
+    # And no _meta.json should have been written, since the operation
+    # aborted before any write happened.
+    assert not (dst / "_meta.json").exists()
+
+
+def test_apply_abort_on_conflict_writes_when_no_conflicts(tmp_path: Path) -> None:
+    """When no plan file would replace a local file, ABORT_ON_CONFLICT writes
+    every file in the plan — same shape as OVERWRITE on a clean tree."""
+    src = tmp_path / "src"
+    bodies = _populated_firm_dir(src)
+    archive = tmp_path / "firm.zip"
+    archive.write_bytes(pack(src, now=_PINNED_NOW))
+
+    dst = tmp_path / "dst"
+    dst.mkdir()
+
+    plan = unpack(archive)
+    result = apply(plan, dst, ApplyMode.ABORT_ON_CONFLICT)
+
+    for name, expected in bodies.items():
+        assert (dst / name).read_text(encoding="utf-8") == expected
+    assert set(result.written) == set(bodies) | {"_meta.json"}
+
+
+# --------------------------------------------------------------------------- #
+# CLI: provenance + mode tests                                                 #
+# --------------------------------------------------------------------------- #
+
+
 def test_firm_import_cli_stamps_provenance(runner, tmp_path: Path) -> None:
     """The CLI passes the archive path through to ``apply`` so the user's
     firm dir picks up the freshness fields after a real ``wbox firm import``."""
@@ -577,3 +720,62 @@ def test_firm_import_cli_stamps_provenance(runner, tmp_path: Path) -> None:
     meta = json.loads(firm_meta_path().read_text(encoding="utf-8"))
     assert meta["last_imported_from"] == str(archive)
     assert isinstance(meta.get("last_imported_at"), str) and meta["last_imported_at"]
+
+
+def test_firm_import_cli_merge_mode_skips_existing_files(
+    runner, tmp_path: Path
+) -> None:
+    """`wbox firm import <path> --mode merge --yes` skips files that exist locally."""
+    from wealthbox_tools.cli._skill_paths import firm_dir
+
+    src = tmp_path / "src"
+    bodies = _populated_firm_dir(src)
+    archive = tmp_path / "firm.zip"
+    archive.write_bytes(pack(src, now=_PINNED_NOW))
+
+    fd = firm_dir()
+    fd.mkdir(parents=True, exist_ok=True)
+    local_contacts = "# locally curated\n"
+    (fd / "contacts.md").write_text(local_contacts, encoding="utf-8")
+
+    result = runner.invoke(
+        app, ["firm", "import", str(archive), "--mode", "merge", "--yes"]
+    )
+
+    assert result.exit_code == 0, result.stdout
+    # Existing file preserved.
+    assert (fd / "contacts.md").read_text(encoding="utf-8") == local_contacts
+    # Newly-written file lands.
+    assert (fd / "notes.md").read_text(encoding="utf-8") == bodies["notes.md"]
+
+
+def test_firm_import_cli_abort_on_conflict_mode_aborts_cleanly(
+    runner, tmp_path: Path
+) -> None:
+    """`wbox firm import <path> --mode abort-on-conflict --yes` exits non-zero
+    when any local file would be replaced, and writes nothing."""
+    from wealthbox_tools.cli._skill_paths import firm_dir
+
+    src = tmp_path / "src"
+    _populated_firm_dir(src)
+    archive = tmp_path / "firm.zip"
+    archive.write_bytes(pack(src, now=_PINNED_NOW))
+
+    fd = firm_dir()
+    fd.mkdir(parents=True, exist_ok=True)
+    local_contacts = "# locally curated\n"
+    (fd / "contacts.md").write_text(local_contacts, encoding="utf-8")
+
+    result = runner.invoke(
+        app,
+        ["firm", "import", str(archive), "--mode", "abort-on-conflict", "--yes"],
+    )
+
+    assert result.exit_code != 0
+    combined = (result.stdout or "") + (result.stderr or "")
+    assert "Traceback" not in combined
+    # Conflicting file untouched.
+    assert (fd / "contacts.md").read_text(encoding="utf-8") == local_contacts
+    # And the non-conflicting files were not written either.
+    for name in ("tasks.md", "notes.md", "events.md", "opportunities.md", "projects.md", "workflows.md"):
+        assert not (fd / name).exists()
