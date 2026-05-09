@@ -523,7 +523,11 @@ def check_release_staleness(*, now: datetime | None = None) -> ReleaseStaleness 
         )
         response.raise_for_status()
         payload = response.json()
-    except (httpx.HTTPError, ValueError):
+    except Exception:
+        # Doctor must never crash on a soft network check — catch broadly
+        # so transport errors, JSON decode failures, and unmocked-endpoint
+        # AssertionErrors in tests all render as "could not check for
+        # updates" instead of propagating.
         return None
 
     tag = payload.get("tag_name") or ""
