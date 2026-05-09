@@ -54,7 +54,7 @@ def test_check_returns_none_when_up_to_date() -> None:
             _asset("wbox-linux-x64", "https://example.com/wbox-linux-x64"),
             _asset("wbox-macos-x64", "https://example.com/wbox-macos-x64"),
             _asset("wbox-windows-x64.exe", "https://example.com/wbox-windows-x64.exe"),
-            _asset("checksums.txt", "https://example.com/checksums.txt"),
+            _asset("SHA256SUMS.txt", "https://example.com/SHA256SUMS.txt"),
         ],
     )
     respx.get(_RELEASES_URL).mock(return_value=httpx.Response(200, json=payload))
@@ -73,7 +73,7 @@ def test_check_returns_candidate_when_outdated(monkeypatch) -> None:
     body = b"new-binary-bytes"
     digest = hashlib.sha256(body).hexdigest()
     binary_url = "https://example.com/wbox-linux-x64"
-    checksums_url = "https://example.com/checksums.txt"
+    checksums_url = "https://example.com/SHA256SUMS.txt"
     checksums_body = (
         f"{digest}  wbox-linux-x64\n"
         f"deadbeef  wbox-macos-x64\n"
@@ -89,7 +89,7 @@ def test_check_returns_candidate_when_outdated(monkeypatch) -> None:
                     _asset("wbox-linux-x64", binary_url),
                     _asset("wbox-macos-x64", "https://example.com/wbox-macos-x64"),
                     _asset("wbox-windows-x64.exe", "https://example.com/wbox-windows-x64.exe"),
-                    _asset("checksums.txt", checksums_url),
+                    _asset("SHA256SUMS.txt", checksums_url),
                 ],
             ),
         )
@@ -883,7 +883,7 @@ def test_self_upgrade_cli_no_op_when_up_to_date(runner) -> None:
                 tag,
                 [
                     _asset("wbox-linux-x64", "https://example.com/wbox-linux-x64"),
-                    _asset("checksums.txt", "https://example.com/checksums.txt"),
+                    _asset("SHA256SUMS.txt", "https://example.com/SHA256SUMS.txt"),
                 ],
             ),
         )
