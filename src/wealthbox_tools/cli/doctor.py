@@ -20,7 +20,6 @@ from ._skill_bootstrap import migrate_legacy_firm, read_firm_meta, read_meta
 from ._skill_paths import firm_dir, firm_meta_path
 from ._skill_platforms import (
     detect_platforms,
-    detect_plugin_installs,
     is_installed,
     skill_dir,
 )
@@ -109,8 +108,8 @@ def run_doctor(token: str | None = None) -> int:
     typer.echo(f"  claude:   {claude_path or 'not detected'}")
     typer.echo(f"  codex:    {codex_path or 'not detected'}")
 
-    # --- Legacy skill installs --------------------------------------------
-    typer.echo("\n# Skill installs (legacy template-copy)")
+    # --- Skill installs ---------------------------------------------------
+    typer.echo("\n# Skill installs")
     for p in detect_platforms():
         status = "installed" if is_installed(p) else "not installed"
         meta = read_meta(skill_dir(p)) if is_installed(p) else {}
@@ -125,22 +124,6 @@ def run_doctor(token: str | None = None) -> int:
         typer.echo(
             f"  {p.id:<22} {status:<16} template={template_v:<10} {skill_dir(p)}{upgrade_hint}"
         )
-
-    # --- Plugin installs --------------------------------------------------
-    plugin_installs = detect_plugin_installs()
-    typer.echo("\n# Plugin installs (managed by host CLI: claude/codex plugin)")
-    if not plugin_installs:
-        typer.echo("  (none detected)")
-    else:
-        # Active first, then cached (descending version) so the live
-        # install is the first thing the eye lands on.
-        plugin_installs.sort(key=lambda p: (not p.active, p.version), reverse=False)
-        for pi in plugin_installs:
-            status_label = "active" if pi.active else "cached"
-            typer.echo(
-                f"  {pi.host:<22} plugin@{pi.marketplace:<18} "
-                f"version={pi.version:<8} {status_label:<7} {pi.skill_dir}"
-            )
 
     # --- Firm data --------------------------------------------------------
     typer.echo("\n# Firm data (canonical)")

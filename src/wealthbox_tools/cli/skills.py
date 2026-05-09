@@ -19,7 +19,6 @@ from ._skill_platforms import (
     Platform,
     SkillInstallError,
     detect_platforms,
-    detect_plugin_installs,
     install_skill,
     is_installed,
     skill_dir,
@@ -44,7 +43,7 @@ def _ensure_firm_migrated() -> Path | None:
     return migrate_legacy_firm(installed)
 
 
-@app.command("list", help="Show every skill copy on this machine: legacy installs and plugin-managed.")
+@app.command("list", help="Show every skill copy on this machine.")
 def list_platforms() -> None:
     _ensure_firm_migrated()
     firm_meta = read_firm_meta()
@@ -69,15 +68,6 @@ def list_platforms() -> None:
             str(dest),
             "installed" if installed else "not installed",
             template_version,
-        ))
-    plugin_installs = detect_plugin_installs()
-    plugin_installs.sort(key=lambda p: (not p.active, p.version))
-    for pi in plugin_installs:
-        rows.append((
-            f"plugin:{pi.host}",
-            str(pi.skill_dir),
-            f"plugin@{pi.marketplace} ({'active' if pi.active else 'cached'})",
-            pi.version,
         ))
 
     widths = [
