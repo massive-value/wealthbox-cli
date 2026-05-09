@@ -48,6 +48,13 @@ def _check_pending_upgrade_status() -> None:
     """
     install_root = self_cmd._default_install_root()
     status = self_upgrade._read_and_clear_upgrade_status(install_root)
+    if status is None:
+        # No status yet (deferred-swap helper hasn't completed, or no upgrade
+        # in flight). Leave the skills-upgrade marker in place — clearing it
+        # now would lose the signal if the user relaunches before the helper
+        # writes its status file. Next launch will see the status and the
+        # marker together.
+        return
     pending_marker = install_root / self_upgrade._SKILLS_UPGRADE_PENDING_FILENAME
     marker_existed = pending_marker.exists()
     if marker_existed:
@@ -55,8 +62,6 @@ def _check_pending_upgrade_status() -> None:
             pending_marker.unlink(missing_ok=True)
         except OSError:
             pass
-    if status is None:
-        return
     version = status.get("version") or "?"
     swap_ok = status.get("result") == "ok"
     if swap_ok:
