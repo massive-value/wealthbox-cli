@@ -245,6 +245,39 @@ def _schedule_swap(
 
 _STATUS_FILENAME = "wbox.upgrade.status"
 
+# Marker file written by `apply()` on Windows after scheduling the deferred
+# swap. The actual `wbox skills upgrade` subprocess can't run from the parent
+# (the new binary isn't on disk yet — the helper renames it after parent
+# exit), so the marker tells :func:`_check_pending_upgrade_status` to fire
+# the subprocess once it confirms the deferred swap succeeded. On Unix the
+# swap is synchronous, so :func:`apply` invokes the subprocess inline and
+# this marker is never written.
+_SKILLS_UPGRADE_PENDING_FILENAME = "wbox.skills_upgrade.pending"
+
+
+def _invoke_skills_upgrade(binary_path: Path) -> int:
+    """Run ``<binary_path> skills upgrade`` and stream output to the terminal.
+
+    Returns the subprocess exit code. Output is intentionally NOT captured —
+    we want the user to see template-refresh progress live. Errors during
+    spawn (e.g., the binary disappeared between rename and exec) are caught
+    and returned as a synthetic non-zero so the caller can warn without
+    rolling back the binary swap; the binary is already in place and the
+    user can re-run ``wbox skills upgrade`` manually.
+
+    Indirected (rather than inlined into :func:`apply`) so tests can
+    monkeypatch a single seam without simulating the full subprocess
+    machinery.
+    """
+    try:
+        completed = subprocess.run(
+            [str(binary_path), "skills", "upgrade"],
+            check=False,
+        )
+        return completed.returncode
+    except OSError:
+        return 1
+
 
 def _read_and_clear_upgrade_status(install_root: Path) -> dict | None:
     """Read + clear the upgrade status file written by the Windows helper.
@@ -523,6 +556,33 @@ def apply(version: NewVersion, install_root: Path) -> UpgradeResult:
         except OSError:
             pass
         raise
+
+    # Refresh the agent skill template in lockstep with the new binary (#40).
+    # On Unix the swap is synchronous, so we invoke `<new wbox> skills upgrade`
+    # right here. On Windows the swap is deferred to a child process that runs
+    # after the parent exits; we drop a marker file and let the next-launch
+    # callback fire the subprocess once it has confirmed the swap succeeded.
+    # A non-zero exit is a warning, never a rollback — the binary is already
+    # in place and the user can re-run `wbox skills upgrade` manually.
+    if _is_windows():
+        try:
+            (install_root / _SKILLS_UPGRADE_PENDING_FILENAME).write_text("")
+        except OSError:
+            pass
+    else:
+        try:
+            rc = _invoke_skills_upgrade(current_path)
+        except Exception:
+            rc = 1
+        if rc != 0:
+            # Surface to the user; the parent process is still alive on Unix
+            # so this lands on the active terminal.
+            print(
+                f"warning: `wbox skills upgrade` exited with code {rc}; "
+                "the binary swap is intact. Re-run manually to refresh the "
+                "skill template.",
+                file=sys.stderr,
+            )
 
     # Sweep stale `.old.<ts>` breadcrumbs from prior successful upgrades
     # (#39). Only runs on success — on failure the freshly-renamed

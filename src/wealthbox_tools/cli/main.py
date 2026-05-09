@@ -37,15 +37,29 @@ def _check_pending_upgrade_status() -> None:
     and unlink it. Never raises; a corrupt status file would otherwise nag
     the user every invocation.
 
+    If a ``wbox.skills_upgrade.pending`` marker exists (#40) and the deferred
+    swap succeeded, also invoke ``<new binary> skills upgrade`` so the skill
+    template tracks the new binary. The marker is always cleared, even when
+    the upgrade failed, so a stale marker doesn't drive future invocations.
+
     Resolves ``_default_install_root`` through the module reference so tests
     can monkeypatch it on :mod:`cli.self_cmd` and have the change take
     effect here.
     """
-    status = self_upgrade._read_and_clear_upgrade_status(self_cmd._default_install_root())
+    install_root = self_cmd._default_install_root()
+    status = self_upgrade._read_and_clear_upgrade_status(install_root)
+    pending_marker = install_root / self_upgrade._SKILLS_UPGRADE_PENDING_FILENAME
+    marker_existed = pending_marker.exists()
+    if marker_existed:
+        try:
+            pending_marker.unlink(missing_ok=True)
+        except OSError:
+            pass
     if status is None:
         return
     version = status.get("version") or "?"
-    if status.get("result") == "ok":
+    swap_ok = status.get("result") == "ok"
+    if swap_ok:
         typer.echo(f"wbox: upgrade to v{version} completed.", err=True)
     else:
         reason = status.get("reason") or "unknown error"
@@ -53,6 +67,16 @@ def _check_pending_upgrade_status() -> None:
             f"wbox: upgrade to v{version} failed ({reason}). Old binary still in place.",
             err=True,
         )
+
+    if swap_ok and marker_existed:
+        binary_path = install_root / self_upgrade._binary_name()
+        rc = self_upgrade._invoke_skills_upgrade(binary_path)
+        if rc != 0:
+            typer.echo(
+                f"wbox: `wbox skills upgrade` exited with code {rc}; "
+                "re-run manually to refresh the skill template.",
+                err=True,
+            )
 
 app = typer.Typer(context_settings={"help_option_names": ["-h", "--help"]}, 
     name="wbox",
