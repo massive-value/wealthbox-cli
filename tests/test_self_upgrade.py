@@ -891,3 +891,246 @@ def test_self_upgrade_cli_no_op_when_up_to_date(runner) -> None:
 
     result = runner.invoke(app, ["self", "upgrade"])
     assert result.exit_code == 0, result.stdout
+
+
+# ---------------------------------------------------------------------------
+# Skills-upgrade subprocess wiring (#40)
+#
+# After a successful binary swap, `wbox skills upgrade` must run so the skill
+# template is refreshed in lockstep with the new binary. On Unix the swap is
+# synchronous so the subprocess fires inside `apply()`. On Windows the swap is
+# deferred to a child process that runs after the parent exits, so `apply()`
+# writes a marker file and the actual subprocess fires from the next-launch
+# callback once the deferred swap is confirmed successful.
+# ---------------------------------------------------------------------------
+
+
+@respx.mock
+def test_apply_invokes_skills_upgrade_on_unix(tmp_path: Path, monkeypatch) -> None:
+    """After the synchronous Unix swap, apply() must invoke `wbox skills upgrade`.
+
+    The subprocess is invoked using the just-installed binary so the freshly
+    written executable does the template refresh — keeping the binary and skill
+    template in lockstep on disk.
+    """
+    monkeypatch.setattr(su, "_binary_name", lambda: "wbox")
+    monkeypatch.setattr(su, "_is_windows", lambda: False)
+
+    install_root = tmp_path
+    current = install_root / "wbox"
+    current.write_bytes(b"old-binary-bytes")
+
+    new_bytes = b"new-binary-bytes-v9-9-9"
+    digest = hashlib.sha256(new_bytes).hexdigest()
+    binary_url = "https://example.com/wbox-linux-x64"
+    respx.get(binary_url).mock(return_value=httpx.Response(200, content=new_bytes))
+
+    invocations: list[tuple[Path, ...]] = []
+
+    def fake_invoke(binary_path: Path) -> int:
+        invocations.append((binary_path,))
+        return 0
+
+    monkeypatch.setattr(su, "_invoke_skills_upgrade", fake_invoke)
+
+    candidate = su.NewVersion(
+        version="9.9.9",
+        binary_url=binary_url,
+        sha256=digest,
+        asset_name="wbox-linux-x64",
+    )
+
+    su.apply(candidate, install_root=install_root)
+
+    assert len(invocations) == 1, (
+        f"expected exactly one skills-upgrade invocation, got {invocations}"
+    )
+    assert invocations[0][0] == current
+
+
+@respx.mock
+def test_apply_unix_does_not_rollback_when_skills_upgrade_fails(
+    tmp_path: Path, monkeypatch, capsys
+) -> None:
+    """Skills-upgrade subprocess failure must NOT undo the binary swap.
+
+    The binary is already in place; the user can re-run `wbox skills upgrade`
+    manually. Tearing down the swap on a skills-upgrade hiccup would be a
+    cure-worse-than-the-disease for what is essentially a template refresh.
+    """
+    monkeypatch.setattr(su, "_binary_name", lambda: "wbox")
+    monkeypatch.setattr(su, "_is_windows", lambda: False)
+
+    install_root = tmp_path
+    current = install_root / "wbox"
+    current.write_bytes(b"old-binary-bytes")
+
+    new_bytes = b"new-binary-bytes-v9-9-9"
+    digest = hashlib.sha256(new_bytes).hexdigest()
+    binary_url = "https://example.com/wbox-linux-x64"
+    respx.get(binary_url).mock(return_value=httpx.Response(200, content=new_bytes))
+
+    monkeypatch.setattr(su, "_invoke_skills_upgrade", lambda binary_path: 1)
+
+    candidate = su.NewVersion(
+        version="9.9.9",
+        binary_url=binary_url,
+        sha256=digest,
+        asset_name="wbox-linux-x64",
+    )
+
+    # Must not raise — non-zero exit is a warning, not a failure.
+    result = su.apply(candidate, install_root=install_root)
+
+    # Binary swap is intact: new bytes in place, old bytes preserved as backup.
+    assert current.read_bytes() == new_bytes
+    assert result.backup_path.exists()
+    assert result.backup_path.read_bytes() == b"old-binary-bytes"
+
+
+@respx.mock
+def test_apply_windows_writes_skills_upgrade_pending_marker(
+    tmp_path: Path, monkeypatch
+) -> None:
+    """On Windows, apply() defers the swap and writes a skills-upgrade marker.
+
+    The actual `wbox skills upgrade` subprocess can't run from the parent —
+    the swap hasn't happened yet. Instead the marker tells the next-launch
+    callback to fire the subprocess once the deferred swap is confirmed.
+    """
+    monkeypatch.setattr(su, "_binary_name", lambda: "wbox.exe")
+    monkeypatch.setattr(su, "_is_windows", lambda: True)
+    monkeypatch.setattr(su, "_schedule_deferred_swap", lambda *a, **kw: None)
+
+    install_root = tmp_path
+    current = install_root / "wbox.exe"
+    current.write_bytes(b"old-bytes")
+
+    new_bytes = b"new-windows-bytes"
+    digest = hashlib.sha256(new_bytes).hexdigest()
+    binary_url = "https://example.com/wbox-windows-x64.exe"
+    respx.get(binary_url).mock(return_value=httpx.Response(200, content=new_bytes))
+
+    candidate = su.NewVersion(
+        version="9.9.9",
+        binary_url=binary_url,
+        sha256=digest,
+        asset_name="wbox-windows-x64.exe",
+    )
+
+    su.apply(candidate, install_root=install_root)
+
+    pending_marker = install_root / su._SKILLS_UPGRADE_PENDING_FILENAME
+    assert pending_marker.exists(), (
+        f"apply() should have written the skills-upgrade pending marker on Windows; "
+        f"contents of install_root: {list(install_root.iterdir())}"
+    )
+
+
+def test_main_callback_runs_skills_upgrade_on_successful_deferred_swap(
+    runner, tmp_path, monkeypatch
+) -> None:
+    """When the deferred swap succeeds AND a skills-upgrade marker is present,
+    the next-launch callback fires `wbox skills upgrade` and clears the marker.
+    """
+    from wealthbox_tools.cli import self_cmd
+
+    monkeypatch.setattr(self_cmd, "_default_install_root", lambda: tmp_path)
+    monkeypatch.setattr(su, "_binary_name", lambda: "wbox.exe")
+
+    status_path = tmp_path / "wbox.upgrade.status"
+    status_path.write_text(
+        json.dumps({"result": "ok", "version": "9.9.9", "reason": None, "ts": 1700000000})
+    )
+    pending_marker = tmp_path / su._SKILLS_UPGRADE_PENDING_FILENAME
+    pending_marker.write_text("")
+
+    invocations: list[Path] = []
+
+    def fake_invoke(binary_path: Path) -> int:
+        invocations.append(binary_path)
+        return 0
+
+    monkeypatch.setattr(su, "_invoke_skills_upgrade", fake_invoke)
+
+    result = runner.invoke(app, ["--version"])
+
+    assert result.exit_code == 0, result.stdout
+    assert len(invocations) == 1
+    assert invocations[0] == tmp_path / "wbox.exe"
+    assert not pending_marker.exists(), (
+        "the skills-upgrade pending marker must be cleared after running"
+    )
+
+
+def test_main_callback_skips_skills_upgrade_when_swap_failed(
+    runner, tmp_path, monkeypatch
+) -> None:
+    """If the deferred swap failed, skills upgrade is NOT run.
+
+    The marker is still cleared so it doesn't leak across runs — a future
+    successful `wbox self upgrade` will write a fresh marker.
+    """
+    from wealthbox_tools.cli import self_cmd
+
+    monkeypatch.setattr(self_cmd, "_default_install_root", lambda: tmp_path)
+
+    status_path = tmp_path / "wbox.upgrade.status"
+    status_path.write_text(
+        json.dumps(
+            {
+                "result": "failed",
+                "version": "9.9.9",
+                "reason": "timeout waiting for parent exit",
+                "ts": 1700000000,
+            }
+        )
+    )
+    pending_marker = tmp_path / su._SKILLS_UPGRADE_PENDING_FILENAME
+    pending_marker.write_text("")
+
+    invocations: list[Path] = []
+
+    def fake_invoke(binary_path: Path) -> int:
+        invocations.append(binary_path)
+        return 0
+
+    monkeypatch.setattr(su, "_invoke_skills_upgrade", fake_invoke)
+
+    result = runner.invoke(app, ["--version"])
+
+    assert result.exit_code == 0, result.stdout
+    assert invocations == [], "skills upgrade must not run when the deferred swap failed"
+    assert not pending_marker.exists(), (
+        "marker must be cleared even when skill upgrade is skipped"
+    )
+
+
+def test_invoke_skills_upgrade_calls_subprocess_with_binary_path(
+    tmp_path: Path, monkeypatch
+) -> None:
+    """`_invoke_skills_upgrade` runs `<binary> skills upgrade` and streams output.
+
+    Output is streamed (not captured) so the user sees live progress; exit code
+    is returned to the caller for warning-vs-rollback decisions.
+    """
+    binary_path = tmp_path / "wbox"
+    binary_path.write_bytes(b"")
+
+    captured: dict = {}
+
+    class FakeCompleted:
+        returncode = 0
+
+    def fake_run(args, **kwargs):
+        captured["args"] = args
+        captured["kwargs"] = kwargs
+        return FakeCompleted()
+
+    monkeypatch.setattr(su.subprocess, "run", fake_run)
+
+    rc = su._invoke_skills_upgrade(binary_path)
+
+    assert rc == 0
+    assert captured["args"][0] == str(binary_path)
+    assert captured["args"][1:] == ["skills", "upgrade"]
