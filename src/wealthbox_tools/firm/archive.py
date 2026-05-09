@@ -305,11 +305,16 @@ def apply(
 
     if mode is ApplyMode.ABORT_ON_CONFLICT:
         # Only flag genuine file replacements. ``_meta.json`` is
-        # key-merged, not replaced, so it is never a conflict.
+        # key-merged, not replaced, so it is never a conflict. ``is_symlink()``
+        # catches dangling symlinks (where ``exists()`` returns False) so
+        # an existing-symlink local entry still aborts — otherwise the
+        # later ``write_bytes`` would follow the link and write outside
+        # firm_dir, violating the no-write-on-conflict guarantee.
         conflicts = [
             name
             for name in plan.files
-            if name != META_FILENAME and (firm_dir / name).exists()
+            if name != META_FILENAME
+            and ((firm_dir / name).is_symlink() or (firm_dir / name).exists())
         ]
         if conflicts:
             raise ArchiveError(
@@ -325,10 +330,12 @@ def apply(
         if (
             mode is ApplyMode.MERGE
             and name != META_FILENAME
-            and target.exists()
+            and (target.is_symlink() or target.exists())
         ):
             # MERGE skips files that already exist; only _meta.json keeps
             # its merge-into-existing behavior so policy keys still land.
+            # ``is_symlink()`` covers the dangling-symlink case the same
+            # way the ABORT_ON_CONFLICT pre-flight check does.
             continue
         target.parent.mkdir(parents=True, exist_ok=True)
         if name == META_FILENAME:
