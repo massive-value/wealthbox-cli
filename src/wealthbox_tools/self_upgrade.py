@@ -7,7 +7,7 @@ functions plus two dataclasses:
   compares to the installed ``__version__``, and returns a populated
   :class:`NewVersion` when an upgrade is available (otherwise ``None``).
 - ``apply(version, install_root)`` downloads the platform-specific binary,
-  verifies its SHA-256 against the release's ``checksums.txt`` manifest,
+  verifies its SHA-256 against the release's ``SHA256SUMS.txt`` manifest,
   and atomically swaps it into place. The previous binary is preserved
   under a ``.old.<unix_ts>`` breadcrumb for rollback / future cleanup
   (issue #39).
@@ -56,7 +56,7 @@ __all__ = [
 _RELEASES_LATEST_URL = (
     "https://api.github.com/repos/massive-value/wealthbox-cli/releases/latest"
 )
-_CHECKSUMS_ASSET_NAME = "checksums.txt"
+_CHECKSUMS_ASSET_NAME = "SHA256SUMS.txt"
 _HTTP_TIMEOUT = httpx.Timeout(30.0)
 
 # Retention window for `<binary>.old.<unix_ts>` rollback breadcrumbs. After
