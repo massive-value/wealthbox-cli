@@ -48,11 +48,15 @@ class ChangeSet:
     disk. ``skipped_no_markers`` lists paths that exist but lack the
     auto-gen markers (a warning was already printed to stderr). ``missing``
     lists paths that were expected but not found on disk.
+    ``unmapped`` lists reference markdown files found in the references
+    directory that do not appear in :data:`RESOURCE_REFERENCE_MAP` (a
+    warning was already printed to stderr).
     """
 
     modified: list[Path] = field(default_factory=list)
     skipped_no_markers: list[Path] = field(default_factory=list)
     missing: list[Path] = field(default_factory=list)
+    unmapped: list[Path] = field(default_factory=list)
 
 
 # ---------------------------------------------------------------------------
@@ -60,10 +64,22 @@ class ChangeSet:
 # ---------------------------------------------------------------------------
 
 #: Top-level Typer sub-app name → reference markdown filename (relative to
-#: the references directory). Slice #30 covers `contacts` only; subsequent
-#: issues will extend this map.
+#: the references directory). Slice #30 introduced the contract for
+#: ``contacts``; #35 rolled it across the remaining single-resource files.
+#:
+#: ``lookups.md`` is intentionally absent: it aggregates four resources
+#: (``me``, ``users``, ``activity``, ``categories``) and the marker contract
+#: is one block per file. The orphan scan in :func:`regenerate_all` warns
+#: about it on every run so the discrepancy stays visible.
 RESOURCE_REFERENCE_MAP: dict[str, str] = {
     "contacts": "contacts.md",
+    "events": "events.md",
+    "households": "households.md",
+    "notes": "notes.md",
+    "opportunities": "opportunities.md",
+    "projects": "projects.md",
+    "tasks": "tasks.md",
+    "workflows": "workflows.md",
 }
 
 
@@ -373,6 +389,23 @@ def regenerate_all(*, references_dir: Path | None = None) -> ChangeSet:
     """
     refs_dir = references_dir or _references_dir()
     changeset = ChangeSet()
+
+    # Warn once per run about reference markdown files that have no entry
+    # in RESOURCE_REFERENCE_MAP. These are aggregate or hand-curated docs
+    # (e.g. ``lookups.md``) that span multiple resources, so the one-block-
+    # per-file contract does not fit cleanly. Surfacing them keeps the
+    # discrepancy visible without silently regenerating empty files.
+    if refs_dir.exists():
+        mapped_filenames = set(RESOURCE_REFERENCE_MAP.values())
+        for md in sorted(refs_dir.glob("*.md")):
+            if md.name in mapped_filenames:
+                continue
+            print(
+                f"warning: skill-ref auto-gen has no mapping for {md}; "
+                "leaving file unchanged",
+                file=sys.stderr,
+            )
+            changeset.unmapped.append(md)
 
     # Sort for deterministic warning order.
     for resource in sorted(RESOURCE_REFERENCE_MAP):

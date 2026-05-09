@@ -95,6 +95,171 @@ wbox workflows templates list [OPTIONS]
 
 Same filter flags as workflow list.
 
+## Generated Flag Reference
+
+The following section is auto-generated from the Typer command tree by
+`wbox internals regen-skill-refs`. Do not hand-edit between the markers —
+edits will be overwritten on the next regen pass.
+
+<!-- auto-gen:flags -->
+### `wbox workflows add`
+
+Create a new workflow from a template.
+
+| Flag | Type | Default | Description |
+|------|------|---------|-------------|
+| `--contact` | `INTEGER` | `-` | Link to a Contact by ID |
+| `--format` | `CHOICE` | `json` |  |
+| `--label` | `TEXT` | `-` | Optional label for this workflow instance |
+| `--more-fields` | `TEXT` | `-` | JSON object for additional fields (e.g. workflow_milestones) |
+| `--opportunity` | `INTEGER` | `-` | Link to an Opportunity by ID |
+| `--project` | `INTEGER` | `-` | Link to a Project by ID |
+| `--starts-at` | `TEXT` | `-` | Start date (e.g. 2026-06-01) |
+| `--template` | `INTEGER` | `-` | Workflow template ID — see: wbox workflows templates list |
+| `--visible-to` | `TEXT` | `-` |  |
+
+**Choices for `--format`:**
+
+- `csv`
+- `json`
+- `table`
+- `tsv`
+
+### `wbox workflows complete-step`
+
+Mark a workflow step as complete.
+
+| Flag | Type | Default | Description |
+|------|------|---------|-------------|
+| `--due-date` | `TEXT` | `-` | Due date when restarting a step (requires --due-date-set) |
+| `--due-date-set` | `BOOLEAN` | `false` | Whether the restarted step has a due date |
+| `--format` | `CHOICE` | `json` |  |
+| `--no-advance-hint` | `BOOLEAN` | `false` | Skip the follow-up GET that summarizes the new active step (saves one API call). |
+| `--outcome-id` | `INTEGER` | `-` | Workflow outcome ID (if step has multiple outcomes) |
+
+**Choices for `--format`:**
+
+- `csv`
+- `json`
+- `table`
+- `tsv`
+
+### `wbox workflows get`
+
+Get a single workflow by ID.
+
+| Flag | Type | Default | Description |
+|------|------|---------|-------------|
+| `--format` | `CHOICE` | `json` |  |
+| `--no-comments` | `BOOLEAN` | `false` | Omit comments from output |
+| `--verbose` / `-v` | `BOOLEAN` | `false` | Show all fields including the full template |
+
+**Choices for `--format`:**
+
+- `csv`
+- `json`
+- `table`
+- `tsv`
+
+### `wbox workflows list`
+
+List workflows with optional filters.
+
+| Flag | Type | Default | Description |
+|------|------|---------|-------------|
+| `--format` | `CHOICE` | `json` |  |
+| `--page` | `INTEGER` | `-` |  |
+| `--per-page` | `INTEGER` | `-` | Results per page (max 100) |
+| `--resource-id` | `INTEGER` | `-` | Filter by linked resource ID (requires --resource-type) |
+| `--resource-type` | `CHOICE` | `-` | Filter by linked resource type: Contact, Project |
+| `--status` | `CHOICE` | `-` | active, completed, or scheduled |
+| `--updated-before` | `TEXT` | `-` |  |
+| `--updated-since` | `TEXT` | `-` |  |
+| `--verbose` / `-v` | `BOOLEAN` | `false` | Show all fields |
+
+**Choices for `--format`:**
+
+- `csv`
+- `json`
+- `table`
+- `tsv`
+
+**Choices for `--resource-type`:**
+
+- `Contact`
+- `Project`
+
+**Choices for `--status`:**
+
+- `active`
+- `completed`
+- `scheduled`
+
+### `wbox workflows next`
+
+Show the active step (or completion status) of a workflow.
+
+| Flag | Type | Default | Description |
+|------|------|---------|-------------|
+| `--format` | `CHOICE` | `json` |  |
+
+**Choices for `--format`:**
+
+- `csv`
+- `json`
+- `table`
+- `tsv`
+
+### `wbox workflows revert-step`
+
+Revert a completed workflow step.
+
+| Flag | Type | Default | Description |
+|------|------|---------|-------------|
+| `--format` | `CHOICE` | `json` |  |
+
+**Choices for `--format`:**
+
+- `csv`
+- `json`
+- `table`
+- `tsv`
+
+### `wbox workflows templates list`
+
+List available workflow templates.
+
+| Flag | Type | Default | Description |
+|------|------|---------|-------------|
+| `--format` | `CHOICE` | `json` |  |
+| `--page` | `INTEGER` | `-` |  |
+| `--per-page` | `INTEGER` | `-` | Results per page (max 100) |
+| `--resource-id` | `INTEGER` | `-` | Filter by linked resource ID |
+| `--resource-type` | `CHOICE` | `-` | Filter by linked resource type: Contact, Project |
+| `--status` | `CHOICE` | `-` | active, completed, or scheduled |
+| `--updated-before` | `TEXT` | `-` |  |
+| `--updated-since` | `TEXT` | `-` |  |
+| `--verbose` / `-v` | `BOOLEAN` | `false` | Show all fields |
+
+**Choices for `--format`:**
+
+- `csv`
+- `json`
+- `table`
+- `tsv`
+
+**Choices for `--resource-type`:**
+
+- `Contact`
+- `Project`
+
+**Choices for `--status`:**
+
+- `active`
+- `completed`
+- `scheduled`
+<!-- /auto-gen:flags -->
+
 ## Examples
 
 ```bash

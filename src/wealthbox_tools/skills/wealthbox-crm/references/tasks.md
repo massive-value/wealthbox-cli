@@ -92,6 +92,151 @@ wbox tasks delete <ID>
 wbox tasks categories
 ```
 
+## Generated Flag Reference
+
+The following section is auto-generated from the Typer command tree by
+`wbox internals regen-skill-refs`. Do not hand-edit between the markers —
+edits will be overwritten on the next regen pass.
+
+<!-- auto-gen:flags -->
+### `wbox tasks add`
+
+Create a new task. Required: name, and either due_date or frame.
+
+| Flag | Type | Default | Description |
+|------|------|---------|-------------|
+| `--assigned-to` | `INTEGER` | `-` | Assign to a user by ID |
+| `--category` | `TEXT` | `-` | Task category by name or ID — see: wbox categories task-categories |
+| `--contact` | `INTEGER` | `-` | Link to a Contact by ID |
+| `--description` | `TEXT` | `-` | Task description |
+| `--due-date` | `TEXT` | `-` | Example: '2025-05-24 10:00 AM -0700' (must match Wealthbox format) |
+| `--format` | `CHOICE` | `json` |  |
+| `--frame` | `_NORMALIZE_FRAME` | `-` | Friendly due timeframe. One of: today, tomorrow, this-week / this_week, next-week / next_week, future, specific. |
+| `--more-fields` | `TEXT` | `-` | JSON: {"complete": false, "assigned_to_team": 456} |
+| `--opportunity` | `INTEGER` | `-` | Link to an Opportunity by ID |
+| `--priority` | `CHOICE` | `-` | Low, Medium, or High |
+| `--project` | `INTEGER` | `-` | Link to a Project by ID |
+
+**Choices for `--format`:**
+
+- `csv`
+- `json`
+- `table`
+- `tsv`
+
+**Choices for `--priority`:**
+
+- `High`
+- `Low`
+- `Medium`
+
+### `wbox tasks categories`
+
+List task category options.
+
+| Flag | Type | Default | Description |
+|------|------|---------|-------------|
+| `--format` | `CHOICE` | `json` |  |
+| `--page` | `INTEGER` | `-` | Page number |
+| `--per-page` | `INTEGER` | `-` | Results per page (max 100) |
+
+**Choices for `--format`:**
+
+- `csv`
+- `json`
+- `table`
+- `tsv`
+
+### `wbox tasks delete`
+
+Delete a task by ID.
+
+_No flags._
+
+### `wbox tasks get`
+
+Get a single task by ID.
+
+| Flag | Type | Default | Description |
+|------|------|---------|-------------|
+| `--format` | `CHOICE` | `json` |  |
+| `--no-comments` | `BOOLEAN` | `false` | Omit comments from output |
+| `--verbose` / `-v` | `BOOLEAN` | `false` | Show all fields |
+
+**Choices for `--format`:**
+
+- `csv`
+- `json`
+- `table`
+- `tsv`
+
+### `wbox tasks list`
+
+List tasks with optional filters. By default only outstanding tasks are returned; use --include-completed to include completed tasks
+
+| Flag | Type | Default | Description |
+|------|------|---------|-------------|
+| `--assigned-to` | `INTEGER` | `-` | Filter by assigned user ID |
+| `--assigned-to-team` | `INTEGER` | `-` | Filter by assigned team ID |
+| `--contact` | `INTEGER` | `-` | Filter tasks linked to a Contact (by ID) |
+| `--created-by` | `INTEGER` | `-` | Filter by creator user ID |
+| `--format` | `CHOICE` | `json` |  |
+| `--include-completed` | `BOOLEAN` | `false` | Include completed tasks (default returns outstanding tasks only) |
+| `--opportunity` | `INTEGER` | `-` | Filter tasks linked to an Opportunity (by ID) |
+| `--page` | `INTEGER` | `-` |  |
+| `--per-page` | `INTEGER` | `-` | Results per page (max 100) |
+| `--project` | `INTEGER` | `-` | Filter tasks linked to a Project (by ID) |
+| `--type` | `CHOICE` | `-` | all, parents, subtasks |
+| `--updated-before` | `TEXT` | `-` |  |
+| `--updated-since` | `TEXT` | `-` |  |
+| `--verbose` / `-v` | `BOOLEAN` | `false` | Show all fields |
+
+**Choices for `--format`:**
+
+- `csv`
+- `json`
+- `table`
+- `tsv`
+
+**Choices for `--type`:**
+
+- `all`
+- `parents`
+- `subtasks`
+
+### `wbox tasks update`
+
+Update an existing task. Pass only the fields you want to change.
+
+| Flag | Type | Default | Description |
+|------|------|---------|-------------|
+| `--assigned-to` | `INTEGER` | `-` | Reassign to a user by ID |
+| `--category` | `TEXT` | `-` | Task category by name or ID — see: wbox categories task-categories |
+| `--complete` / `--no-complete` | `BOOLEAN` | `-` | Mark as complete or incomplete |
+| `--contact` | `INTEGER` | `-` | Replace linked Contact (by ID) |
+| `--description` | `TEXT` | `-` |  |
+| `--due-date` | `TEXT` | `-` | ISO 8601 datetime, e.g. '2026-04-01T09:00:00-07:00' |
+| `--format` | `CHOICE` | `json` |  |
+| `--frame` | `_NORMALIZE_FRAME` | `-` | Friendly due timeframe. One of: today, tomorrow, this-week / this_week, next-week / next_week, future, specific. |
+| `--name` | `TEXT` | `-` | Task name |
+| `--opportunity` | `INTEGER` | `-` | Replace linked Opportunity (by ID) |
+| `--priority` | `CHOICE` | `-` | Low, Medium, or High |
+| `--project` | `INTEGER` | `-` | Replace linked Project (by ID) |
+
+**Choices for `--format`:**
+
+- `csv`
+- `json`
+- `table`
+- `tsv`
+
+**Choices for `--priority`:**
+
+- `High`
+- `Low`
+- `Medium`
+<!-- /auto-gen:flags -->
+
 ## Examples
 
 ```bash

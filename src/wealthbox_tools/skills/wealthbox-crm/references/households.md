@@ -27,6 +27,57 @@ wbox households remove-member <HOUSEHOLD_ID> <MEMBER_ID> [OPTIONS]
 | `<MEMBER_ID>` | positional | Person contact ID to remove (required) |
 | `--format` | json\|table\|csv\|tsv | Output format |
 
+## Generated Flag Reference
+
+The following section is auto-generated from the Typer command tree by
+`wbox internals regen-skill-refs`. Do not hand-edit between the markers —
+edits will be overwritten on the next regen pass.
+
+<!-- auto-gen:flags -->
+### `wbox households add-member`
+
+Add a member to a household. Usage: add-member <household_id> <member_id> --title <title>
+
+| Flag | Type | Default | Description |
+|------|------|---------|-------------|
+| `--format` | `CHOICE` | `json` |  |
+| `--title` | `CHOICE` | `-` | Household title for member (e.g. Spouse, Head) |
+
+**Choices for `--format`:**
+
+- `csv`
+- `json`
+- `table`
+- `tsv`
+
+**Choices for `--title`:**
+
+- `Child`
+- `Grandchild`
+- `Grandparent`
+- `Head`
+- `Other Dependent`
+- `Parent`
+- `Partner`
+- `Sibling`
+- `Spouse`
+
+### `wbox households remove-member`
+
+Remove a member from a household.
+
+| Flag | Type | Default | Description |
+|------|------|---------|-------------|
+| `--format` | `CHOICE` | `json` |  |
+
+**Choices for `--format`:**
+
+- `csv`
+- `json`
+- `table`
+- `tsv`
+<!-- /auto-gen:flags -->
+
 ## Examples
 
 ```bash
