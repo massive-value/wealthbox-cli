@@ -157,6 +157,12 @@ def _unified(a: bytes, b: bytes, *, a_label: str, b_label: str) -> str:
     Bytes are decoded as UTF-8 with ``errors="replace"`` so a stray binary
     payload doesn't crash the diff (the archive whitelist makes binaries
     unlikely, but defensiveness costs nothing here).
+
+    Files that don't end with ``\\n`` cause ``difflib.unified_diff`` to emit
+    ``-``/``+`` records without terminators; joining those verbatim
+    concatenates lines (``-old+new``) and corrupts the next file header.
+    Append a git-style ``\\ No newline at end of file`` marker after any
+    such record so the output stays parseable as unified diff.
     """
     a_text = a.decode("utf-8", errors="replace").splitlines(keepends=True)
     b_text = b.decode("utf-8", errors="replace").splitlines(keepends=True)
@@ -167,7 +173,20 @@ def _unified(a: bytes, b: bytes, *, a_label: str, b_label: str) -> str:
         tofile=f"b/{b_label}",
         n=3,
     )
-    return "".join(lines)
+    return "".join(_terminate(line) for line in lines)
+
+
+def _terminate(line: str) -> str:
+    """Ensure a unified-diff line ends with ``\\n``.
+
+    Adds the git ``\\ No newline at end of file`` marker after content
+    lines (``-`` / ``+`` / ` `) that lack a terminator. Header lines
+    (``---``, ``+++``, ``@@``) always come from ``difflib`` already
+    terminated and pass through unchanged.
+    """
+    if line.endswith("\n"):
+        return line
+    return line + "\n\\ No newline at end of file\n"
 
 
 def format_report(report: DiffReport) -> str:

@@ -212,6 +212,28 @@ def test_firm_diff_skips_meta_json_noise(runner, tmp_path: Path) -> None:
     assert "_meta.json" not in combined
 
 
+def test_firm_diff_handles_missing_trailing_newline(tmp_path: Path) -> None:
+    """When either side of a changed file lacks a trailing newline,
+    ``difflib.unified_diff`` returns ``-``/``+`` records without
+    terminators. The renderer must add a git-style
+    ``\\ No newline at end of file`` marker so the output stays parseable
+    as unified diff — otherwise lines glue together (``-old+new``) and
+    can corrupt the next file header.
+    """
+    from wealthbox_tools.firm.diff import _unified
+
+    rendered = _unified(b"old", b"new", a_label="contacts.md", b_label="contacts.md")
+    # No "-old+new" concatenation.
+    assert "-old+new" not in rendered
+    # Both sides surface as separate records, each followed by the marker.
+    assert "-old\n\\ No newline at end of file\n" in rendered
+    assert "+new\n\\ No newline at end of file\n" in rendered
+    # And every emitted line ends with a newline so a downstream consumer
+    # (`splitlines`, a patch tool, etc.) parses it cleanly.
+    for line in rendered.splitlines(keepends=True):
+        assert line.endswith("\n"), repr(line)
+
+
 def test_firm_diff_surfaces_clear_error_on_missing_archive(
     runner, tmp_path: Path
 ) -> None:
