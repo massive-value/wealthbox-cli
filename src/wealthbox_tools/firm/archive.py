@@ -256,6 +256,9 @@ def apply(
     plan: ImportPlan,
     firm_dir: Path,
     mode: ApplyMode = ApplyMode.OVERWRITE,
+    *,
+    source: str | None = None,
+    now: datetime | None = None,
 ) -> ApplyResult:
     """Write the files from ``plan`` into ``firm_dir`` according to ``mode``.
 
@@ -266,6 +269,13 @@ def apply(
 
     ``MERGE`` and ``ABORT_ON_CONFLICT`` are not implemented in this slice
     and raise :class:`ArchiveError`. Issue #46 will fill them in.
+
+    When ``source`` is provided, ``last_imported_from=source`` and
+    ``last_imported_at=<now ISO>`` are stamped into ``_meta.json`` (#48).
+    These provenance fields power the doctor's 90-day-stale warning. The
+    write is read-modify-write into the existing meta — generated keys
+    (identity, cli_version, files) survive untouched, just like a normal
+    ``_meta.json`` merge from the archive.
     """
     if mode is not ApplyMode.OVERWRITE:
         raise ArchiveError(
@@ -288,7 +298,46 @@ def apply(
             content = _merge_meta_bytes(target, content)
         target.write_bytes(content)
         written.append(name)
+
+    # Post-import provenance (#48). Stamped after the file loop so the
+    # write happens whether or not the archive itself carried _meta.json
+    # — a stripped-down archive (no policy keys to merge) still gets
+    # provenance, and an archive that did include _meta.json gets the
+    # provenance keys merged on top of the freshly-written meta.
+    if source is not None:
+        timestamp = (now if now is not None else datetime.now(timezone.utc)).isoformat()
+        meta_target = firm_dir / META_FILENAME
+        provenance = {
+            "last_imported_from": source,
+            "last_imported_at": timestamp,
+        }
+        meta_target.write_bytes(_merge_provenance_bytes(meta_target, provenance))
+        if META_FILENAME not in written:
+            written.append(META_FILENAME)
+
     return ApplyResult(written=tuple(written))
+
+
+def _merge_provenance_bytes(target: Path, provenance: dict[str, Any]) -> bytes:
+    """Merge ``last_imported_from`` / ``last_imported_at`` into ``_meta.json``.
+
+    Read-modify-write the destination meta so the new provenance keys land
+    on top of whatever's already there. If the file is missing or
+    malformed, fall back to writing the provenance subset alone — the
+    doctor's freshness warning treats a missing-file case the same as a
+    never-imported one, so a stale-but-unparseable meta still gets
+    healed by the next ``apply``.
+    """
+    existing_obj: dict[str, Any] = {}
+    if target.exists():
+        try:
+            loaded = json.loads(target.read_text(encoding="utf-8"))
+        except (json.JSONDecodeError, OSError):
+            loaded = None
+        if isinstance(loaded, dict):
+            existing_obj = loaded
+    merged = {**existing_obj, **provenance}
+    return (json.dumps(merged, indent=2) + "\n").encode("utf-8")
 
 
 def _merge_meta_bytes(target: Path, incoming: bytes) -> bytes:

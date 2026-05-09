@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import json
+
 from wealthbox_tools.cli._skill_bootstrap import (
     render_categories_md,
     render_custom_fields_md,
@@ -151,6 +153,40 @@ def test_update_firm_meta_writes_to_canonical_path():
     for ts in meta["files"].values():
         assert "T" in ts  # ISO 8601
     assert firm_meta_path().exists()
+
+
+def test_update_firm_meta_preserves_import_provenance():
+    """Re-bootstrap (e.g., `wbox skills refresh`) must not drop the
+    `last_imported_*` provenance fields written by `wbox firm import`,
+    or the doctor's 90-day staleness warning silently breaks for any
+    user who refreshes after importing.
+    """
+    # Seed an existing firm meta with both onboarded_at and import provenance.
+    update_firm_meta(
+        identity={"id": 1, "name": "Firm"},
+        cli_version="1.1.0",
+        generated_files=["categories.md"],
+    )
+    seeded = read_firm_meta()
+    seeded["onboarded_at"] = "2026-01-01T00:00:00+00:00"
+    seeded["last_imported_from"] = "/tmp/firm-bundle.zip"
+    seeded["last_imported_at"] = "2026-02-15T12:00:00+00:00"
+    firm_meta_path().write_text(json.dumps(seeded) + "\n", encoding="utf-8")
+
+    # Re-bootstrap (mimics `wbox skills refresh`).
+    update_firm_meta(
+        identity={"id": 1, "name": "Firm"},
+        cli_version="1.1.2",
+        generated_files=["categories.md", "users.md"],
+    )
+
+    after = read_firm_meta()
+    assert after["onboarded_at"] == "2026-01-01T00:00:00+00:00"
+    assert after["last_imported_from"] == "/tmp/firm-bundle.zip"
+    assert after["last_imported_at"] == "2026-02-15T12:00:00+00:00"
+    # Generated keys still update normally.
+    assert after["cli_version"] == "1.1.2"
+    assert set(after["files"]) == {"categories.md", "users.md"}
 
 
 def test_firm_meta_independent_of_template_meta(tmp_path):
