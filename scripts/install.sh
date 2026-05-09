@@ -247,14 +247,16 @@ resolve_release() {
 # Debian box. Walks the JSON one asset object at a time.
 extract_asset_url() {
     local target="$1"
-    # First normalise whitespace so the field separator is a single space:
-    #   "name": "wbox-..."  -> "name":"wbox-..."
-    # Then split the assets array so each object is on its own line and
-    # grep for the literal name. Finally extract browser_download_url.
+    # First normalise whitespace, then split *only* at top-level array
+    # boundaries (`},{`) — NOT on every `{`. The earlier `s/{/\n{/g`
+    # version broke on real release payloads because each asset has a
+    # nested `uploader` object: that object's opening `{` would split
+    # the asset, leaving "name" on one line and "browser_download_url"
+    # on another, and the grep+sed pipeline returned nothing.
     printf '%s' "$RELEASE_JSON" \
         | tr -d '\n' \
         | sed -E 's/[[:space:]]+//g' \
-        | sed 's/{/\n{/g' \
+        | sed 's/},{/}\n{/g' \
         | grep -F "\"name\":\"${target}\"" \
         | head -n1 \
         | sed -E 's/.*"browser_download_url":"([^"]+)".*/\1/'
