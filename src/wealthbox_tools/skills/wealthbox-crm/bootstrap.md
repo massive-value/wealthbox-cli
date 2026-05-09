@@ -5,6 +5,13 @@ on this machine — where `<firm>` is the canonical firm directory printed by
 `wbox skills firm-path`. Follow every step below, then run the marker command
 in Step 4 so this bootstrap path is skipped on future invocations.
 
+## Step 0 — Already onboarded? Skip everything
+
+If `<firm>/_meta.json.onboarded_at` is already set (e.g. another machine ran
+the Q&A and the firm was synced here via `wbox firm import`), this firm is
+already onboarded. Tell the advisor "Firm already onboarded — skipping Q&A."
+and return to the user's original request. No further steps below apply.
+
 ## Step 1 — Fetch API-derived firm data
 
 First, find the firm directory:

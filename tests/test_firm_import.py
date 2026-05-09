@@ -904,3 +904,109 @@ def test_firm_import_cli_url_non_2xx_surfaces_clean_error(
     combined = (result.stdout or "") + (result.stderr or "")
     assert "Traceback" not in combined
     assert "503" in combined
+
+
+# --------------------------------------------------------------------------- #
+# Bootstrap Q&A skip on imported `onboarded_at` (#49)                          #
+# --------------------------------------------------------------------------- #
+
+
+def test_apply_propagates_onboarded_at_from_imported_meta(tmp_path: Path) -> None:
+    """A source firm whose ``_meta.json`` has ``onboarded_at`` set must seed
+    the destination's ``onboarded_at`` after a successful import.
+
+    This is the gate the agent-side bootstrap Q&A keys off — once a peer
+    machine has captured the qualitative firm policy and exported, importing
+    that archive on a fresh install should mark the firm onboarded here too,
+    so the bootstrap.md Q&A path is skipped automatically.
+    """
+    src = tmp_path / "src"
+    _populated_firm_dir(src)  # writes onboarded_at = "2024-02-15T12:34:56+00:00"
+    archive = tmp_path / "firm.zip"
+    archive.write_bytes(pack(src, now=_PINNED_NOW))
+
+    dst = tmp_path / "dst"
+    dst.mkdir()
+    # Destination has no _meta.json at all — the fresh-install case.
+    plan = unpack(archive)
+    apply(plan, dst, ApplyMode.OVERWRITE)
+
+    meta = json.loads((dst / "_meta.json").read_text(encoding="utf-8"))
+    assert meta["onboarded_at"] == "2024-02-15T12:34:56+00:00"
+
+
+def test_apply_does_not_set_onboarded_at_when_source_lacks_it(
+    tmp_path: Path,
+) -> None:
+    """When the source firm has not been onboarded (no ``onboarded_at`` in its
+    ``_meta.json``), apply must NOT invent a value — the destination's
+    ``onboarded_at`` field is unchanged.
+
+    A pre-existing local ``onboarded_at`` survives (provenance write merges
+    on top of it); a missing local key stays missing. The agent-side Q&A
+    path then runs as normal because the gate in bootstrap.md is still tripped.
+    """
+    src = tmp_path / "src"
+    src.mkdir()
+    # Hand-edited policy is present but no _meta.json with onboarded_at.
+    (src / "contacts.md").write_text("# Contacts policy\n", encoding="utf-8")
+    archive = tmp_path / "firm.zip"
+    archive.write_bytes(pack(src, now=_PINNED_NOW))
+
+    # Case 1: destination has a pre-existing `onboarded_at` locally — it
+    # must survive the import unchanged.
+    dst_with = tmp_path / "dst_with"
+    dst_with.mkdir()
+    pre_existing = {"onboarded_at": "2025-01-01T00:00:00+00:00"}
+    (dst_with / "_meta.json").write_text(
+        json.dumps(pre_existing, indent=2), encoding="utf-8"
+    )
+
+    plan = unpack(archive)
+    apply(plan, dst_with, ApplyMode.OVERWRITE)
+
+    meta_with = json.loads((dst_with / "_meta.json").read_text(encoding="utf-8"))
+    assert meta_with["onboarded_at"] == "2025-01-01T00:00:00+00:00"
+
+    # Case 2: destination has no _meta.json — the field must remain absent
+    # after a real CLI-shaped import (provenance write may create the file,
+    # but `onboarded_at` is never invented from thin air).
+    dst_without = tmp_path / "dst_without"
+    dst_without.mkdir()
+
+    plan = unpack(archive)
+    # Pass `source` so the post-import provenance write happens (mirrors
+    # the CLI surface in src/wealthbox_tools/cli/firm.py, which always
+    # forwards the archive path). Otherwise no `_meta.json` is written at
+    # all and there's no field to assert against.
+    apply(plan, dst_without, ApplyMode.OVERWRITE, source=str(archive))
+
+    meta_without = json.loads(
+        (dst_without / "_meta.json").read_text(encoding="utf-8")
+    )
+    assert "onboarded_at" not in meta_without
+
+
+def test_bootstrap_md_skips_when_onboarded_at_is_set() -> None:
+    """The skill template ``bootstrap.md`` must instruct the agent to
+    short-circuit when ``onboarded_at`` is already set — that's the
+    fresh-install-then-import flow where another machine ran the Q&A and
+    the result was synced here via ``wbox firm import``.
+
+    The template ships inside the package; reading it from importlib
+    resources keeps the assertion working whether tests run from a wheel
+    install or an editable checkout.
+    """
+    from importlib.resources import files
+
+    bootstrap_text = (
+        files("wealthbox_tools")
+        .joinpath("skills/wealthbox-crm/bootstrap.md")
+        .read_text(encoding="utf-8")
+    )
+    # The early-out check must reference the gate field by name and tell
+    # the agent to skip when it's already populated.
+    assert "onboarded_at" in bootstrap_text
+    lower = bootstrap_text.lower()
+    assert "already onboarded" in lower
+    assert "skip" in lower
