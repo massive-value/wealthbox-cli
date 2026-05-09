@@ -31,6 +31,8 @@ from importlib.metadata import version as _pkg_version
 from pathlib import Path
 from typing import Any
 
+import httpx
+
 #: Manifest schema version. Bump on backwards-incompatible changes.
 FORMAT_VERSION = 1
 
@@ -183,37 +185,81 @@ class ApplyResult:
     written: tuple[str, ...]
 
 
-def unpack(source: Path | str) -> ImportPlan:
-    """Read a firm-archive zip from disk and return its :class:`ImportPlan`.
+def _looks_like_url(source: Path | str) -> bool:
+    """Return ``True`` if ``source`` is a string with an http(s) scheme.
 
-    URL fetch is deferred to issue #45; ``source`` is treated as a local
-    filesystem path for now.
+    URL discrimination happens at the type/prefix level — a ``Path`` is
+    always treated as a local file, a ``str`` with an http(s) prefix is
+    fetched, and any other ``str`` falls through to the local-path branch
+    so existing call sites that pass ``str(path)`` keep working.
+    """
+    return isinstance(source, str) and (
+        source.startswith("https://") or source.startswith("http://")
+    )
+
+
+def _fetch_url_bytes(url: str) -> bytes:
+    """GET ``url`` once and return the body bytes.
+
+    Network errors and non-2xx responses are surfaced as :class:`ArchiveError`
+    with a clean message so the CLI's ``except ArchiveError`` branch reaches
+    the user without a stack trace. Timeout matches the Wealthbox client
+    (30s); redirects are followed because firm archives are commonly served
+    via short links / CDN redirects.
+    """
+    try:
+        response = httpx.get(url, follow_redirects=True, timeout=30.0)
+    except httpx.RequestError as exc:
+        raise ArchiveError(f"{url}: failed to fetch archive: {exc}") from exc
+    if response.is_error:
+        raise ArchiveError(
+            f"{url}: HTTP {response.status_code} fetching archive."
+        )
+    return response.content
+
+
+def unpack(source: Path | str) -> ImportPlan:
+    """Read a firm-archive zip and return its :class:`ImportPlan`.
+
+    ``source`` may be a local filesystem path (``Path`` or ``str``) or an
+    HTTP(S) URL string. URLs are fetched with a single GET via ``httpx``;
+    the returned bytes are then parsed identically to the local-path code
+    path.
 
     Raises:
         ArchiveError: the file isn't a valid zip, the manifest is missing
-            or malformed, or the manifest's ``format_version`` is newer
-            than this CLI understands.
+            or malformed, the manifest's ``format_version`` is newer than
+            this CLI understands, or the URL fetch failed (network error
+            or non-2xx response).
     """
-    path = Path(source)
+    if _looks_like_url(source):
+        url = str(source)
+        label = url
+        zip_input: Path | io.BytesIO = io.BytesIO(_fetch_url_bytes(url))
+    else:
+        path = Path(source)
+        label = str(path)
+        zip_input = path
+
     try:
-        with zipfile.ZipFile(path, mode="r") as zf:
+        with zipfile.ZipFile(zip_input, mode="r") as zf:
             try:
                 manifest_raw = zf.read(MANIFEST_NAME)
             except KeyError as exc:
                 raise ArchiveError(
-                    f"{path}: archive is missing {MANIFEST_NAME}; not a firm archive."
+                    f"{label}: archive is missing {MANIFEST_NAME}; not a firm archive."
                 ) from exc
             entry_names = [n for n in zf.namelist() if n != MANIFEST_NAME]
             allowed = set(HAND_EDITED_FILES) | {META_FILENAME}
             for entry in entry_names:
                 if not _is_safe_archive_name(entry):
                     raise ArchiveError(
-                        f"{path}: archive contains unsafe entry path {entry!r}; "
+                        f"{label}: archive contains unsafe entry path {entry!r}; "
                         "refusing to import."
                     )
                 if entry not in allowed:
                     raise ArchiveError(
-                        f"{path}: archive contains non-policy entry {entry!r}; "
+                        f"{label}: archive contains non-policy entry {entry!r}; "
                         "only hand-edited policy files and _meta.json are accepted."
                     )
             files = {name: zf.read(name) for name in entry_names}
@@ -226,30 +272,30 @@ def unpack(source: Path | str) -> ImportPlan:
                     meta_obj = json.loads(files[META_FILENAME].decode("utf-8"))
                 except (json.JSONDecodeError, UnicodeDecodeError) as exc:
                     raise ArchiveError(
-                        f"{path}: {META_FILENAME} is not valid JSON."
+                        f"{label}: {META_FILENAME} is not valid JSON."
                     ) from exc
                 if not isinstance(meta_obj, dict):
                     raise ArchiveError(
-                        f"{path}: {META_FILENAME} must be a JSON object."
+                        f"{label}: {META_FILENAME} must be a JSON object."
                     )
     except zipfile.BadZipFile as exc:
-        raise ArchiveError(f"{path}: not a valid zip archive.") from exc
+        raise ArchiveError(f"{label}: not a valid zip archive.") from exc
     except FileNotFoundError as exc:
-        raise ArchiveError(f"{path}: archive file not found.") from exc
+        raise ArchiveError(f"{label}: archive file not found.") from exc
     except OSError as exc:
-        raise ArchiveError(f"{path}: cannot read archive: {exc}") from exc
+        raise ArchiveError(f"{label}: cannot read archive: {exc}") from exc
 
     try:
         manifest = json.loads(manifest_raw.decode("utf-8"))
     except (json.JSONDecodeError, UnicodeDecodeError) as exc:
-        raise ArchiveError(f"{path}: {MANIFEST_NAME} is not valid JSON.") from exc
+        raise ArchiveError(f"{label}: {MANIFEST_NAME} is not valid JSON.") from exc
     if not isinstance(manifest, dict):
-        raise ArchiveError(f"{path}: {MANIFEST_NAME} must be a JSON object.")
+        raise ArchiveError(f"{label}: {MANIFEST_NAME} must be a JSON object.")
 
     version = manifest.get("format_version")
     if not isinstance(version, int) or version > FORMAT_VERSION:
         raise ArchiveError(
-            f"{path}: unsupported format_version {version!r}. "
+            f"{label}: unsupported format_version {version!r}. "
             f"This CLI understands format_version up to {FORMAT_VERSION}; "
             "upgrade `wealthbox-cli` to read this archive."
         )
