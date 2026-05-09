@@ -162,6 +162,29 @@ def run_doctor(token: str | None = None) -> int:
                 except (ValueError, TypeError):
                     pass
 
+    # --- Release age (30-days-behind warning, #41) -----------------------
+    # Soft check: a network error here yields a "could not check for
+    # updates" line, never a hard fail. The check is informational —
+    # nudge the user if their local version is behind AND the latest
+    # release is more than 30 days old.
+    typer.echo("\n# Release age")
+    typer.echo(f"  local:    {cli_version}")
+    staleness = self_upgrade.check_release_staleness()
+    if staleness is None:
+        typer.echo("  warning:  could not check for updates (network or GitHub error)")
+    else:
+        typer.echo(f"  latest:   {staleness.latest_version} ({staleness.days_old}d old)")
+        if staleness.behind and staleness.days_old > 30:
+            typer.echo(
+                f"  warning:  local version is behind and the latest release "
+                f"({staleness.latest_version}) is {staleness.days_old} days old - "
+                f"consider running 'wbox self upgrade'"
+            )
+            issues.append(
+                f"local version {cli_version} is behind {staleness.latest_version} "
+                f"({staleness.days_old} days old) - run 'wbox self upgrade'"
+            )
+
     # --- Self-upgrade backups --------------------------------------------
     # Sweep stale `<binary>.old.<ts>` rollback breadcrumbs (#39). Same
     # 24h threshold as `apply()` — doctor is the second sweep so users
