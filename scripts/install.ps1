@@ -278,16 +278,17 @@ function Step-PlaceOnPath {
 function Step-InstallSkills {
     Write-Step 'Installing AI agent skill...'
     if ($DryRun) {
-        Write-DryRun "would run $script:InstalledBinary skills install"
+        Write-DryRun "would run $script:InstalledBinary skills install --no-bootstrap"
         return
     }
     if (-not (Test-Path -LiteralPath $script:InstalledBinary)) {
         Write-Host '    Skipped: wbox.exe is not on disk.' -ForegroundColor Yellow
         return
     }
-    # `wbox skills install` is itself idempotent — picks up existing
-    # marketplace state and prompts only for new platforms.
-    & $script:InstalledBinary skills install
+    # --no-bootstrap so the install does not prompt to firm-bootstrap
+    # before we have a token. Step 8 (Step-OfferFirmBootstrap) handles
+    # the bootstrap explicitly, after the token is configured.
+    & $script:InstalledBinary skills install --no-bootstrap
     if ($LASTEXITCODE -ne 0) {
         throw "wbox skills install exited with code $LASTEXITCODE."
     }
