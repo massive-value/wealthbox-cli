@@ -16,9 +16,9 @@
 | **Windows** (PowerShell) | `irm https://raw.githubusercontent.com/massive-value/wealthbox-cli/main/scripts/install.ps1 \| iex` |
 
 The installer:
-1. Sets up the tools it needs (Python, etc. — handled automatically).
-2. Asks for your **Wealthbox API token**. *Where to find it:* in Wealthbox, click your initials in the top right → **Settings** → **API Access** → **Create Access Token**. Paste the token when prompted.
-3. Installs the AI agent skill into [Claude Code](https://claude.ai/download) (and Codex, if you have it).
+1. Downloads the prebuilt `wbox` binary from the latest GitHub Release and verifies its SHA-256 checksum (no Python required).
+2. Installs the AI agent skill into [Claude Code](https://claude.ai/download) (and Codex, if you have it).
+3. Asks for your **Wealthbox API token**. *Where to find it:* in Wealthbox, click your initials in the top right → **Settings** → **API Access** → **Create Access Token**. Paste the token when prompted.
 
 That's it. Open Claude Code and try one of the prompts below.
 
@@ -63,16 +63,9 @@ You stay in control: the agent shows you what it's about to do before it does it
 
 ------------------------------------------------------------------------
 
-## Already a Claude Code user?
+## What gets installed, where
 
-You can install the skill directly from the plugin marketplace inside Claude Code:
-
-```
-/plugin marketplace add massive-value/wealthbox-cli
-/plugin install wealthbox-crm@massive-value
-```
-
-The plugin auto-updates daily. Firm data lives at `~/.config/wbox/firm/` (Mac/Linux) or `%APPDATA%\wbox\firm\` (Windows) and survives plugin updates. Run `wbox doctor` to see your install status anytime.
+The installer drops a single prebuilt `wbox` binary onto your PATH (`~/.local/bin/wbox` on Mac/Linux, `%LOCALAPPDATA%\Programs\wbox\wbox.exe` on Windows), then registers the AI agent skill with Claude Code (and Codex, if it's installed). Firm data lives at `~/.config/wbox/firm/` (Mac/Linux) or `%APPDATA%\wbox\firm\` (Windows) and survives reinstalls and upgrades. Run `wbox doctor` to see your install status anytime, and `wbox skills upgrade` to pull the latest skill template.
 
 ------------------------------------------------------------------------
 
@@ -114,7 +107,7 @@ wbox skills uninstall      # remove the skill template (firm data is preserved)
 wbox doctor                # comprehensive health check
 ```
 
-The marketplace plugin path (above) is recommended for Claude Code. The legacy `wbox skills install` path remains for Codex users (until OpenAI's marketplace lands), project-scoped installs, or air-gapped setups without the `claude` CLI.
+The one-line installer (top of this README) wires up Claude Code automatically. These commands are for the cases the installer doesn't cover: re-running on a different host, swapping platforms, project-scoped installs, or air-gapped setups where you've placed the `wbox` binary by hand.
 </details>
 
 <details>
