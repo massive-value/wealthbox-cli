@@ -29,6 +29,7 @@ import subprocess
 import sys
 import time
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from pathlib import Path
 
 import httpx
@@ -44,8 +45,10 @@ _CREATE_NEW_PROCESS_GROUP = getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0x00
 
 __all__ = [
     "NewVersion",
+    "ReleaseStaleness",
     "UpgradeResult",
     "check",
+    "check_release_staleness",
     "apply",
     "_cleanup_stale_backups",
 ]
@@ -77,6 +80,21 @@ class NewVersion:
     binary_url: str
     sha256: str
     asset_name: str
+
+
+@dataclass(frozen=True)
+class ReleaseStaleness:
+    """Snapshot of latest-release metadata used by `wbox doctor` (#41).
+
+    A `behind=True, days_old > 30` combination triggers the doctor's
+    "30-days-behind" upgrade nudge. We carry both fields (rather than a
+    pre-baked boolean) so the doctor can render an informative message.
+    """
+
+    latest_version: str
+    behind: bool
+    days_old: int
+    published_at: datetime
 
 
 @dataclass(frozen=True)
@@ -480,6 +498,67 @@ def check() -> NewVersion | None:
         binary_url=binary_asset["browser_download_url"],
         sha256=digest,
         asset_name=wanted_asset_name,
+    )
+
+
+def check_release_staleness(*, now: datetime | None = None) -> ReleaseStaleness | None:
+    """Return release-staleness metadata for `wbox doctor` (#41).
+
+    Hits the same GitHub Releases endpoint as :func:`check`, but returns a
+    :class:`ReleaseStaleness` snapshot (latest tag, whether the running
+    version is older, age in days) instead of an upgrade candidate. The
+    doctor uses this to nudge users who are >30 days behind the latest
+    release.
+
+    Returns ``None`` for any soft failure: network error, missing or
+    malformed ``published_at``, missing tag. The doctor renders these as
+    "could not check for updates" rather than failing the run. We
+    deliberately do NOT raise — this is a courtesy check, not a gate.
+    """
+    try:
+        response = httpx.get(
+            _RELEASES_LATEST_URL,
+            timeout=_HTTP_TIMEOUT,
+            headers={"Accept": "application/vnd.github+json"},
+        )
+        response.raise_for_status()
+        payload = response.json()
+    except Exception:
+        # Doctor must never crash on a soft network check — catch broadly
+        # so transport errors, JSON decode failures, and unmocked-endpoint
+        # AssertionErrors in tests all render as "could not check for
+        # updates" instead of propagating.
+        return None
+
+    tag = payload.get("tag_name") or ""
+    if not tag:
+        return None
+
+    latest = _parse_version(tag)
+    current = _parse_version(_running_version())
+    behind = bool(latest) and latest > current
+
+    published_raw = payload.get("published_at")
+    if not isinstance(published_raw, str) or not published_raw:
+        return None
+    try:
+        # GitHub returns RFC 3339 with a trailing "Z"; normalize for fromisoformat.
+        published_at = datetime.fromisoformat(published_raw.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    if published_at.tzinfo is None:
+        published_at = published_at.replace(tzinfo=timezone.utc)
+
+    reference = now if now is not None else datetime.now(timezone.utc)
+    if reference.tzinfo is None:
+        reference = reference.replace(tzinfo=timezone.utc)
+    days_old = max(0, (reference - published_at).days)
+
+    return ReleaseStaleness(
+        latest_version=tag.lstrip("vV"),
+        behind=behind,
+        days_old=days_old,
+        published_at=published_at,
     )
 
 
