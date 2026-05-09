@@ -21,4 +21,4 @@ def list_users(
     token: str | None = typer.Option(None, envvar="WEALTHBOX_TOKEN", hidden=True),
     fmt: OutputFormat = typer.Option(OutputFormat.JSON, "--format"),
 ) -> None:
-    output_result(run_client(token, lambda c: c.list_users()), fmt, fields=None if verbose else _DEFAULT_FIELDS)
+    output_result(run_client(token, lambda c: c.list_all_users()), fmt, fields=None if verbose else _DEFAULT_FIELDS)
