@@ -51,9 +51,13 @@ def export_firm(
 
 @app.command("import")
 def import_firm(
-    path: Path = typer.Argument(
+    source: str = typer.Argument(
         ...,
-        help="Path to a firm-archive zip produced by `wbox firm export`.",
+        metavar="PATH_OR_URL",
+        help=(
+            "Local path or HTTP(S) URL of a firm-archive zip produced by "
+            "`wbox firm export`."
+        ),
     ),
     yes: bool = typer.Option(
         False,
@@ -75,6 +79,10 @@ def import_firm(
 ) -> None:
     """Import a firm-archive zip into the local firm directory.
 
+    ``PATH_OR_URL`` may be a local zip file produced by ``wbox firm export``
+    or an HTTP(S) URL serving the same archive — URLs are fetched once via
+    a single GET and then unpacked identically.
+
     The default mode is ``overwrite`` — every hand-edited policy file in the
     archive replaces its counterpart in the firm directory. ``merge`` skips
     files that already exist locally and writes only new ones.
@@ -84,8 +92,15 @@ def import_firm(
     ``custom-fields.md``, ``users.md``) are left untouched in every mode.
     """
     _ensure_firm_migrated()
+    # Treat http(s) strings as URLs so unpack() fetches over the network;
+    # everything else is a local path.
+    archive_source: str | Path = (
+        source
+        if source.startswith("https://") or source.startswith("http://")
+        else Path(source)
+    )
     try:
-        plan = _unpack(path)
+        plan = _unpack(archive_source)
     except ArchiveError as exc:
         raise typer.BadParameter(str(exc)) from exc
 
@@ -104,7 +119,7 @@ def import_firm(
         )
 
     try:
-        result = _apply(plan, dest, mode, source=str(path))
+        result = _apply(plan, dest, mode, source=str(archive_source))
     except ArchiveError as exc:
         raise typer.BadParameter(str(exc)) from exc
     typer.echo(f"Wrote {len(result.written)} file(s) to {dest}.", err=True)

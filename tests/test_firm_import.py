@@ -13,7 +13,9 @@ import zipfile
 from datetime import datetime, timezone
 from pathlib import Path
 
+import httpx
 import pytest
+import respx
 
 from wealthbox_tools.cli.main import app
 from wealthbox_tools.firm.archive import (
@@ -779,3 +781,126 @@ def test_firm_import_cli_abort_on_conflict_mode_aborts_cleanly(
     # And the non-conflicting files were not written either.
     for name in ("tasks.md", "notes.md", "events.md", "opportunities.md", "projects.md", "workflows.md"):
         assert not (fd / name).exists()
+
+
+# --------------------------------------------------------------------------- #
+# URL fetch (#45)                                                             #
+# --------------------------------------------------------------------------- #
+
+
+@respx.mock
+def test_unpack_fetches_url_with_single_get(tmp_path: Path) -> None:
+    """``unpack("https://...")`` performs a single GET and operates on the
+    returned bytes identically to the local-path code path.
+
+    The URL branch is byte-for-byte equivalent to passing the same archive
+    as a local file: same manifest, same hand-edited bodies, same plan.
+    """
+    src = tmp_path / "src"
+    bodies = _populated_firm_dir(src)
+    blob = pack(src, now=_PINNED_NOW)
+
+    url = "https://example.com/firm.zip"
+    route = respx.get(url).mock(
+        return_value=httpx.Response(200, content=blob)
+    )
+
+    plan = unpack(url)
+
+    # Exactly one GET, no retries, no probes.
+    assert route.call_count == 1
+    # Manifest and files match the local-path round trip.
+    assert plan.manifest["format_version"] == 1
+    assert plan.manifest["exported_at"] == "2026-01-01T00:00:00+00:00"
+    for name, expected in bodies.items():
+        assert plan.files[name].decode("utf-8") == expected
+
+
+@respx.mock
+def test_unpack_url_then_apply_round_trip(tmp_path: Path) -> None:
+    """End-to-end via URL: unpack from URL, then apply to a fresh firm dir
+    and assert every hand-edited body lands. Confirms the URL bytes path
+    feeds the same downstream apply machinery as the local-path branch."""
+    src = tmp_path / "src"
+    bodies = _populated_firm_dir(src)
+    blob = pack(src, now=_PINNED_NOW)
+
+    url = "https://example.com/firm.zip"
+    respx.get(url).mock(return_value=httpx.Response(200, content=blob))
+
+    plan = unpack(url)
+
+    dst = tmp_path / "dst"
+    dst.mkdir()
+    apply(plan, dst, ApplyMode.OVERWRITE)
+
+    for name, expected in bodies.items():
+        assert (dst / name).read_text(encoding="utf-8") == expected
+
+
+@respx.mock
+def test_unpack_url_non_2xx_raises_archive_error() -> None:
+    """A non-2xx HTTP response surfaces as :class:`ArchiveError` with a
+    clean message — the CLI's ``except ArchiveError`` branch must reach
+    the user without a stack trace."""
+    url = "https://example.com/firm.zip"
+    respx.get(url).mock(return_value=httpx.Response(404, text="not found"))
+
+    with pytest.raises(ArchiveError) as excinfo:
+        unpack(url)
+
+    msg = str(excinfo.value)
+    assert "404" in msg
+    assert url in msg
+
+
+@respx.mock
+def test_unpack_url_network_error_raises_archive_error() -> None:
+    """A transport-level failure (DNS, connection refused, etc.) is wrapped
+    as ArchiveError so the CLI surfaces it cleanly."""
+    url = "https://example.com/firm.zip"
+    respx.get(url).mock(side_effect=httpx.ConnectError("boom"))
+
+    with pytest.raises(ArchiveError) as excinfo:
+        unpack(url)
+
+    assert url in str(excinfo.value)
+
+
+@respx.mock
+def test_firm_import_cli_accepts_url(runner, tmp_path: Path) -> None:
+    """`wbox firm import <url> --yes` fetches the archive and writes the
+    firm directory just like the local-path form."""
+    from wealthbox_tools.cli._skill_paths import firm_dir
+
+    src = tmp_path / "src"
+    bodies = _populated_firm_dir(src)
+    blob = pack(src, now=_PINNED_NOW)
+
+    url = "https://example.com/firm.zip"
+    respx.get(url).mock(return_value=httpx.Response(200, content=blob))
+
+    fd = firm_dir()
+    fd.mkdir(parents=True, exist_ok=True)
+
+    result = runner.invoke(app, ["firm", "import", url, "--yes"])
+
+    assert result.exit_code == 0, (result.stdout or "") + (result.stderr or "")
+    for name, expected in bodies.items():
+        assert (fd / name).read_text(encoding="utf-8") == expected
+
+
+@respx.mock
+def test_firm_import_cli_url_non_2xx_surfaces_clean_error(
+    runner, tmp_path: Path
+) -> None:
+    """A non-2xx URL fetch shows the user a clean error, not a stack trace."""
+    url = "https://example.com/missing.zip"
+    respx.get(url).mock(return_value=httpx.Response(503, text="boom"))
+
+    result = runner.invoke(app, ["firm", "import", url, "--yes"])
+
+    assert result.exit_code != 0
+    combined = (result.stdout or "") + (result.stderr or "")
+    assert "Traceback" not in combined
+    assert "503" in combined
