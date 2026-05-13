@@ -4,6 +4,37 @@ All notable changes to `wealthbox-cli` are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.2.0] - 2026-05-13
+
+Small feature + correctness release. Disambiguates the two IDs returned by
+`wbox me`, fixes a silent truncation in `wbox users list` on large firms, and
+clears Node 20 deprecation warnings from CI ahead of GitHub's June 2026 cutoff.
+
+### Added
+- `wbox me user-id` — prints `current_user.id` (the workspace user ID accepted
+  by `--assigned-to`) as a bare integer, for composing with command
+  substitution: `wbox tasks list --assigned-to "$(wbox me user-id)"` (#90, #91).
+- `wbox me --format table` now labels the two IDs as `login_id` and
+  `user_id (--assigned-to)` so they aren't confusable at a glance. The JSON
+  shape is unchanged — no breaking change for existing scripts (#91).
+- Skill docs (`lookups.md`, `tasks.md`, `contacts.md`) flag the two-ID trap
+  inline near `--assigned-to`.
+
+### Fixed
+- `wbox users list` now paginates across all pages. Previously, firms with
+  more than 25 users silently saw a truncated list — the CLI exposes no
+  `--page` flag, so there was no manual workaround.
+- mkdocs docs deploy was failing on every main push because `docs/index.md`
+  linked to a missing `changelog.md`. `CHANGELOG.md` is now staged into
+  `docs/` at build time and listed in nav (#92).
+
+### Changed
+- CI actions bumped to Node 24 runtimes ahead of GitHub's June 2 2026 cutoff:
+  `actions/checkout` v4→v6, `astral-sh/setup-uv` v6→v8.1.0 (pinned exact —
+  setup-uv v8+ no longer publishes rolling major tags as a supply-chain
+  mitigation), `actions/setup-python` v5→v6, `actions/deploy-pages` v4→v5,
+  `actions/upload-pages-artifact` v3→v5 (#92, #93).
+
 ## [2.1.0] - 2026-05-09
 
 Repository simplification release. Drops a runtime dep, retires `.env` support,
