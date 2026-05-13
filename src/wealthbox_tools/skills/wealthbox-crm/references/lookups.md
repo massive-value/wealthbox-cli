@@ -6,9 +6,34 @@ Read-only resources: categories, users, activity feed, and current user info.
 
 ```bash
 wbox me [--format json|table|csv|tsv]
+wbox me user-id
 ```
 
 Returns info about the authenticated user. Good for verifying token setup and getting your user ID.
+
+### Two IDs — don't confuse them
+
+`wbox me` returns two distinct ID fields, and they are NOT interchangeable:
+
+| JSON field | What it is | Use for `--assigned-to`? |
+|------------|------------|--------------------------|
+| top-level `id` | Login profile ID (one per Wealthbox account, across workspaces) | **No** |
+| `current_user.id` (also `users[].id` for the active workspace) | Workspace user ID | **Yes** |
+
+Filters like `--assigned-to`, `--assigned-to-team`, and `--created-by` expect the workspace user ID. Passing the top-level `id` returns zero results silently — the API just ignores the filter.
+
+The safe ways to get your workspace user ID:
+
+```bash
+wbox me user-id              # prints just the integer, ready for shell substitution
+wbox me --format table       # labels the rows `login_id` vs `user_id (--assigned-to)`
+```
+
+Composing it:
+
+```bash
+wbox tasks list --assigned-to "$(wbox me user-id)"
+```
 
 ## Users
 
@@ -64,7 +89,10 @@ The contact-related types are also reachable as aliases under `wbox contacts cat
 ## Examples
 
 ```bash
-# Get your user ID
+# Get your workspace user ID (for --assigned-to)
+wbox me user-id
+
+# Or see both IDs side by side
 wbox me --format table
 
 # Find a user ID for assignment

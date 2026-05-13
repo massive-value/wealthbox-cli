@@ -20,7 +20,7 @@ wbox contacts list [OPTIONS]
 | `--household-title` | STR | Filter by household title |
 | `--tags` | STR | Comma-separated tag names |
 | `--order` | asc\|desc | Sort order |
-| `--assigned-to` | INT | User ID (fetches all pages, client-side filter) |
+| `--assigned-to` | INT | User ID (fetches all pages, client-side filter). Get yours via `wbox me user-id`, **not** `wbox me \| jq .id` (that's the login profile, which silently returns zero results). |
 | `--updated-since` | ISO datetime | Modified after this datetime |
 | `--updated-before` | ISO datetime | Modified before this datetime |
 | `--deleted-since` | ISO datetime | Deleted after this datetime |
