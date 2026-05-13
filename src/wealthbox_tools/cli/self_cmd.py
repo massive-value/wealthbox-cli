@@ -37,8 +37,29 @@ def _default_install_root() -> Path:
     return Path(sys.executable).resolve().parent
 
 
+_NON_BUNDLE_UPGRADE_HINTS = {
+    "uv-tool": "uv tool upgrade wealthbox-cli",
+    "pipx": "pipx upgrade wealthbox-cli",
+    "pip": "pip install --upgrade wealthbox-cli",
+}
+
+
 @app.command("upgrade", help="Upgrade the `wbox` CLI to the latest GitHub release.")
 def upgrade_cmd() -> None:
+    kind = self_upgrade._install_kind()
+    if kind != "bundle":
+        # The frozen-bundle swap would either silently no-op (uv copies the
+        # shim to ~/.local/bin so replacing the venv-side shim doesn't change
+        # what PATH resolves) or wedge the venv. Refuse before downloading.
+        hint = _NON_BUNDLE_UPGRADE_HINTS.get(kind, _NON_BUNDLE_UPGRADE_HINTS["pip"])
+        typer.echo(
+            "wbox self upgrade only swaps the standalone binary from "
+            "install.ps1.",
+            err=True,
+        )
+        typer.echo(f"This wbox was installed via {kind} — run: {hint}", err=True)
+        raise typer.Exit(code=1)
+
     candidate = self_upgrade.check()
     if candidate is None:
         typer.echo("Already on the latest version.")

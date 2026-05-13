@@ -806,6 +806,7 @@ def test_upgrade_cmd_windows_says_scheduled(runner, monkeypatch, tmp_path) -> No
     would be misleading — and possibly false if the helper later fails.
     """
     monkeypatch.setattr(su, "_is_windows", lambda: True)
+    monkeypatch.setattr(su, "_install_kind", lambda: "bundle")
     monkeypatch.setattr(
         su,
         "check",
@@ -835,6 +836,7 @@ def test_upgrade_cmd_windows_says_scheduled(runner, monkeypatch, tmp_path) -> No
 def test_upgrade_cmd_unix_says_installed(runner, monkeypatch, tmp_path) -> None:
     """On Unix, the existing 'Installed v9.9.9' wording is preserved (regression)."""
     monkeypatch.setattr(su, "_is_windows", lambda: False)
+    monkeypatch.setattr(su, "_install_kind", lambda: "bundle")
     monkeypatch.setattr(
         su,
         "check",
@@ -873,8 +875,9 @@ def test_main_callback_silent_when_no_status_file(runner, tmp_path, monkeypatch)
 
 
 @respx.mock
-def test_self_upgrade_cli_no_op_when_up_to_date(runner) -> None:
+def test_self_upgrade_cli_no_op_when_up_to_date(runner, monkeypatch) -> None:
     """When already on latest, `wbox self upgrade` exits 0 without applying."""
+    monkeypatch.setattr(su, "_install_kind", lambda: "bundle")
     tag = f"v{__version__}"
     respx.get(_RELEASES_URL).mock(
         return_value=httpx.Response(
@@ -891,6 +894,76 @@ def test_self_upgrade_cli_no_op_when_up_to_date(runner) -> None:
 
     result = runner.invoke(app, ["self", "upgrade"])
     assert result.exit_code == 0, result.stdout
+
+
+# ---------------------------------------------------------------------------
+# Install-kind detection + non-bundle gate
+# ---------------------------------------------------------------------------
+
+
+def test_install_kind_returns_bundle_when_frozen(monkeypatch) -> None:
+    """A PyInstaller-frozen interpreter (sys.frozen set) -> 'bundle'."""
+    monkeypatch.setattr(sys, "frozen", True, raising=False)
+    assert su._install_kind() == "bundle"
+
+
+def test_install_kind_detects_uv_tool(monkeypatch) -> None:
+    """sys.executable under a uv/tools/ venv -> 'uv-tool'."""
+    monkeypatch.delattr(sys, "frozen", raising=False)
+    fake_exe = Path("/home/u/.local/share/uv/tools/wealthbox-cli/bin/python")
+    monkeypatch.setattr(sys, "executable", str(fake_exe))
+    assert su._install_kind() == "uv-tool"
+
+
+def test_install_kind_detects_pipx(monkeypatch) -> None:
+    """sys.executable under a pipx/ venv -> 'pipx'."""
+    monkeypatch.delattr(sys, "frozen", raising=False)
+    fake_exe = Path("/home/u/.local/pipx/venvs/wealthbox-cli/bin/python")
+    monkeypatch.setattr(sys, "executable", str(fake_exe))
+    assert su._install_kind() == "pipx"
+
+
+def test_install_kind_falls_back_to_pip(monkeypatch) -> None:
+    """Plain venv path (no uv/tools, no pipx) -> 'pip'."""
+    monkeypatch.delattr(sys, "frozen", raising=False)
+    fake_exe = Path("/home/u/projects/wbox/.venv/bin/python")
+    monkeypatch.setattr(sys, "executable", str(fake_exe))
+    assert su._install_kind() == "pip"
+
+
+@pytest.mark.parametrize(
+    ("kind", "hint"),
+    [
+        ("uv-tool", "uv tool upgrade wealthbox-cli"),
+        ("pipx", "pipx upgrade wealthbox-cli"),
+        ("pip", "pip install --upgrade wealthbox-cli"),
+    ],
+)
+def test_upgrade_cmd_refuses_non_bundle_install(
+    runner, monkeypatch, kind: str, hint: str
+) -> None:
+    """Non-bundle installs short-circuit BEFORE check() / apply() and name the right tool.
+
+    The frozen-bundle swap would silently no-op under uv/pipx (PATH points
+    at a copy elsewhere) — refusing with the correct installer command is
+    the only honest answer.
+    """
+    monkeypatch.setattr(su, "_install_kind", lambda: kind)
+
+    def _fail_check() -> None:
+        pytest.fail("check() must not run on non-bundle installs")
+
+    def _fail_apply(_candidate, install_root):  # noqa: ARG001
+        pytest.fail("apply() must not run on non-bundle installs")
+
+    monkeypatch.setattr(su, "check", _fail_check)
+    monkeypatch.setattr(su, "apply", _fail_apply)
+
+    result = runner.invoke(app, ["self", "upgrade"])
+
+    assert result.exit_code == 1, result.stdout
+    assert hint in result.stderr
+    assert kind in result.stderr
 
 
 # ---------------------------------------------------------------------------

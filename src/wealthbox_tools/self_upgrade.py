@@ -51,6 +51,7 @@ __all__ = [
     "check_release_staleness",
     "apply",
     "_cleanup_stale_backups",
+    "_install_kind",
 ]
 
 _RELEASES_LATEST_URL = (
@@ -137,6 +138,35 @@ def _asset_name_for_platform() -> str:
 def _running_version() -> str:
     """Version of the running CLI. Indirected so tests can pin a value."""
     return __version__
+
+
+def _install_kind() -> str:
+    """Classify how the running ``wbox`` was installed.
+
+    The :func:`apply` swap is only correct for the standalone PyInstaller
+    bundle that ``install.ps1`` ships. Under uv / pipx / pip the install is
+    a tiny console-script shim around a venv; replacing it with a frozen
+    binary would either silently no-op (PATH points at a copy uv made
+    elsewhere, e.g. ``~/.local/bin/wbox.exe``) or wedge the venv on the
+    next ``uv tool sync``. The gate in :mod:`cli.self_cmd` consults this
+    classifier to refuse with a clear "use <installer> instead" message.
+
+    Returns one of:
+
+    - ``"bundle"`` — frozen PyInstaller EXE (``sys.frozen`` is set).
+    - ``"uv-tool"`` — ``sys.executable`` lives under a ``uv/tools/`` venv.
+    - ``"pipx"`` — ``sys.executable`` lives under a ``pipx/`` venv.
+    - ``"pip"`` — anything else (ordinary pip/venv install).
+    """
+    if getattr(sys, "frozen", False):
+        return "bundle"
+    parts = [p.lower() for p in Path(sys.executable).resolve().parts]
+    for i in range(len(parts) - 1):
+        if parts[i] == "uv" and parts[i + 1] == "tools":
+            return "uv-tool"
+    if "pipx" in parts:
+        return "pipx"
+    return "pip"
 
 
 # ---------------------------------------------------------------------------

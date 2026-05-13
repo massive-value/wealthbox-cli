@@ -4,6 +4,22 @@ All notable changes to `wealthbox-cli` are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.2.1] - 2026-05-13
+
+Bug-fix release. `wbox self upgrade` was silently no-op'ing for users who
+installed `wbox` via `uv tool install` or `pipx`: it computed the install root
+from `sys.executable` (the venv's `python.exe`) and tried to swap the
+console-script shim there, but `~/.local/bin/wbox.exe` (or pipx's equivalent)
+is a separate copy uv/pipx made — replacing the venv-side shim never changed
+what `PATH` resolved.
+
+### Fixed
+- `wbox self upgrade` now detects the install kind (`bundle` / `uv-tool` /
+  `pipx` / `pip`) up front. Non-bundle installs exit `1` with the correct
+  follow-up command (`uv tool upgrade wealthbox-cli`, `pipx upgrade
+  wealthbox-cli`, or `pip install --upgrade wealthbox-cli`) instead of
+  scheduling a swap that would never take effect on `PATH`.
+
 ## [2.2.0] - 2026-05-13
 
 Small feature + correctness release. Disambiguates the two IDs returned by
