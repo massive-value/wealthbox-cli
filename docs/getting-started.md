@@ -8,9 +8,11 @@ This guide walks you through installing **wealthbox-cli** and configuring it to 
 
 ### One-line installer (no Python required)
 
-If you don't have Python installed, the bootstrap script handles everything: it installs [uv](https://github.com/astral-sh/uv) (which provisions Python automatically), installs `wbox`, prompts for your API token, and offers to install the AI agent skill.
+If you don't have Python installed, the bootstrap script handles everything: it downloads a prebuilt `wbox`, places it on your PATH, prompts for your API token, and offers to install the AI agent skill.
 
 === "macOS / Linux"
+
+    Installs [uv](https://github.com/astral-sh/uv) (which provisions Python automatically) and uses it to put `wbox` on your PATH.
 
     ```bash
     curl -LsSf https://raw.githubusercontent.com/massive-value/wealthbox-cli/main/scripts/install.sh | bash
@@ -18,9 +20,13 @@ If you don't have Python installed, the bootstrap script handles everything: it 
 
 === "Windows (PowerShell)"
 
+    Downloads a standalone PyInstaller-bundled `wbox.exe` (no Python, no uv) to `%LOCALAPPDATA%\Programs\wbox\`. Pass `-SkipSkills` (via `iwr -OutFile install.ps1; .\install.ps1 -SkipSkills`) to skip the AI agent skill.
+
     ```powershell
     irm https://raw.githubusercontent.com/massive-value/wealthbox-cli/main/scripts/install.ps1 | iex
     ```
+
+Either install supports `wbox self upgrade` for future updates. If you instead install via pip / pipx / uv tool (below), use the corresponding package-manager upgrade command — `wbox self upgrade` will refuse with the right pointer.
 
 ### From PyPI (recommended for Python users)
 

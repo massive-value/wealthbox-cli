@@ -20,6 +20,13 @@ The installer:
 2. Installs the AI agent skill into [Claude Code](https://claude.ai/download) (and Codex, if you have it).
 3. Asks for your **Wealthbox API token**. *Where to find it:* in Wealthbox, click your initials in the top right → **Settings** → **API Access** → **Create Access Token**. Paste the token when prompted.
 
+Re-running is idempotent: it keeps your stored token, refreshes the skill template, and leaves PATH alone if already correct. To install just the binary without the AI agent skill, on Windows download install.ps1 and run with `-SkipSkills`:
+
+```powershell
+iwr https://raw.githubusercontent.com/massive-value/wealthbox-cli/main/scripts/install.ps1 -OutFile install.ps1
+.\install.ps1 -SkipSkills
+```
+
 That's it. Open Claude Code and try one of the prompts below.
 
 ------------------------------------------------------------------------
@@ -66,6 +73,19 @@ You stay in control: the agent shows you what it's about to do before it does it
 ## What gets installed, where
 
 The installer drops a single prebuilt `wbox` binary onto your PATH (`~/.local/bin/wbox` on Mac/Linux, `%LOCALAPPDATA%\Programs\wbox\wbox.exe` on Windows), then registers the AI agent skill with Claude Code (and Codex, if it's installed). Firm data lives at `~/.config/wbox/firm/` (Mac/Linux) or `%APPDATA%\wbox\firm\` (Windows) and survives reinstalls and upgrades. Run `wbox doctor` to see your install status anytime, and `wbox skills upgrade` to pull the latest skill template.
+
+### Upgrading
+
+The upgrade command depends on how you installed:
+
+| If you installed via... | Upgrade with |
+|---|---|
+| `install.sh` / `install.ps1` (the one-line installer above) | `wbox self upgrade` |
+| `pip install wealthbox-cli` | `pip install --upgrade wealthbox-cli` |
+| `pipx install wealthbox-cli` | `pipx upgrade wealthbox-cli` |
+| `uv tool install wealthbox-cli` | `uv tool upgrade wealthbox-cli` |
+
+`wbox self upgrade` only swaps the standalone bundle the one-line installer puts in place; on pip/pipx/uv installs it refuses with the correct follow-up command rather than half-replacing a venv-managed shim.
 
 ------------------------------------------------------------------------
 
@@ -138,6 +158,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) and [CLAUDE.md](CLAUDE.md) for the archit
 <summary><b>Troubleshooting</b></summary>
 
 - **401 Unauthorized** — token expired or wrong. Run `wbox config show` to see the masked token, `wbox config set-token` to update.
+- **`wbox self upgrade` says "run `uv tool upgrade …`" (or pipx / pip)** — expected. `wbox self upgrade` only swaps the standalone bundle the one-line installer drops in place. If you installed via pip / pipx / uv, follow the command the gate prints. See [Upgrading](#upgrading).
 - **Windows: "execution policy" error during install** — the installer offers to fix this for you. If you skipped it, run `Set-ExecutionPolicy RemoteSigned -Scope CurrentUser` and re-run the installer.
 - **Linux: command not found after install** — open a new terminal, or run `source ~/.local/bin/env` in your current shell.
 - **Date format errors** — Wealthbox needs ISO 8601: `"2026-05-01T10:00:00-07:00"` for datetimes, `"YYYY-MM-DD"` for date-only fields.
