@@ -335,13 +335,30 @@ function Step-InstallSkills {
 function Step-PromptForToken {
     Write-Step 'Configuring API token...'
     if ($DryRun) {
-        Write-DryRun "would run $script:InstalledBinary config set-token"
+        Write-DryRun "would skip if token already configured; else run $script:InstalledBinary config set-token"
         return
     }
     if (-not (Test-Path -LiteralPath $script:InstalledBinary)) {
         Write-Host '    Skipped: wbox.exe is not on disk.' -ForegroundColor Yellow
         return
     }
+
+    # The installer documents itself as idempotent on re-run ("reuses any
+    # previously stored token"), so probe the two non-flag sources the CLI
+    # honours — WEALTHBOX_TOKEN env and the config file — and skip the
+    # interactive prompt when either is present. `wbox config set-token`
+    # remains the way to rotate.
+    $configPath = Join-Path $env:APPDATA 'wbox\config.json'
+    if ($env:WEALTHBOX_TOKEN) {
+        Write-Info 'WEALTHBOX_TOKEN env var is set; reusing.'
+        return
+    }
+    if (Test-Path -LiteralPath $configPath) {
+        Write-Info "Existing token at $configPath; reusing."
+        Write-Info 'Run `wbox config set-token` later to rotate.'
+        return
+    }
+
     Write-Info 'Get your Wealthbox API token at https://dev.wealthbox.com'
     Write-Info '(Settings -> API Access -> Access Tokens)'
     Write-Host ''
