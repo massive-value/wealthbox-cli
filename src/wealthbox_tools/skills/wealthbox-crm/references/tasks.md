@@ -13,7 +13,7 @@ wbox tasks list [OPTIONS]
 | `--contact` | INT | Filter by linked contact ID |
 | `--project` | INT | Filter by linked project ID |
 | `--opportunity` | INT | Filter by linked opportunity ID |
-| `--assigned-to` | INT | Filter by assigned user ID |
+| `--assigned-to` | INT | Filter by assigned user ID — get yours via `wbox me user-id`, **not** `wbox me \| jq .id` (that's the login profile, which silently returns zero results). |
 | `--assigned-to-team` | INT | Filter by assigned team ID |
 | `--created-by` | INT | Filter by creator user ID |
 | `--include-completed` | flag | Include completed tasks (default: outstanding only) |
