@@ -15,12 +15,14 @@
 # previously stored token / firm data.
 #
 # Usage:
-#   .\install.ps1            # full install
-#   .\install.ps1 -DryRun    # describe what would happen; no state changes
+#   .\install.ps1                # full install
+#   .\install.ps1 -DryRun        # describe what would happen; no state changes
+#   .\install.ps1 -SkipSkills    # install binary + token only; no AI agent skill
 
 [CmdletBinding()]
 param(
-    [switch]$DryRun
+    [switch]$DryRun,
+    [switch]$SkipSkills
 )
 
 $ErrorActionPreference = 'Stop'
@@ -276,15 +278,47 @@ function Step-PlaceOnPath {
 # ---------------------------------------------------------------------------
 
 function Step-InstallSkills {
+    if ($SkipSkills) {
+        Write-Step 'Skipping AI agent skill (-SkipSkills).'
+        Write-Info 'Install later with `wbox skills install` if you change your mind.'
+        return
+    }
     Write-Step 'Installing AI agent skill...'
     if ($DryRun) {
-        Write-DryRun "would run $script:InstalledBinary skills install --no-bootstrap"
+        Write-DryRun "would detect existing skill installs and either run 'wbox skills upgrade' or 'wbox skills install --no-bootstrap'"
         return
     }
     if (-not (Test-Path -LiteralPath $script:InstalledBinary)) {
         Write-Host '    Skipped: wbox.exe is not on disk.' -ForegroundColor Yellow
         return
     }
+    # The script is documented as idempotent on re-run. If the skill is
+    # already installed for any agent platform, treat this as a template
+    # refresh (`wbox skills upgrade`) rather than a fresh install — the
+    # latter would error out with "already installed" and abort the
+    # whole installer. The probe targets the canonical platform skill
+    # dirs so we don't have to shell out twice just to introspect.
+    $platformSkillDirs = @(
+        (Join-Path $env:USERPROFILE '.claude\skills\wealthbox-crm'),
+        (Join-Path $env:USERPROFILE '.codex\skills\wealthbox-crm')
+    )
+    $existingSkill = $false
+    foreach ($candidate in $platformSkillDirs) {
+        if (Test-Path -LiteralPath $candidate) {
+            $existingSkill = $true
+            break
+        }
+    }
+
+    if ($existingSkill) {
+        Write-Info 'Existing skill detected; refreshing template via `wbox skills upgrade`.'
+        & $script:InstalledBinary skills upgrade
+        if ($LASTEXITCODE -ne 0) {
+            throw "wbox skills upgrade exited with code $LASTEXITCODE."
+        }
+        return
+    }
+
     # --no-bootstrap so the install does not prompt to firm-bootstrap
     # before we have a token. Step 8 (Step-OfferFirmBootstrap) handles
     # the bootstrap explicitly, after the token is configured.
