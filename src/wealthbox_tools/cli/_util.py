@@ -451,6 +451,80 @@ async def resolve_category_id(
     raise typer.BadParameter(f"No {label} configured in this workspace.")
 
 
+def _match_contact_role(roles: list[dict[str, Any]], token: str) -> dict[str, Any]:
+    """Find a contact role by numeric id or case-insensitive name."""
+    if token.isdigit():
+        rid = int(token)
+        for r in roles:
+            if int(r.get("id", 0)) == rid:
+                return r
+        raise typer.BadParameter(f"No contact role with id {rid} in this workspace.")
+    target = token.casefold()
+    for r in roles:
+        if str(r.get("name", "")).casefold() == target:
+            return r
+    available = sorted(str(r["name"]) for r in roles if r.get("name"))
+    raise typer.BadParameter(
+        f"Unknown contact role '{token}'. Available: {', '.join(available) or '(none configured)'}"
+    )
+
+
+def _role_option_user(option: dict[str, Any]) -> dict[str, Any]:
+    return option.get("assigned_to") or {}
+
+
+def _match_role_option(role: dict[str, Any], token: str) -> int:
+    """Resolve a user (numeric id, exact name, or unique substring) to a role-option id."""
+    options = role.get("available_options", []) or []
+    role_name = role.get("name", "role")
+    if token.isdigit():
+        uid = int(token)
+        for opt in options:
+            if int(_role_option_user(opt).get("id", 0)) == uid:
+                return int(opt["id"])
+        raise typer.BadParameter(f"No user with id {uid} is available for role '{role_name}'.")
+    target = token.casefold()
+    exact = [o for o in options if str(_role_option_user(o).get("name", "")).casefold() == target]
+    matches = exact or [
+        o for o in options if target in str(_role_option_user(o).get("name", "")).casefold()
+    ]
+    if len(matches) == 1:
+        return int(matches[0]["id"])
+    if not matches:
+        names = sorted(str(_role_option_user(o).get("name", "")) for o in options)
+        raise typer.BadParameter(
+            f"No user matching '{token}' for role '{role_name}'. Available: {', '.join(names)}"
+        )
+    cand = sorted(str(_role_option_user(o).get("name", "")) for o in matches)
+    raise typer.BadParameter(
+        f"'{token}' is ambiguous for role '{role_name}': matches {', '.join(cand)}. Be more specific."
+    )
+
+
+async def resolve_contact_roles(client: WealthboxClient, specs: list[str]) -> list[dict[str, int]]:
+    """Resolve ``Role:User`` specs to ``[{"id": role_id, "value": option_id}]`` entries.
+
+    Role may be a contact-role name (case-insensitive) or numeric id. User may be a
+    user name (case-insensitive; exact preferred, else unique substring) or numeric
+    user id. Both are resolved against ``wbox contacts categories contact-roles`` —
+    the option id (``available_options[].id``), not the user id, is the value the
+    Wealthbox API stores.
+    """
+    data = await client.list_all_categories(CategoryType.CONTACT_ROLES)
+    roles = data.get("contact_roles", []) or []
+    resolved: list[dict[str, int]] = []
+    for spec in specs:
+        role_token, sep, user_token = spec.partition(":")
+        role_token, user_token = role_token.strip(), user_token.strip()
+        if not sep or not role_token or not user_token:
+            raise typer.BadParameter(
+                f"--advisor-role expects 'Role:User' (e.g. 'Associate Advisor:Greg Hyde'); got '{spec}'."
+            )
+        role = _match_contact_role(roles, role_token)
+        resolved.append({"id": int(role["id"]), "value": _match_role_option(role, user_token)})
+    return resolved
+
+
 def parse_more_fields(more_fields: str, reserved: set[str]) -> dict[str, Any]:
     """Parse --more-fields JSON and validate against reserved keys.
 

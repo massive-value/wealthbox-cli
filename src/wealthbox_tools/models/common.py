@@ -105,8 +105,16 @@ class StreetAddress(WealthboxModel):
 
 
 class ContactRoleAssignment(WealthboxModel):
-    id: int | None = Field(default=None, ge=1)
-    type: str | None = None
+    """A contact-role assignment on a contact's write payload.
+
+    ``id`` is the contact-role id (e.g. "Associate Advisor") and ``value`` is
+    the *role-option* id that maps to a specific user — NOT the user's id.
+    Resolve both from ``wbox contacts categories contact-roles``, whose
+    ``available_options[].id`` is the value to use here.
+    """
+
+    id: int = Field(ge=1, description="Contact-role id (from contacts categories contact-roles)")
+    value: int = Field(ge=1, description="Role-option id mapping to a user (available_options[].id)")
 
 
 class LinkedToRef(WealthboxModel):
