@@ -70,6 +70,7 @@ wbox contacts add person [OPTIONS]
 | `--phone` | STR | Phone number |
 | `--phone-type` | STR | Work, Mobile, etc. |
 | `--tags` | STR | Comma-separated tag names (e.g. "VIP,Q1-Outreach"). New tags are auto-created. |
+| `--advisor-role` | STR | Assign a contact role (repeatable): `"Role:User"`, e.g. `"Associate Advisor:Greg Hyde"`. See "Contact Roles" below. |
 | `--more-fields` | JSON | Additional fields as JSON object |
 | `--format` | json\|table\|csv\|tsv | Output format |
 
@@ -77,7 +78,7 @@ wbox contacts add person [OPTIONS]
 ```bash
 wbox contacts add household --name <NAME> [OPTIONS]
 ```
-`--name` is required. Supports: `--contact-type`, `--contact-source`, `--active/--inactive`, `--assigned-to`, `--email`, `--email-type`, `--tags`, `--more-fields`, `--format`.
+`--name` is required. Supports: `--contact-type`, `--contact-source`, `--active/--inactive`, `--assigned-to`, `--email`, `--email-type`, `--tags`, `--advisor-role`, `--more-fields`, `--format`.
 
 ### Organization
 ```bash
@@ -112,6 +113,7 @@ Only pass the fields you want to change:
 | `--active` / `--inactive` | flag | Active status |
 | `--assigned-to` | INT | Reassign to user ID |
 | `--tags` | STR | Comma-separated tag names. Replaces all tags — include existing ones to keep. |
+| `--advisor-role` | STR | Assign a contact role (repeatable): `"Role:User"`. See "Contact Roles" below. Mutually exclusive with a `contact_roles` block in `--json`. |
 | `--json` | STR | Full JSON for nested/complex fields |
 | `--format` | json\|table\|csv\|tsv | Output format |
 
@@ -136,6 +138,51 @@ wbox contacts categories website-types
 wbox contacts categories contact-roles
 ```
 
+## Contact Roles (advisor assignments)
+
+Contact roles attach a user to a contact in a named role — e.g. **Associate
+Advisor** ("Second Advisor") or **Partner**. This is how firm advisor
+assignments are stored; they are *separate* from `--assigned-to` (the primary
+owner).
+
+**Use the `--advisor-role` flag** (repeatable) on `add person|household|org|trust`
+and on `update`:
+
+```bash
+wbox contacts add person --first-name Mark --last-name Leone \
+  --advisor-role "Associate Advisor:Greg Hyde" \
+  --advisor-role "Partner:Jane Smith"
+
+wbox contacts update 12345 --advisor-role "Associate Advisor:Greg Hyde"
+```
+
+The spec is `Role:User`. The role is matched by name (case-insensitive) or
+numeric id; the user by name (exact, else unique substring) or numeric user id.
+The flag resolves both against `wbox contacts categories contact-roles` for you.
+
+**The underlying write shape** (if you ever build it by hand via `--more-fields`
+or `--json`) is `{"id": <role_id>, "value": <option_id>}`:
+
+```bash
+wbox contacts update 12345 --json '{"contact_roles": [{"id": 1338, "value": 4226}]}'
+```
+
+⚠️ `value` is the **role-option id**, NOT the user id. Each role exposes
+`available_options[].id`, one per assignable user — that option id is the value.
+Look it up with `wbox contacts categories contact-roles`:
+
+```jsonc
+{ "id": 1338, "name": "Associate Advisor",
+  "available_options": [
+    { "id": 4226, "assigned_to": { "id": 154372, "name": "Greg Hyde" } }
+  ] }
+// → to set Greg as Associate Advisor: {"id": 1338, "value": 4226}
+```
+
+Notes: roles can only be added/updated, not removed, via the API. You only need
+to include the roles you're changing. `--advisor-role` and a `contact_roles`
+block in `--more-fields`/`--json` are mutually exclusive.
+
 ## Generated Flag Reference
 
 The following section is auto-generated from the Typer command tree by
@@ -150,6 +197,7 @@ Create a Household contact.
 | Flag | Type | Default | Description |
 |------|------|---------|-------------|
 | `--active` / `--inactive` | `BOOLEAN` | `-` | Set contact status to Active or Inactive |
+| `--advisor-role` | `TEXT` | `-` | Assign a contact role as 'Role:User' (repeatable), e.g. 'Associate Advisor:Greg Hyde'. User may be a name or numeric user id. Resolved via: wbox contacts categories contact-roles |
 | `--assigned-to` | `INTEGER` | `-` | Assign to a user by ID |
 | `--contact-source` | `TEXT` | `-` |  |
 | `--contact-type` | `TEXT` | `-` | e.g. Client, Prospect |
@@ -174,6 +222,7 @@ Create an Organization contact.
 | Flag | Type | Default | Description |
 |------|------|---------|-------------|
 | `--active` / `--inactive` | `BOOLEAN` | `-` | Set contact status to Active or Inactive |
+| `--advisor-role` | `TEXT` | `-` | Assign a contact role as 'Role:User' (repeatable), e.g. 'Associate Advisor:Greg Hyde'. User may be a name or numeric user id. Resolved via: wbox contacts categories contact-roles |
 | `--assigned-to` | `INTEGER` | `-` | Assign to a user by ID |
 | `--contact-source` | `TEXT` | `-` |  |
 | `--contact-type` | `TEXT` | `-` | e.g. Client, Prospect |
@@ -200,6 +249,7 @@ Create a Person contact.
 | Flag | Type | Default | Description |
 |------|------|---------|-------------|
 | `--active` / `--inactive` | `BOOLEAN` | `-` | Set contact status to Active or Inactive |
+| `--advisor-role` | `TEXT` | `-` | Assign a contact role as 'Role:User' (repeatable), e.g. 'Associate Advisor:Greg Hyde'. User may be a name or numeric user id. Resolved via: wbox contacts categories contact-roles |
 | `--anniversary` | `TEXT` | `-` | Format: YYYY-MM-DD |
 | `--assigned-to` | `INTEGER` | `-` | Assign to a user by ID |
 | `--birth-date` | `TEXT` | `-` | Format: YYYY-MM-DD |
@@ -254,6 +304,7 @@ Create a Trust contact.
 | Flag | Type | Default | Description |
 |------|------|---------|-------------|
 | `--active` / `--inactive` | `BOOLEAN` | `-` | Set contact status to Active or Inactive |
+| `--advisor-role` | `TEXT` | `-` | Assign a contact role as 'Role:User' (repeatable), e.g. 'Associate Advisor:Greg Hyde'. User may be a name or numeric user id. Resolved via: wbox contacts categories contact-roles |
 | `--assigned-to` | `INTEGER` | `-` | Assign to a user by ID |
 | `--contact-source` | `TEXT` | `-` |  |
 | `--contact-type` | `TEXT` | `-` | e.g. Client, Prospect |
@@ -479,6 +530,7 @@ Update an existing contact. Pass only the fields you want to change.
 | Flag | Type | Default | Description |
 |------|------|---------|-------------|
 | `--active` / `--inactive` | `BOOLEAN` | `-` | Set contact status to Active or Inactive |
+| `--advisor-role` | `TEXT` | `-` | Assign a contact role as 'Role:User' (repeatable), e.g. 'Associate Advisor:Greg Hyde'. User may be a name or numeric user id. Resolved via: wbox contacts categories contact-roles |
 | `--assigned-to` | `INTEGER` | `-` | Reassign to a user by ID |
 | `--company-name` | `TEXT` | `-` |  |
 | `--contact-source` | `TEXT` | `-` |  |
@@ -512,7 +564,12 @@ wbox contacts add person --first-name Jane --last-name Doe --contact-type Client
 # Update job title
 wbox contacts update 12345 --job-title "CFO"
 
-# Create a household and add members (two-step)
+# Create a prospect with primary owner + advisor role in one call
+wbox contacts add person --first-name Jane --last-name Doe \
+  --contact-type Prospect --assigned-to 154372 \
+  --advisor-role "Associate Advisor:Greg Hyde"
+
+# Create a household and add members (two-step — add members SEQUENTIALLY)
 wbox contacts add household --name "The Smith Family"
 # note the returned ID, then:
 wbox households add-member <HOUSEHOLD_ID> <MEMBER_ID> --title Head

@@ -25,7 +25,14 @@ from ._util import (
     make_resource_app,
     output_result,
     parse_more_fields,
+    resolve_contact_roles,
     run_client,
+)
+
+_ADVISOR_ROLE_HELP = (
+    "Assign a contact role as 'Role:User' (repeatable), e.g. "
+    "'Associate Advisor:Greg Hyde'. User may be a name or numeric user id. "
+    "Resolved via: wbox contacts categories contact-roles"
 )
 
 app = make_resource_app(help="Manage Wealthbox contacts.")
@@ -180,6 +187,23 @@ def _build_contact_entry(value: str | None, kind: str | None) -> list[dict[str, 
     return [entry]
 
 
+def _finish_create(
+    payload: dict[str, Any], advisor_role: list[str] | None, token: str | None, fmt: OutputFormat
+) -> None:
+    """Resolve any --advisor-role specs in-session, build the model, create, and print."""
+    if advisor_role and "contact_roles" in payload:
+        raise typer.BadParameter(
+            "Set contact roles via --advisor-role OR contact_roles in --more-fields, not both."
+        )
+
+    async def _do(client: Any) -> Any:
+        if advisor_role:
+            payload["contact_roles"] = await resolve_contact_roles(client, advisor_role)
+        return await client.create_contact(ContactCreateInput(**payload))
+
+    output_result(run_client(token, _do), fmt)
+
+
 def _create_named_contact(
     record_type: RecordType,
     reserved: set[str],
@@ -194,6 +218,7 @@ def _create_named_contact(
     phone_type: str | None,
     tags: str | None,
     more_fields: str | None,
+    advisor_role: list[str] | None,
     token: str | None,
     fmt: OutputFormat,
 ) -> None:
@@ -216,8 +241,7 @@ def _create_named_contact(
         payload["tags"] = tag_list
     if more_fields:
         payload.update(parse_more_fields(more_fields, reserved))
-    input_model = ContactCreateInput(**payload)
-    output_result(run_client(token, lambda c: c.create_contact(input_model)), fmt)
+    _finish_create(payload, advisor_role, token, fmt)
 
 
 @add_app.command("person", help="Create a Person contact.")
@@ -253,6 +277,7 @@ def add_person(
     more_fields: str | None = typer.Option(
         None, "--more-fields", help="Extra fields as JSON object (merged with flags; cannot override explicit flags)"
     ),
+    advisor_role: list[str] | None = typer.Option(None, "--advisor-role", help=_ADVISOR_ROLE_HELP),
     token: str | None = typer.Option(None, envvar="WEALTHBOX_TOKEN", hidden=True),
     fmt: OutputFormat = typer.Option(OutputFormat.JSON, "--format"),
 ) -> None:
@@ -286,8 +311,7 @@ def add_person(
         payload["tags"] = tag_list
     if more_fields:
         payload.update(parse_more_fields(more_fields, _PERSON_RESERVED))
-    input_model = ContactCreateInput(**payload)
-    output_result(run_client(token, lambda c: c.create_contact(input_model)), fmt)
+    _finish_create(payload, advisor_role, token, fmt)
 
 
 @add_app.command("household", help="Create a Household contact.")
@@ -308,6 +332,7 @@ def add_household(
     more_fields: str | None = typer.Option(
         None, "--more-fields", help="Extra fields as JSON object (merged with flags; cannot override explicit flags)"
     ),
+    advisor_role: list[str] | None = typer.Option(None, "--advisor-role", help=_ADVISOR_ROLE_HELP),
     token: str | None = typer.Option(None, envvar="WEALTHBOX_TOKEN", hidden=True),
     fmt: OutputFormat = typer.Option(OutputFormat.JSON, "--format"),
 ) -> None:
@@ -327,8 +352,7 @@ def add_household(
         payload["tags"] = tag_list
     if more_fields:
         payload.update(parse_more_fields(more_fields, _HOUSEHOLD_RESERVED))
-    input_model = ContactCreateInput(**payload)
-    output_result(run_client(token, lambda c: c.create_contact(input_model)), fmt)
+    _finish_create(payload, advisor_role, token, fmt)
 
 
 @add_app.command("org", help="Create an Organization contact.")
@@ -353,12 +377,13 @@ def add_org(
     more_fields: str | None = typer.Option(
         None, "--more-fields", help="Extra fields as JSON object (merged with flags; cannot override explicit flags)"
     ),
+    advisor_role: list[str] | None = typer.Option(None, "--advisor-role", help=_ADVISOR_ROLE_HELP),
     token: str | None = typer.Option(None, envvar="WEALTHBOX_TOKEN", hidden=True),
     fmt: OutputFormat = typer.Option(OutputFormat.JSON, "--format"),
 ) -> None:
     _create_named_contact(
         RecordType.ORGANIZATION, _ORG_TRUST_RESERVED, name, contact_type, contact_source,
-        active, assigned_to, email, email_type, phone, phone_type, tags, more_fields, token, fmt,
+        active, assigned_to, email, email_type, phone, phone_type, tags, more_fields, advisor_role, token, fmt,
     )
 
 
@@ -384,12 +409,13 @@ def add_trust(
     more_fields: str | None = typer.Option(
         None, "--more-fields", help="Extra fields as JSON object (merged with flags; cannot override explicit flags)"
     ),
+    advisor_role: list[str] | None = typer.Option(None, "--advisor-role", help=_ADVISOR_ROLE_HELP),
     token: str | None = typer.Option(None, envvar="WEALTHBOX_TOKEN", hidden=True),
     fmt: OutputFormat = typer.Option(OutputFormat.JSON, "--format"),
 ) -> None:
     _create_named_contact(
         RecordType.TRUST, _ORG_TRUST_RESERVED, name, contact_type, contact_source,
-        active, assigned_to, email, email_type, phone, phone_type, tags, more_fields, token, fmt,
+        active, assigned_to, email, email_type, phone, phone_type, tags, more_fields, advisor_role, token, fmt,
     )
 
 
@@ -420,13 +446,19 @@ def update_contact(
             "include existing tags you wish to keep. New tags are auto-created."
         ),
     ),
+    advisor_role: list[str] | None = typer.Option(None, "--advisor-role", help=_ADVISOR_ROLE_HELP),
     token: str | None = typer.Option(None, envvar="WEALTHBOX_TOKEN", hidden=True),
     fmt: OutputFormat = typer.Option(OutputFormat.JSON, "--format"),
 ) -> None:
+    if advisor_role and json_data is not None:
+        raise typer.BadParameter(
+            "Set contact roles via --advisor-role OR contact_roles in --json, not both."
+        )
+
     if json_data is not None:
-        input_model = ContactUpdateInput(**json.loads(json_data))
+        payload: dict[str, Any] = json.loads(json_data)
     else:
-        payload: dict[str, Any] = {k: v for k, v in {
+        payload = {k: v for k, v in {
             "first_name": first_name,
             "middle_name": middle_name,
             "last_name": last_name,
@@ -441,9 +473,13 @@ def update_contact(
         tag_list = _parse_tags(tags)
         if tag_list is not None:
             payload["tags"] = tag_list
-        input_model = ContactUpdateInput(**payload)
 
-    output_result(run_client(token, lambda c: c.update_contact(contact_id, input_model)), fmt)
+    async def _do(client: Any) -> Any:
+        if advisor_role:
+            payload["contact_roles"] = await resolve_contact_roles(client, advisor_role)
+        return await client.update_contact(contact_id, ContactUpdateInput(**payload))
+
+    output_result(run_client(token, _do), fmt)
 
 
 @app.command("delete", help="Delete an existing contact.")

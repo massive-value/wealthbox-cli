@@ -195,3 +195,5 @@ The single-quoted heredoc (`<<'EOF'`) is the recommended default — it disables
 - **Relative due dates:** tasks accept `--frame today|tomorrow|this-week|next-week|this-month|next-month` instead of `--due-date` (mutually exclusive)
 - **Activity pagination:** uses `--cursor`, not `--page`
 - **Don't infer flag names:** read `references/<resource>.md` before invoking — flags like `--name` (not `--search`), `--frame` (not `--due-in`) are easy to guess wrong
+- **Advisor / contact roles:** assign them with `wbox contacts add|update ... --advisor-role "Role:User"` (e.g. `"Associate Advisor:Greg Hyde"`). This covers a firm's "Second Advisor" / Partner assignments. See `references/contacts.md` → "Contact Roles".
+- **Before falling back to raw API, exhaust the CLI:** if a firm-required field has no obvious flag, check `references/<resource>.md`, run `wbox <resource> --help` / `wbox <resource> <sub> --help`, and look for a `wbox <resource> categories <type>` lookup that supplies the needed ids. Reach for raw `curl`/API only after these come up empty — and if they do, that's a CLI gap worth filing as an issue.

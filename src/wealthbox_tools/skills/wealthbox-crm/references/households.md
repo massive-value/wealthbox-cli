@@ -2,6 +2,11 @@
 
 Manage membership of household contacts. Household contacts are created via `wbox contacts add household`.
 
+> ⚠️ **Add members one at a time, sequentially.** Each `add-member` call
+> rewrites the household's member list, so concurrent/parallel calls race and
+> the last write clobbers the earlier ones. Run them in series and wait for
+> each to return before issuing the next.
+
 ## Add Member
 
 ```bash
