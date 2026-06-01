@@ -8,8 +8,6 @@ from __future__ import annotations
 
 import typer
 
-from wealthbox_tools.internals.skill_ref_gen import regenerate_all
-
 app = typer.Typer(
     context_settings={"help_option_names": ["-h", "--help"]},
     help="Repo-maintenance commands (hidden from --help).",
@@ -24,6 +22,8 @@ app = typer.Typer(
     hidden=True,
 )
 def regen_skill_refs() -> None:
+    from wealthbox_tools.internals.skill_ref_gen import regenerate_all
+
     result = regenerate_all()
     for path in result.modified:
         typer.echo(f"updated {path}")
