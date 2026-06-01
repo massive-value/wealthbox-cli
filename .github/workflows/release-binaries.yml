@@ -82,6 +82,7 @@ jobs:
             --noconfirm \
             --collect-data wealthbox_tools \
             --copy-metadata wealthbox-cli \
+            --hidden-import click \
             scripts/wbox_entry.py
           test -f "dist/${{ matrix.binary }}"
           chmod +x "dist/${{ matrix.binary }}"
@@ -96,6 +97,7 @@ jobs:
             --noconfirm `
             --collect-data wealthbox_tools `
             --copy-metadata wealthbox-cli `
+            --hidden-import click `
             scripts/wbox_entry.py
           if (-not (Test-Path "dist/${{ matrix.binary }}")) {
             throw "expected dist/${{ matrix.binary }} to exist"
