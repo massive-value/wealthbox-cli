@@ -4,6 +4,58 @@ All notable changes to `wealthbox-cli` are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.3.1] - 2026-06-01
+
+Patch release fixing a startup crash introduced in 2.3.0. `wbox` crashed on
+launch in clean environments because `skill_ref_gen.py` imported `click` at
+module level — and `typer` 0.26+ dropped `click` as a dependency, so it was
+no longer guaranteed to be present. The fix defers the import inside the
+hidden `regen-skill-refs` dev command so normal CLI invocations never touch
+it. CI also gains `skip_existing` on the PyPI publish step to survive
+re-pushed tags without a spurious 400 error.
+
+### Fixed
+- `wbox` startup crash (`ModuleNotFoundError: click`) in environments where
+  `click` is not installed. The `skill_ref_gen` import is now deferred to
+  the body of the hidden `regen-skill-refs` command, which is only ever
+  invoked during development.
+- PyPI publish job now uses `skip_existing: true` so re-pushing a tag
+  (e.g. to re-run a failed release workflow) does not fail with a 400 from
+  PyPI when the wheel was already uploaded on the first push.
+
+## [2.3.0] - 2026-06-01
+
+Feature release. Adds writable contact-role support (`--advisor-role`),
+fixing a long-standing gap where advisor assignments could not be set through
+the CLI at all — even the `--more-fields` / `--json` escape hatches rejected
+the payload because `ContactRoleAssignment` modeled the wrong write shape.
+Also improves the Windows bootstrap installer (idempotent re-runs,
+`-SkipSkills` opt-out, token re-use) and clarifies install/upgrade
+documentation for `uv tool` and `pipx` users.
+
+### Added
+- `--advisor-role ROLE:USER` flag on `contacts add person|household|org|trust`
+  and `contacts update`. Resolves role names and user substrings against the
+  workspace category list so human-readable values like
+  `"Associate Advisor:Jane Smith"` are accepted (#94).
+- `install.ps1` gains a `-SkipSkills` switch for CI and non-agent installs
+  that don't need the bundled agent skill.
+
+### Fixed
+- `ContactRoleAssignment` now uses `{id, value}` (the Wealthbox write shape)
+  instead of `{id, type}`, unblocking all contact-role write paths including
+  `--more-fields` (#94).
+- `install.ps1` re-runs are now idempotent: if the skill directory already
+  exists the installer runs `wbox skills upgrade` instead of erroring.
+- `install.ps1` no longer prompts for a token when one is already stored in
+  `%APPDATA%\wbox\config.json` or `WEALTHBOX_TOKEN`.
+
+### Changed
+- README and `docs/getting-started.md` now include a per-install-method
+  upgrading table and clarify that `wbox self upgrade` is for bundle installs
+  only; `uv tool upgrade` / `pipx upgrade` are the correct paths for
+  managed installs.
+
 ## [2.2.1] - 2026-05-13
 
 Bug-fix release. `wbox self upgrade` was silently no-op'ing for users who
