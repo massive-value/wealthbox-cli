@@ -9,13 +9,53 @@ import pathlib
 import platform
 import time
 from collections.abc import Callable
-from typing import Any
+from typing import TYPE_CHECKING, Any, Protocol, Self, TypedDict
 
 import httpx
 
 log = logging.getLogger(__name__)
 
 BASE_URL = "https://api.crmworkspace.com/v1"
+
+
+class PaginationMeta(TypedDict):
+    """Pagination metadata returned alongside a full-dataset fetch."""
+
+    total_count: int
+
+
+# Envelope returned by ``fetch_all_pages``. Shape is
+# ``{"<collection_key>": list[dict[str, Any]], "meta": PaginationMeta}``.
+# The collection key is dynamic (e.g. "contacts", "tasks"), which a TypedDict
+# cannot express statically in this mypy/Python version, so the envelope is a
+# ``dict[str, Any]``; ``meta`` is constructed via the typed PaginationMeta below.
+PaginatedResponse = dict[str, Any]
+
+
+class _RequestProtocol(Protocol):
+    """Typed surface of :class:`_WealthboxBase` that resource mixins call on ``self``.
+
+    Documents the request/pagination methods every mixin relies on. Mixins do not
+    inherit this at runtime (see ``_RequestMixinBase`` below); it exists so the
+    contract is stated in one place and statically checked against the base.
+    """
+
+    async def _request(
+        self,
+        method: str,
+        path: str,
+        *,
+        params: dict[str, Any] | None = None,
+        json: dict[str, Any] | None = None,
+    ) -> httpx.Response: ...
+
+    async def fetch_all_pages(
+        self,
+        path: str,
+        params: dict[str, Any],
+        collection_key: str,
+        on_progress: Callable[[int, int], None] | None = None,
+    ) -> PaginatedResponse: ...
 
 
 class WealthboxAPIError(Exception):
@@ -127,8 +167,8 @@ class _WealthboxBase:
         method: str,
         path: str,
         *,
-        params: dict | None = None,
-        json: dict | None = None,
+        params: dict[str, Any] | None = None,
+        json: dict[str, Any] | None = None,
     ) -> httpx.Response:
         if self._rate_limiter:
             await self._rate_limiter.acquire()
@@ -138,7 +178,7 @@ class _WealthboxBase:
             try:
                 response = await self._http.request(method, path, params=params, json=json)
             except httpx.RequestError as exc:
-                raise WealthboxAPIError(0, f"Request failed: {exc}", exc.request) from exc  # type: ignore[arg-type]
+                raise WealthboxAPIError(0, f"Request failed: {exc}", exc.request) from exc
 
             if response.status_code != 429:
                 break
@@ -175,7 +215,7 @@ class _WealthboxBase:
         params: dict[str, Any],
         collection_key: str,
         on_progress: Callable[[int, int], None] | None = None,
-    ) -> dict[str, Any]:
+    ) -> PaginatedResponse:
         """
         Fetch every page from a paginated list endpoint.
 
@@ -206,7 +246,7 @@ class _WealthboxBase:
             if on_progress:
                 on_progress(page, len(all_items))
 
-            total_count = data.get("meta", {}).get("total_count")
+            total_count: int | None = data.get("meta", {}).get("total_count")
             if total_count is not None:
                 if page * 100 >= total_count:
                     break
@@ -216,15 +256,33 @@ class _WealthboxBase:
 
             page += 1
 
-        return {collection_key: all_items, "meta": {"total_count": len(all_items)}}
+        meta: PaginationMeta = {"total_count": len(all_items)}
+        return {collection_key: all_items, "meta": meta}
 
     async def aclose(self) -> None:
         if self._rate_limiter:
             self._rate_limiter._save_state()
         await self._http.aclose()
 
-    async def __aenter__(self) -> "_WealthboxBase":  # type: ignore[return-value]
-        return self  # type: ignore[return-value]
+    async def __aenter__(self) -> Self:
+        return self
 
     async def __aexit__(self, *args: object) -> None:
         await self.aclose()
+
+
+# Resource mixins use this as a base purely for static typing: under type
+# checking it is the concrete `_WealthboxBase` (so `self._request` /
+# `self.fetch_all_pages` resolve with full signatures), while at runtime it is
+# plain `object` and the real methods are supplied by `_WealthboxBase` via the
+# `WealthboxClient` MRO. Routing through the concrete base (rather than the
+# Protocol) avoids mypy treating the inherited methods as abstract.
+if TYPE_CHECKING:
+    _RequestMixinBase = _WealthboxBase
+else:
+    _RequestMixinBase = object
+
+# Static check that the concrete base honours the documented request surface.
+if TYPE_CHECKING:
+    def _assert_protocol(b: _WealthboxBase) -> _RequestProtocol:
+        return b

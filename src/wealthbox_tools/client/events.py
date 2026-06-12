@@ -4,28 +4,34 @@ from typing import Any
 
 from wealthbox_tools.models import EventCreateInput, EventListQuery, EventUpdateInput
 
+from .base import _RequestMixinBase
 
-class EventsMixin:
+
+class EventsMixin(_RequestMixinBase):
     """Event resource methods. Mixed into WealthboxClient."""
 
     async def list_events(self, query: EventListQuery | None = None) -> dict[str, Any]:
         params = query.model_dump(exclude_none=True) if query else None
-        resp = await self._request("GET", "/events", params=params)  # type: ignore[attr-defined]
-        return resp.json()
+        resp = await self._request("GET", "/events", params=params)
+        data: dict[str, Any] = resp.json()
+        return data
 
     async def get_event(self, event_id: int) -> dict[str, Any]:
-        resp = await self._request("GET", f"/events/{event_id}")  # type: ignore[attr-defined]
-        return resp.json()
+        resp = await self._request("GET", f"/events/{event_id}")
+        data: dict[str, Any] = resp.json()
+        return data
 
     async def create_event(self, data: EventCreateInput) -> dict[str, Any]:
         payload = data.model_dump(exclude_none=True)
-        resp = await self._request("POST", "/events", json=payload)  # type: ignore[attr-defined]
-        return resp.json()
+        resp = await self._request("POST", "/events", json=payload)
+        body: dict[str, Any] = resp.json()
+        return body
 
     async def update_event(self, event_id: int, data: EventUpdateInput) -> dict[str, Any]:
         payload = data.model_dump(exclude_unset=True)
-        resp = await self._request("PUT", f"/events/{event_id}", json=payload)  # type: ignore[attr-defined]
-        return resp.json()
+        resp = await self._request("PUT", f"/events/{event_id}", json=payload)
+        body: dict[str, Any] = resp.json()
+        return body
 
     async def delete_event(self, event_id: int) -> None:
-        await self._request("DELETE", f"/events/{event_id}")  # type: ignore[attr-defined]
+        await self._request("DELETE", f"/events/{event_id}")
