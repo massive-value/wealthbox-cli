@@ -20,7 +20,10 @@ from ._client import (
 )
 from ._factory import (
     COMMENT_RESOURCE_TYPES,
+    CommandHook,
+    ResourceSpec,
     _GetShortcutGroup,
+    create_resource_commands,
     make_category_command,
     make_resource_app,
 )
@@ -59,7 +62,9 @@ from ._resolve import (
 
 __all__ = [
     "COMMENT_RESOURCE_TYPES",
+    "CommandHook",
     "OutputFormat",
+    "ResourceSpec",
     "_COMMENT_PREVIEW_LEN",
     "_GetShortcutGroup",
     "_SLIM_COMMENT_FIELDS",
@@ -79,6 +84,7 @@ __all__ = [
     "build_linked_to",
     "build_resource_filter",
     "clean_comments",
+    "create_resource_commands",
     "get_client",
     "handle_errors",
     "make_category_command",

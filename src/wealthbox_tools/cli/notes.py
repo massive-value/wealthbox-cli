@@ -7,15 +7,14 @@ import typer
 from wealthbox_tools.models import NoteCreateInput, NoteListQuery, NoteResourceType, NotesOrder, NoteUpdateInput
 
 from ._util import (
-    COMMENT_RESOURCE_TYPES,
     OutputFormat,
+    ResourceSpec,
     build_linked_to,
+    create_resource_commands,
     handle_errors,
     make_resource_app,
-    output_get_result,
     output_result,
     run_client,
-    run_client_with_comments,
     truncate_field,
 )
 
@@ -28,7 +27,6 @@ _DEFAULT_FIELDS = [
 _CONTENT_PREVIEW_LEN = 500
 
 
-@app.command("list", help="List notes. Can filter by linked resource and/or updated date range.")
 @handle_errors
 def list_notes(
     contact: int | None = typer.Option(None, "--contact", help="Filter notes linked to a Contact (by ID)"),
@@ -57,23 +55,6 @@ def list_notes(
     output_result(result, fmt, fields=None if verbose else _DEFAULT_FIELDS)
 
 
-@app.command("get", help="Get a single note by ID.")
-@handle_errors
-def get_note(
-    note_id: int = typer.Argument(..., help="Note ID"),
-    no_comments: bool = typer.Option(False, "--no-comments", help="Omit comments from output"),
-    verbose: bool = typer.Option(False, "--verbose", "-v", help="Show all fields"),
-    token: str | None = typer.Option(None, envvar="WEALTHBOX_TOKEN", hidden=True),
-    fmt: OutputFormat = typer.Option(OutputFormat.JSON, "--format"),
-) -> None:
-    result = run_client_with_comments(
-        token, lambda c: c.get_note(note_id),
-        COMMENT_RESOURCE_TYPES["notes"], note_id, include_comments=not no_comments,
-    )
-    output_get_result(result, fmt, fields=None if verbose else _DEFAULT_FIELDS)
-
-
-@app.command("add", help="Create a new note.")
 @handle_errors
 def add_note(
     content: str = typer.Argument(..., help="Note body text"),
@@ -90,7 +71,6 @@ def add_note(
     output_result(run_client(token, lambda c: c.create_note(input_model)), fmt)
 
 
-@app.command("update", help="Update an existing note. Note: the API does not support deleting notes.")
 @handle_errors
 def update_note(
     note_id: int = typer.Argument(..., help="Note ID"),
@@ -110,3 +90,24 @@ def update_note(
     input_model = NoteUpdateInput(**payload)
 
     output_result(run_client(token, lambda c: c.update_note(note_id, input_model)), fmt)
+
+
+create_resource_commands(
+    app,
+    ResourceSpec(
+        name="notes",
+        get_func_name="get_note",
+        id_arg_name="note_id",
+        id_help="Note ID",
+        get_client_method="get_note",
+        list_help="List notes. Can filter by linked resource and/or updated date range.",
+        get_help="Get a single note by ID.",
+        add_help="Create a new note.",
+        update_help="Update an existing note. Note: the API does not support deleting notes.",
+        get_supports_verbose=True,
+        get_default_fields=_DEFAULT_FIELDS,
+        list_hook=list_notes,
+        add_hook=add_note,
+        update_hook=update_note,
+    ),
+)

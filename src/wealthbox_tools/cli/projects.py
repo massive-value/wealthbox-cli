@@ -7,15 +7,14 @@ import typer
 from wealthbox_tools.models import ProjectCreateInput, ProjectListQuery, ProjectUpdateInput
 
 from ._util import (
-    COMMENT_RESOURCE_TYPES,
     OutputFormat,
+    ResourceSpec,
+    create_resource_commands,
     handle_errors,
     make_resource_app,
-    output_get_result,
     output_result,
     parse_more_fields,
     run_client,
-    run_client_with_comments,
 )
 
 app = make_resource_app(help="Manage Wealthbox projects.")
@@ -23,7 +22,6 @@ app = make_resource_app(help="Manage Wealthbox projects.")
 _DEFAULT_FIELDS = ["id", "name", "description", "organizer", "updated_at"]
 
 
-@app.command("list", help="List projects with optional date range filters.")
 @handle_errors
 def list_projects(
     updated_since: str | None = typer.Option(None, "--updated-since"),
@@ -43,22 +41,6 @@ def list_projects(
     output_result(run_client(token, lambda c: c.list_projects(query)), fmt, fields=None if verbose else _DEFAULT_FIELDS)
 
 
-@app.command("get", help="Get a single project by ID.")
-@handle_errors
-def get_project(
-    project_id: int = typer.Argument(..., help="Project ID"),
-    no_comments: bool = typer.Option(False, "--no-comments", help="Omit comments from output"),
-    token: str | None = typer.Option(None, envvar="WEALTHBOX_TOKEN", hidden=True),
-    fmt: OutputFormat = typer.Option(OutputFormat.JSON, "--format"),
-) -> None:
-    result = run_client_with_comments(
-        token, lambda c: c.get_project(project_id),
-        COMMENT_RESOURCE_TYPES["projects"], project_id, include_comments=not no_comments,
-    )
-    output_get_result(result, fmt)
-
-
-@app.command("add", help="Create a new project.")
 @handle_errors
 def add_project(
     name: str = typer.Argument(..., help="Project name"),
@@ -85,7 +67,6 @@ def add_project(
     output_result(run_client(token, lambda c: c.create_project(input_model)), fmt)
 
 
-@app.command("update", help="Update an existing project. Pass only the fields you want to change.")
 @handle_errors
 def update_project(
     project_id: int = typer.Argument(..., help="Project ID"),
@@ -111,3 +92,22 @@ def update_project(
 
     input_model = ProjectUpdateInput(**payload)
     output_result(run_client(token, lambda c: c.update_project(project_id, input_model)), fmt)
+
+
+create_resource_commands(
+    app,
+    ResourceSpec(
+        name="projects",
+        get_func_name="get_project",
+        id_arg_name="project_id",
+        id_help="Project ID",
+        get_client_method="get_project",
+        list_help="List projects with optional date range filters.",
+        get_help="Get a single project by ID.",
+        add_help="Create a new project.",
+        update_help="Update an existing project. Pass only the fields you want to change.",
+        list_hook=list_projects,
+        add_hook=add_project,
+        update_hook=update_project,
+    ),
+)
