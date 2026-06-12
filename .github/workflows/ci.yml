@@ -19,17 +19,26 @@ jobs:
       - run: uv run ruff check src/ tests/
 
   test:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
     strategy:
       matrix:
+        os: [ubuntu-latest]
         python-version: ["3.11", "3.12", "3.13"]
+        include:
+          - os: windows-latest
+            python-version: "3.12"
     steps:
       - uses: actions/checkout@v6
       - uses: astral-sh/setup-uv@v8.1.0
         with:
           python-version: ${{ matrix.python-version }}
       - run: uv sync --extra dev
-      - run: uv run pytest
+      - name: Run tests (ubuntu, with coverage gate)
+        if: matrix.os == 'ubuntu-latest'
+        run: uv run pytest --cov=src/wealthbox_tools --cov-report=term --cov-fail-under=92
+      - name: Run tests (windows, no coverage gate)
+        if: matrix.os == 'windows-latest'
+        run: uv run pytest
 
   skill-ref-drift:
     needs: [lint, test]
