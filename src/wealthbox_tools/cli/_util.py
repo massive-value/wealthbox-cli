@@ -50,7 +50,6 @@ COMMENT_RESOURCE_TYPES: dict[str, str] = {
 
 def get_client(token: str | None = None) -> WealthboxClient:
     """Create a WealthboxClient with token resolution: --token flag > env var > config file."""
-    import os
     if token is None:
         token = os.environ.get("WEALTHBOX_TOKEN")
     if token is None:
