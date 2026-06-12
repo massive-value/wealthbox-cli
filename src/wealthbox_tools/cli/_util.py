@@ -1,563 +1,97 @@
+"""Backwards-compatible re-export shim for the CLI utility helpers.
+
+The implementation now lives in four focused modules:
+
+- ``_client`` — token resolution, client lifecycle, error handling.
+- ``_format`` — output formatting, comment shaping, truncation/HTML helpers.
+- ``_resolve`` — id/name resolution, linked_to / resource-filter builders, more-fields parsing.
+- ``_factory`` — Typer app + category command factories.
+
+Every public name this module historically exported is re-exported here so that
+``from ._util import ...`` continues to work unchanged across the CLI modules.
+"""
 from __future__ import annotations
 
-import asyncio
-import csv
-import io
-import json
-import os
-from collections.abc import Awaitable, Callable
-from enum import StrEnum
-from functools import wraps
-from typing import Any, ParamSpec, TypeVar
-
-import click
-import typer
-from pydantic import ValidationError
-from typer.core import TyperGroup
-
-from wealthbox_tools.client import WealthboxAPIError, WealthboxClient
-from wealthbox_tools.models import CategoryListQuery, CategoryType, LinkedToRef, TaskResourceType
-
-
-class _GetShortcutGroup(TyperGroup):
-    """Typer Group that routes numeric first arguments to the ``get`` subcommand."""
-
-    def resolve_command(
-        self, ctx: click.Context, args: list[str]
-    ) -> tuple[str | None, click.Command | None, list[str]]:
-        if args and args[0].isdigit() and args[0] not in self.commands:
-            args.insert(0, "get")
-        return super().resolve_command(ctx, args)
-
-
-def make_resource_app(*, help: str) -> typer.Typer:
-    """Create a Typer app that supports ``wbox <resource> <id>`` as shorthand for ``get <id>``."""
-    return typer.Typer(
-        cls=_GetShortcutGroup,
-        context_settings={"help_option_names": ["-h", "--help"]},
-        help=help,
-        no_args_is_help=True,
-    )
-
-
-# Maps CLI resource names to the CommentResourceType string expected by GET /comments
-COMMENT_RESOURCE_TYPES: dict[str, str] = {
-    "tasks": "Task",
-    "events": "Event",
-    "notes": "StatusUpdates",
-    "opportunities": "Opportunity",
-    "projects": "Project",
-    "workflows": "Workflow",
-}
-
-
-def get_client(token: str | None = None) -> WealthboxClient:
-    """Create a WealthboxClient with token resolution: --token flag > env var > config file."""
-    if token is None:
-        token = os.environ.get("WEALTHBOX_TOKEN")
-    if token is None:
-        from ._config import get_stored_token
-        token = get_stored_token()
-    if not token:
-        raise ValueError(
-            "Wealthbox token required. Provide one via any of: "
-            "--token flag, WEALTHBOX_TOKEN env var, or `wbox config set-token`."
-        )
-    return WealthboxClient(token=token)
-
-
-def run_client(token: str | None, fn: Callable[[WealthboxClient], Awaitable[Any]]) -> Any:
-    """Run an async client operation, managing the event loop and client lifecycle."""
-    async def _execute() -> Any:
-        async with get_client(token) as client:
-            return await fn(client)
-    return asyncio.run(_execute())
-
-
-def run_client_with_comments(
-    token: str | None,
-    fn: Callable[[WealthboxClient], Awaitable[Any]],
-    resource_type: str,
-    resource_id: int,
-    include_comments: bool = True,
-) -> Any:
-    """Run an async client operation and optionally fetch + merge comments concurrently."""
-    async def _with_comments(client: WealthboxClient) -> Any:
-        if include_comments:
-            result, comments = await asyncio.gather(
-                fn(client),
-                client.get_comments_for_resource(resource_type, resource_id),
-            )
-            if isinstance(result, dict):
-                result["comments"] = comments
-        else:
-            result = await fn(client)
-        return result
-    return run_client(token, _with_comments)
-
-
-_COMMENT_PREVIEW_LEN = 50
-_SLIM_COMMENT_FIELDS = ("updated_at", "created_at", "creator")
-
-
-def _strip_html(text: str) -> str:
-    """Remove HTML tags and decode common HTML entities."""
-    import html
-    import re
-    return html.unescape(re.sub(r"<[^>]+>", "", text)).strip()
-
-
-def clean_comments(data: dict[str, Any]) -> dict[str, Any]:
-    """Strip HTML from body.text in each comment, keeping full structure (for verbose output)."""
-    comments = data.get("comments")
-    if not isinstance(comments, list):
-        return data
-    cleaned = []
-    for c in comments:
-        body = c.get("body")
-        if isinstance(body, dict) and "text" in body:
-            c = {**c, "body": {**body, "text": _strip_html(body["text"])}}
-        cleaned.append(c)
-    return {**data, "comments": cleaned}
-
-
-def slim_comments(data: dict[str, Any]) -> dict[str, Any]:
-    """Strip HTML, trim to essential fields, and unnest body.text → text (single pass)."""
-    comments = data.get("comments")
-    if not isinstance(comments, list):
-        return data
-    slimmed = []
-    for c in comments:
-        entry = {k: c[k] for k in _SLIM_COMMENT_FIELDS if k in c}
-        body = c.get("body")
-        raw = body.get("text", "") if isinstance(body, dict) else str(body or "")
-        entry["text"] = _strip_html(raw)
-        slimmed.append(entry)
-    return {**data, "comments": slimmed}
-
-
-def summarize_comments(data: dict[str, Any]) -> dict[str, Any]:
-    """Replace a ``comments`` list with ``comment_count`` and ``latest_comment`` summary fields."""
-    comments = data.get("comments")
-    if comments is None:
-        return data
-    data = {k: v for k, v in data.items() if k != "comments"}
-    data["comment_count"] = len(comments)
-    if comments:
-        newest = max(comments, key=lambda c: c.get("created_at", c.get("updated_at", "")))
-        text = newest.get("text", "")
-        preview = text[:_COMMENT_PREVIEW_LEN] + "..." if len(text) > _COMMENT_PREVIEW_LEN else text
-        data["latest_comment"] = preview
-    else:
-        data["latest_comment"] = ""
-    return data
-
-
-def output_get_result(
-    result: dict[str, Any], fmt: OutputFormat, fields: list[str] | None = None
-) -> None:
-    """Standard output pipeline for get commands with comments: slim → summarize → output."""
-    result = slim_comments(result)
-    if fmt != OutputFormat.JSON:
-        result = summarize_comments(result)
-    output_result(result, fmt, fields=fields)
-
-
-class OutputFormat(StrEnum):
-    JSON = "json"
-    TABLE = "table"
-    CSV = "csv"
-    TSV = "tsv"
-
-
-def _filter_fields(data: Any, fields: list[str]) -> Any:
-    if isinstance(data, list):
-        return [{f: item[f] for f in fields if f in item} for item in data]
-    if isinstance(data, dict):
-        if "meta" in data:
-            return {
-                k: ([{f: item[f] for f in fields if f in item} for item in v] if isinstance(v, list) else v)
-                for k, v in data.items()
-            }
-        return {f: data[f] for f in fields if f in data}
-    return data
-
-
-def truncate_nested_field(data: Any, parent: str, fields: list[str], max_len: int) -> Any:
-    """Truncate one or more string fields nested inside a dict field in each item of a response."""
-    def _trim(item: Any) -> Any:
-        if not (isinstance(item, dict) and isinstance(item.get(parent), dict)):
-            return item
-        nested = item[parent]
-        updates = {
-            f: nested[f][:max_len] + "..."
-            for f in fields
-            if f in nested and isinstance(nested[f], str) and len(nested[f]) > max_len
-        }
-        if updates:
-            item = {**item, parent: {**nested, **updates}}
-        return item
-
-    if isinstance(data, list):
-        return [_trim(item) for item in data]
-    if isinstance(data, dict):
-        return {k: [_trim(i) for i in v] if isinstance(v, list) else v for k, v in data.items()}
-    return _trim(data)
-
-
-def truncate_field(data: Any, field: str, max_len: int) -> Any:
-    """Truncate a string field in each item of a response to max_len characters."""
-    def _trim(item: Any) -> Any:
-        if isinstance(item, dict) and field in item and isinstance(item[field], str):
-            if len(item[field]) > max_len:
-                item = {**item, field: item[field][:max_len] + "..."}
-        return item
-
-    if isinstance(data, list):
-        return [_trim(item) for item in data]
-    if isinstance(data, dict):
-        return {k: [_trim(i) for i in v] if isinstance(v, list) else v for k, v in data.items()}
-    return _trim(data)
-
-
-def _flatten_value(value: Any) -> Any:
-    """Convert a single field value to a scalar suitable for tabular display."""
-    if value is None:
-        return ""
-    if isinstance(value, list):
-        if not value:
-            return ""
-        first = value[0]
-        if isinstance(first, str):
-            # e.g. tags: ["VIP", "Prospect"]
-            return ", ".join(str(v) for v in value)
-        if isinstance(first, dict):
-            if "address" in first:
-                # e.g. email_addresses, phone_numbers — return principal's address
-                for item in value:
-                    if item.get("principal"):
-                        return item["address"]
-                return first["address"]
-            if "id" in first and "type" in first:
-                # e.g. linked_to, invitees — prefer name if available
-                parts = []
-                for item in value:
-                    name = item.get("name")
-                    parts.append(name if name else f"{item['type']}:{item['id']}")
-                return ", ".join(parts)
-            return f"[{len(value)} items]"
-    if isinstance(value, dict):
-        return json.dumps(value)
-    return value
-
-
-def _flatten_record(record: dict[str, Any]) -> dict[str, Any]:
-    return {k: _flatten_value(v) for k, v in record.items()}
-
-
-def _extract_collection(data: Any) -> tuple[list[dict[str, Any]] | None, int | None]:
-    """Return (rows, total_count) or (None, None) for a single-object response."""
-    if isinstance(data, list):
-        return data, None
-    if isinstance(data, dict):
-        if "meta" in data:
-            rows: list[dict[str, Any]] = []
-            for k, v in data.items():
-                if k != "meta" and isinstance(v, list):
-                    rows = v
-                    break
-            total = data["meta"].get("total_count") or data["meta"].get("total_entries")
-            return rows, total
-        # Check if any value is a list (collection without meta).
-        # Skip when the dict looks like a single resource (has an "id" key) —
-        # nested lists like linked_to, subtasks, comments are not collections.
-        if "id" not in data:
-            for v in data.values():
-                if isinstance(v, list) and v and isinstance(v[0], dict):
-                    return v, None
-    return None, None
-
-
-def _render_table(rows: list[dict[str, Any]], headers: list[str], total_count: int | None) -> tuple[str, str | None]:
-    from tabulate import tabulate
-    table_data = [[row.get(h, "") for h in headers] for row in rows]
-    rendered = tabulate(table_data, headers=headers, tablefmt="grid")
-    footer = f"Showing {len(rows)} of {total_count} results" if total_count is not None else None
-    return rendered, footer
-
-
-def _render_kv_table(record: dict[str, Any]) -> str:
-    from tabulate import tabulate
-    return tabulate(list(record.items()), headers=["Field", "Value"], tablefmt="grid")
-
-
-def _render_dsv(rows: list[dict[str, Any]], headers: list[str], sep: str) -> str:
-    buf = io.StringIO()
-    writer = csv.writer(buf, delimiter=sep)
-    writer.writerow(headers)
-    for row in rows:
-        writer.writerow([row.get(h, "") for h in headers])
-    return buf.getvalue()
-
-
-def _strip_html_keys(data: Any) -> Any:
-    """Recursively remove dict keys ending in `_html`."""
-    if isinstance(data, dict):
-        return {
-            k: _strip_html_keys(v)
-            for k, v in data.items()
-            if not (isinstance(k, str) and k.endswith("_html"))
-        }
-    if isinstance(data, list):
-        return [_strip_html_keys(item) for item in data]
-    return data
-
-
-def output_result(data: Any, fmt: OutputFormat = OutputFormat.JSON, fields: list[str] | None = None) -> None:
-    """Print result to stdout in the requested format."""
-    # Project before stripping so we don't recurse into fields we're dropping anyway.
-    if fields is not None:
-        data = _filter_fields(data, fields)
-    if os.environ.get("WBOX_BRIEF"):
-        data = _strip_html_keys(data)
-    if fmt == OutputFormat.JSON:
-        typer.echo(json.dumps(data, indent=2, default=str))
-        return
-
-    # Tabular formats
-    sep = "\t" if fmt == OutputFormat.TSV else ","
-    rows, total_count = _extract_collection(data)
-    if rows is None:
-        # Single object
-        record = _flatten_record(data if isinstance(data, dict) else {"value": data})
-        if fmt == OutputFormat.TABLE:
-            typer.echo(_render_kv_table(record))
-        else:
-            typer.echo(_render_dsv([record], list(record.keys()), sep), nl=False)
-    else:
-        flat_rows = [_flatten_record(r) for r in rows]
-        headers = list(flat_rows[0].keys()) if flat_rows else []
-        if fmt == OutputFormat.TABLE:
-            rendered, footer = _render_table(flat_rows, headers, total_count)
-            typer.echo(rendered)
-            if footer:
-                typer.echo(footer, err=True)
-        else:
-            typer.echo(_render_dsv(flat_rows, headers, sep), nl=False)
-
-
-_P = ParamSpec("_P")
-_R = TypeVar("_R")
-
-
-def handle_errors(func: Callable[_P, _R]) -> Callable[_P, _R]:
-    @wraps(func)
-    def wrapper(*args: _P.args, **kwargs: _P.kwargs) -> _R:
-        try:
-            return func(*args, **kwargs)
-
-        except WealthboxAPIError as e:
-            typer.echo(f"API Error ({e.status_code}): {e.detail}", err=True)
-            raise typer.Exit(code=1)
-
-        except ValidationError as e:
-            typer.echo("Validation Error:", err=True)
-            for err_item in e.errors():
-                loc = " -> ".join(str(x) for x in err_item["loc"])
-                msg = err_item["msg"]
-                typer.echo(f"  {loc}: {msg}", err=True)
-            raise typer.Exit(code=1)
-
-        except json.JSONDecodeError as e:
-            typer.echo(f"Invalid JSON: {e}", err=True)
-            raise typer.Exit(code=1)
-
-        except ValueError as e:
-            typer.echo(f"Error: {e}", err=True)
-            raise typer.Exit(code=1)
-
-        except Exception as e:
-            typer.echo(f"Unexpected error: {e}", err=True)
-            raise typer.Exit(code=1)
-
-    return wrapper
-
-
-def active_to_status(active: bool | None) -> str | None:
-    """Map --active/--inactive flag to Wealthbox status string."""
-    if active is True:
-        return "Active"
-    if active is False:
-        return "Inactive"
-    return None
-
-
-def build_linked_to(
-    contact: int | None,
-    project: int | None,
-    opportunity: int | None,
-) -> list[LinkedToRef] | None:
-    """Build a linked_to list from typed ID options. Returns None if none provided."""
-    refs: list[LinkedToRef] = []
-    if contact is not None:
-        refs.append(LinkedToRef(id=contact, type="Contact"))
-    if project is not None:
-        refs.append(LinkedToRef(id=project, type="Project"))
-    if opportunity is not None:
-        refs.append(LinkedToRef(id=opportunity, type="Opportunity"))
-    return refs if refs else None
-
-
-def build_resource_filter(
-    contact: int | None,
-    project: int | None,
-    opportunity: int | None,
-) -> tuple[int | None, TaskResourceType | None]:
-    """Map friendly --contact/--project/--opportunity options to (resource_id, resource_type).
-
-    Raises BadParameter if more than one is provided.
-    Returns (None, None) if none are provided.
-    """
-    result: tuple[int | None, TaskResourceType | None] = (None, None)
-    for id_, rtype in (
-        (contact, TaskResourceType.CONTACT),
-        (project, TaskResourceType.PROJECT),
-        (opportunity, TaskResourceType.OPPORTUNITY),
-    ):
-        if id_ is not None:
-            if result[0] is not None:
-                raise typer.BadParameter("Provide only one of --contact, --project, or --opportunity.")
-            result = (id_, rtype)
-    return result
-
-
-async def resolve_category_id(
-    client: WealthboxClient, category_type: CategoryType, value: str
-) -> int:
-    """Resolve a category name or numeric string to an integer ID.
-
-    If `value` is purely digits, returns int(value) without an API call.
-    Otherwise fetches all categories of the given type and case-insensitively
-    matches `name`. Raises typer.BadParameter on miss with available names.
-    """
-    if value.isdigit():
-        return int(value)
-    data = await client.list_all_categories(category_type)
-    items = data.get(category_type.value, [])
-    target = value.strip().casefold()
-    for item in items:
-        if str(item.get("name", "")).casefold() == target:
-            return int(item["id"])
-    available = sorted(str(i["name"]) for i in items if i.get("name"))
-    label = category_type.value.replace("_", " ")
-    if available:
-        raise typer.BadParameter(
-            f"Unknown {label} value '{value}'. Available: {', '.join(available)}"
-        )
-    raise typer.BadParameter(f"No {label} configured in this workspace.")
-
-
-def _match_contact_role(roles: list[dict[str, Any]], token: str) -> dict[str, Any]:
-    """Find a contact role by numeric id or case-insensitive name."""
-    if token.isdigit():
-        rid = int(token)
-        for r in roles:
-            if int(r.get("id", 0)) == rid:
-                return r
-        raise typer.BadParameter(f"No contact role with id {rid} in this workspace.")
-    target = token.casefold()
-    for r in roles:
-        if str(r.get("name", "")).casefold() == target:
-            return r
-    available = sorted(str(r["name"]) for r in roles if r.get("name"))
-    raise typer.BadParameter(
-        f"Unknown contact role '{token}'. Available: {', '.join(available) or '(none configured)'}"
-    )
-
-
-def _role_option_user(option: dict[str, Any]) -> dict[str, Any]:
-    return option.get("assigned_to") or {}
-
-
-def _match_role_option(role: dict[str, Any], token: str) -> int:
-    """Resolve a user (numeric id, exact name, or unique substring) to a role-option id."""
-    options = role.get("available_options", []) or []
-    role_name = role.get("name", "role")
-    if token.isdigit():
-        uid = int(token)
-        for opt in options:
-            if int(_role_option_user(opt).get("id", 0)) == uid:
-                return int(opt["id"])
-        raise typer.BadParameter(f"No user with id {uid} is available for role '{role_name}'.")
-    target = token.casefold()
-    exact = [o for o in options if str(_role_option_user(o).get("name", "")).casefold() == target]
-    matches = exact or [
-        o for o in options if target in str(_role_option_user(o).get("name", "")).casefold()
-    ]
-    if len(matches) == 1:
-        return int(matches[0]["id"])
-    if not matches:
-        names = sorted(str(_role_option_user(o).get("name", "")) for o in options)
-        raise typer.BadParameter(
-            f"No user matching '{token}' for role '{role_name}'. Available: {', '.join(names)}"
-        )
-    cand = sorted(str(_role_option_user(o).get("name", "")) for o in matches)
-    raise typer.BadParameter(
-        f"'{token}' is ambiguous for role '{role_name}': matches {', '.join(cand)}. Be more specific."
-    )
-
-
-async def resolve_contact_roles(client: WealthboxClient, specs: list[str]) -> list[dict[str, int]]:
-    """Resolve ``Role:User`` specs to ``[{"id": role_id, "value": option_id}]`` entries.
-
-    Role may be a contact-role name (case-insensitive) or numeric id. User may be a
-    user name (case-insensitive; exact preferred, else unique substring) or numeric
-    user id. Both are resolved against ``wbox contacts categories contact-roles`` —
-    the option id (``available_options[].id``), not the user id, is the value the
-    Wealthbox API stores.
-    """
-    data = await client.list_all_categories(CategoryType.CONTACT_ROLES)
-    roles = data.get("contact_roles", []) or []
-    resolved: list[dict[str, int]] = []
-    for spec in specs:
-        role_token, sep, user_token = spec.partition(":")
-        role_token, user_token = role_token.strip(), user_token.strip()
-        if not sep or not role_token or not user_token:
-            raise typer.BadParameter(
-                f"--advisor-role expects 'Role:User' (e.g. 'Associate Advisor:Greg Hyde'); got '{spec}'."
-            )
-        role = _match_contact_role(roles, role_token)
-        resolved.append({"id": int(role["id"]), "value": _match_role_option(role, user_token)})
-    return resolved
-
-
-def parse_more_fields(more_fields: str, reserved: set[str]) -> dict[str, Any]:
-    """Parse --more-fields JSON and validate against reserved keys.
-
-    Raises BadParameter if the value is not valid JSON, not an object, or collides with
-    a reserved key that has an explicit CLI flag.
-    """
-    try:
-        extra = json.loads(more_fields)
-    except json.JSONDecodeError as e:
-        raise typer.BadParameter(f"--more-fields must be valid JSON: {e.msg}") from e
-    if not isinstance(extra, dict):
-        raise typer.BadParameter("--more-fields must be a JSON object (e.g. {...}), not a list or string.")
-    collision = reserved.intersection(extra.keys())
-    if collision:
-        raise typer.BadParameter(f"--more-fields cannot include {sorted(collision)}; use explicit CLI args instead.")
-    return extra
-
-
-def make_category_command(category_type: CategoryType) -> Callable[..., None]:
-    """Factory that returns a Typer command function for listing a category type."""
-    @handle_errors
-    def cmd(
-        page: int | None = typer.Option(None, help="Page number"),
-        per_page: int | None = typer.Option(None, "--per-page", help="Results per page (max 100)"),
-        token: str | None = typer.Option(None, envvar="WEALTHBOX_TOKEN", hidden=True),
-        fmt: OutputFormat = typer.Option(OutputFormat.JSON, "--format"),
-    ) -> None:
-        query = CategoryListQuery(page=page, per_page=per_page)
-        output_result(run_client(token, lambda c: c.list_categories(category_type, query)), fmt)
-    return cmd
+from ._client import (
+    get_client,
+    handle_errors,
+    run_client,
+    run_client_with_comments,
+)
+from ._factory import (
+    COMMENT_RESOURCE_TYPES,
+    _GetShortcutGroup,
+    make_category_command,
+    make_resource_app,
+)
+from ._format import (
+    _COMMENT_PREVIEW_LEN,
+    _SLIM_COMMENT_FIELDS,
+    OutputFormat,
+    _extract_collection,
+    _filter_fields,
+    _flatten_record,
+    _flatten_value,
+    _render_dsv,
+    _render_kv_table,
+    _render_table,
+    _strip_html,
+    _strip_html_keys,
+    clean_comments,
+    output_get_result,
+    output_result,
+    slim_comments,
+    summarize_comments,
+    truncate_field,
+    truncate_nested_field,
+)
+from ._resolve import (
+    _match_contact_role,
+    _match_role_option,
+    _role_option_user,
+    active_to_status,
+    build_linked_to,
+    build_resource_filter,
+    parse_more_fields,
+    resolve_category_id,
+    resolve_contact_roles,
+)
+
+__all__ = [
+    "COMMENT_RESOURCE_TYPES",
+    "OutputFormat",
+    "_COMMENT_PREVIEW_LEN",
+    "_GetShortcutGroup",
+    "_SLIM_COMMENT_FIELDS",
+    "_extract_collection",
+    "_filter_fields",
+    "_flatten_record",
+    "_flatten_value",
+    "_match_contact_role",
+    "_match_role_option",
+    "_render_dsv",
+    "_render_kv_table",
+    "_render_table",
+    "_role_option_user",
+    "_strip_html",
+    "_strip_html_keys",
+    "active_to_status",
+    "build_linked_to",
+    "build_resource_filter",
+    "clean_comments",
+    "get_client",
+    "handle_errors",
+    "make_category_command",
+    "make_resource_app",
+    "output_get_result",
+    "output_result",
+    "parse_more_fields",
+    "resolve_category_id",
+    "resolve_contact_roles",
+    "run_client",
+    "run_client_with_comments",
+    "slim_comments",
+    "summarize_comments",
+    "truncate_field",
+    "truncate_nested_field",
+]
