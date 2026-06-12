@@ -123,6 +123,18 @@ Full command reference: [CLI Reference](https://massive-value.github.io/wealthbo
 | `3`  | Server error (API `5xx`) |
 
 Note: Click also exits `2` for usage errors (an unknown flag or a missing required argument); that overlap with the auth code is pre-existing and acceptable, since usage errors are caught by the parser before the command runs. Set `WBOX_DEBUG=1` to print the full Python traceback to stderr alongside the friendly message (the exit code is unchanged) — handy when reporting bugs.
+
+**Brief mode** — Wealthbox duplicates every text field as HTML markup (`content_html`, `description_html`, `body_html`, etc.), making responses 3–5x larger. Pass `--brief` or set `WBOX_BRIEF=1` to recursively strip all `*_html` keys from the JSON output before it is printed. Plain-text counterparts are kept; all other fields are unaffected. Any non-empty value is truthy (same convention as `WBOX_DEBUG`).
+
+```bash
+# One-off: flag form
+wbox --brief notes list
+
+# Persistent in a script or agent session
+export WBOX_BRIEF=1
+wbox notes list
+wbox tasks list
+```
 </details>
 
 <details>
