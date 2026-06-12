@@ -50,6 +50,27 @@ jobs:
       - run: uv sync --extra dev
       - run: uv run mypy src/
 
+  smoke:
+    # Install the built wheel in isolation WITHOUT dev dependencies and run the
+    # entrypoint, so a missing runtime dependency (e.g. a module-level import of
+    # a package typer no longer pulls in) is caught before publish. The normal
+    # test job always has dev deps present and cannot catch this.
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v6
+      - uses: astral-sh/setup-uv@v8.1.0
+        with:
+          python-version: "3.12"
+      - name: Build and smoke-test clean install
+        shell: bash
+        run: |
+          uv build
+          uv run --isolated --no-project --with "$(ls dist/*.whl)" wbox --version
+          uv run --isolated --no-project --with "$(ls dist/*.whl)" wbox notes --help
+
   skill-ref-drift:
     needs: [lint, test]
     runs-on: ubuntu-latest
@@ -63,7 +84,7 @@ jobs:
       - run: git diff --exit-code -- src/wealthbox_tools/skills/wealthbox-crm/references/
 
   publish:
-    needs: [lint, test, typecheck, skill-ref-drift]
+    needs: [lint, test, typecheck, smoke, skill-ref-drift]
     if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     permissions:

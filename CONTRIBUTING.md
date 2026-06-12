@@ -167,9 +167,10 @@ Pull requests and pushes to `main` run GitHub Actions CI:
 - **Lint:** `ruff check src/ tests/`
 - **Test:** `pytest` across Python 3.11, 3.12, 3.13 (ubuntu) + 3.12 (windows); coverage gate `--cov-fail-under=91` on ubuntu
 - **Typecheck:** `mypy src/` (strict)
+- **Smoke:** installs the built wheel in isolation (no dev deps) and runs `wbox --version` / `wbox notes --help`, catching missing-runtime-dependency startup crashes
 - **Skill-ref drift:** regenerates refs and asserts no git diff
 
-All four jobs must pass before merging.
+All jobs must pass before merging; `publish` (on `v*` tags) additionally gates on lint, test, typecheck, and smoke.
 
 ---
 

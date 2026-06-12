@@ -3,9 +3,8 @@ from __future__ import annotations
 import inspect
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-import click
 import typer
 from typer.core import TyperGroup
 
@@ -13,6 +12,12 @@ from wealthbox_tools.models import CategoryListQuery, CategoryType
 
 from ._client import handle_errors, run_client, run_client_with_comments
 from ._format import OutputFormat, output_get_result, output_result
+
+if TYPE_CHECKING:
+    # click is only referenced in type annotations below; importing it at
+    # runtime would crash on installs where typer (>=0.26) does not pull in
+    # click. Keep it type-only. See the 2.3.1 fix for the same class of bug.
+    import click
 
 
 class _GetShortcutGroup(TyperGroup):

@@ -4,6 +4,28 @@ All notable changes to `wealthbox-cli` are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.4.1] - 2026-06-12
+
+Patch release fixing a startup crash in 2.4.0. The `cli/_factory.py` module
+(introduced in the 2.4.0 refactor) imported `click` at module level to
+annotate a `TyperGroup` subclass, but `click` is only referenced in type
+annotations. On installs where `typer` (>=0.26) does not pull in `click` as a
+transitive dependency, `wbox` crashed on launch with
+`ModuleNotFoundError: No module named 'click'` — the same failure class fixed
+for `skill_ref_gen` in 2.3.1. This was not caught by CI because the test
+environment always has `click` present via the dev dependencies.
+
+### Fixed
+- `wbox` startup crash (`ModuleNotFoundError: click`) on clean installs that
+  lack `click`. The `import click` in `cli/_factory.py` is now guarded by
+  `TYPE_CHECKING` (it is only used in annotations, which are not evaluated at
+  runtime under `from __future__ import annotations`).
+
+### Internal
+- CI gains a `smoke` job that installs the built wheel in isolation **without
+  dev dependencies** and runs `wbox --version`, so a missing-runtime-dependency
+  startup crash can no longer reach PyPI. The `publish` job now depends on it.
+
 ## [2.4.0] - 2026-06-12
 
 The notable user-facing change in this release is **differentiated CLI exit
