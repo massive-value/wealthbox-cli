@@ -387,3 +387,468 @@ The contact category types (contact-types, contact-sources, email-types, phone-t
 wbox categories custom-fields
 wbox categories custom-fields --document-type Contact|Opportunity|Project|Task|Event|ManualInvestmentAccount|DataFile
 ```
+
+------------------------------------------------------------------------
+
+## Opportunities
+
+### List
+
+``` bash
+wbox opportunities list
+wbox opportunities list --resource-id <id> --resource-type Contact|Project
+wbox opportunities list --order asc|desc|recent|created
+wbox opportunities list --include-closed
+wbox opportunities list --updated-since "2025-01-01T00:00:00Z"
+wbox opportunities list --updated-before "2026-01-01T00:00:00Z"
+wbox opportunities list --per-page 100 --page 2
+```
+
+### Add
+
+Three fields are required: `--target-close`, `--probability`, and `--stage` (a stage ID — see `wbox categories opportunity-stages`):
+
+``` bash
+wbox opportunities add "New AUM Opportunity" \
+  --target-close "2026-06-30" \
+  --probability 75 \
+  --stage <stage_id> \
+  --contact <contact_id>
+```
+
+Amount fields:
+
+``` bash
+wbox opportunities add "Fee engagement" \
+  --target-close "2026-09-30" \
+  --probability 50 \
+  --stage <stage_id> \
+  --fee 5000.00 \
+  --aum 250000.00 \
+  --currency USD
+```
+
+Use `--more-fields` for uncommon fields not covered by direct flags (cannot override explicit flags):
+
+``` bash
+wbox opportunities add "Estate plan" \
+  --target-close "2026-12-31" \
+  --probability 60 \
+  --stage <stage_id> \
+  --more-fields '{"custom_fields": [{"id": 42, "value": "High priority"}]}'
+```
+
+### Get
+
+``` bash
+wbox opportunities get <opportunity_id>
+```
+
+### Update
+
+Pass only the fields you want to change:
+
+``` bash
+wbox opportunities update <opportunity_id> --probability 90
+wbox opportunities update <opportunity_id> --stage <stage_id>
+wbox opportunities update <opportunity_id> --target-close "2026-12-31"
+wbox opportunities update <opportunity_id> --aum 500000.00
+wbox opportunities update <opportunity_id> --contact <contact_id>
+```
+
+### Delete
+
+``` bash
+wbox opportunities delete <opportunity_id>
+```
+
+------------------------------------------------------------------------
+
+## Projects
+
+### List
+
+``` bash
+wbox projects list
+wbox projects list --updated-since "2025-01-01T00:00:00Z"
+wbox projects list --updated-before "2026-01-01T00:00:00Z"
+wbox projects list --per-page 100 --page 2
+```
+
+### Add
+
+Both `name` and `--description` are required:
+
+``` bash
+wbox projects add "Client Onboarding" --description "New client onboarding workflow"
+wbox projects add "Estate Review" --description "Annual estate plan review" --organizer <user_id>
+```
+
+Use `--more-fields` for uncommon fields not covered by direct flags:
+
+``` bash
+wbox projects add "Q4 Review" \
+  --description "Quarterly review project" \
+  --more-fields '{"custom_fields": [{"id": 5, "value": "urgent"}]}'
+```
+
+### Get
+
+``` bash
+wbox projects get <project_id>
+```
+
+### Update
+
+Pass only the fields you want to change:
+
+``` bash
+wbox projects update <project_id> --name "Updated Project Name"
+wbox projects update <project_id> --description "New description"
+wbox projects update <project_id> --organizer <user_id>
+```
+
+------------------------------------------------------------------------
+
+## Workflows
+
+### List
+
+``` bash
+wbox workflows list
+wbox workflows list --resource-id <id> --resource-type Contact|Project
+wbox workflows list --status active|completed|scheduled
+wbox workflows list --updated-since "2025-01-01T00:00:00Z"
+wbox workflows list --per-page 100 --page 2
+```
+
+### Templates
+
+List available workflow templates (needed for `wbox workflows add --template`):
+
+``` bash
+wbox workflows templates list
+```
+
+### Add
+
+Create a new workflow instance from a template:
+
+``` bash
+wbox workflows add --template <template_id>
+wbox workflows add --template <template_id> --label "Smith onboarding" --contact <contact_id>
+wbox workflows add --template <template_id> --starts-at "2026-07-01" --project <project_id>
+```
+
+### Get
+
+``` bash
+wbox workflows get <workflow_id>
+```
+
+### Next Step
+
+Show the active step (or completion status) of a workflow:
+
+``` bash
+wbox workflows next <workflow_id>
+```
+
+### Complete Step
+
+Mark a workflow step as complete:
+
+``` bash
+wbox workflows complete-step <workflow_id> <step_id>
+wbox workflows complete-step <workflow_id> <step_id> --outcome-id <outcome_id>
+```
+
+### Revert Step
+
+Revert a completed workflow step:
+
+``` bash
+wbox workflows revert-step <workflow_id> <step_id>
+```
+
+------------------------------------------------------------------------
+
+## Users
+
+List all users in the workspace. Useful for resolving `--assigned-to` user IDs used by other commands:
+
+``` bash
+wbox users list
+wbox users list --verbose
+wbox users list --format table
+```
+
+------------------------------------------------------------------------
+
+## Me
+
+Show information about the currently authenticated user:
+
+``` bash
+wbox me
+wbox me --format table
+```
+
+Print just the workspace user ID (a bare integer — useful for `--assigned-to` flags):
+
+``` bash
+wbox me user-id
+```
+
+------------------------------------------------------------------------
+
+## Activity
+
+The activity feed uses cursor-based pagination (not page/per-page).
+
+### List
+
+``` bash
+wbox activity list
+wbox activity list --contact <contact_id>
+wbox activity list --type Task|Event|Contact|Workflow|Opportunity|Project
+wbox activity list --updated-since "2025-01-01T00:00:00Z"
+wbox activity list --updated-before "2026-01-01T00:00:00Z"
+wbox activity list --verbose   # show full body content (default truncates to 500 chars)
+```
+
+Paginate with cursor:
+
+``` bash
+wbox activity list --cursor <cursor_from_previous_response>
+```
+
+------------------------------------------------------------------------
+
+## Config
+
+Manage the stored API token and CLI configuration. The token is stored in `~/.config/wbox/config.json` (Linux/macOS) or `%APPDATA%\wbox\config.json` (Windows).
+
+### set-token
+
+Prompt for and store an API token:
+
+``` bash
+wbox config set-token
+wbox config set-token --token <your_token>
+```
+
+Obtain a token from Wealthbox at Settings → API Access → Access Tokens.
+
+### show
+
+Display current configuration (token is masked):
+
+``` bash
+wbox config show
+```
+
+### clear
+
+Remove stored configuration:
+
+``` bash
+wbox config clear
+```
+
+------------------------------------------------------------------------
+
+## Doctor
+
+Comprehensive health check covering CLI version, auth, agent CLIs, skills, plugins, and firm data:
+
+``` bash
+wbox doctor
+wbox doctor --token <override_token>
+```
+
+The `--token` flag overrides the env var and config file for the auth smoke test only.
+
+------------------------------------------------------------------------
+
+## Skills
+
+Install and manage the `wealthbox-crm` agent skill across supported platforms (Claude Code user scope, Claude Code project scope, Codex).
+
+### list
+
+Show every skill copy installed on this machine:
+
+``` bash
+wbox skills list
+```
+
+### install
+
+Install the skill to one or more platforms:
+
+``` bash
+wbox skills install --platform claude-code-user
+wbox skills install --platform claude-code-project
+wbox skills install --platform claude-code-user --platform codex
+wbox skills install --platform claude-code-user --force   # overwrite existing install
+wbox skills install --platform claude-code-user --no-bootstrap   # skip post-install bootstrap prompt
+```
+
+### upgrade
+
+Refresh template files (`SKILL.md`, `references/`, `firm-examples/`, `bootstrap.md`) in every installed platform. Firm data is not touched:
+
+``` bash
+wbox skills upgrade
+wbox skills upgrade --platform claude-code-user   # limit to one platform
+```
+
+### uninstall
+
+Remove the skill from a platform. Firm data is preserved:
+
+``` bash
+wbox skills uninstall --platform claude-code-user
+wbox skills uninstall --platform claude-code-user --yes   # skip confirmation
+```
+
+### bootstrap
+
+Populate firm data from the Wealthbox API. Writes to the canonical machine-level firm directory:
+
+``` bash
+wbox skills bootstrap
+wbox skills bootstrap --generated-only   # update generated files only; never create stubs
+wbox skills bootstrap --dry-run          # print planned target; make no disk changes
+```
+
+### refresh
+
+Re-fetch generated firm files. Hand-edited files are preserved:
+
+``` bash
+wbox skills refresh
+wbox skills refresh --staleness-days 7   # warn if firm meta older than N days (default: 30)
+```
+
+### firm-path
+
+Print the canonical firm data directory (useful from agents to locate `firm/` files):
+
+``` bash
+wbox skills firm-path
+```
+
+### mark-onboarded
+
+Stamp `onboarded_at` in canonical firm meta after qualitative firm Q&A is captured:
+
+``` bash
+wbox skills mark-onboarded
+```
+
+### doctor
+
+Alias of `wbox doctor` — diagnose install state, auth, and firm data:
+
+``` bash
+wbox skills doctor
+```
+
+------------------------------------------------------------------------
+
+## Prefs
+
+Read the user-preferences file (`~/.config/wbox/user/preferences.md`). The file is optional; commands exit `0` with empty output if it is absent.
+
+### show
+
+Print the contents of preferences.md:
+
+``` bash
+wbox prefs show
+```
+
+### path
+
+Print the absolute path to preferences.md:
+
+``` bash
+wbox prefs path
+```
+
+------------------------------------------------------------------------
+
+## Firm
+
+Export, import, and diff the local firm archive. The firm directory holds hand-edited policy files used by the agent skill.
+
+### export
+
+Export the local firm directory as a portable zip archive. Only hand-edited policy files are included; generated files (`categories.md`, `custom-fields.md`, `users.md`) are excluded:
+
+``` bash
+wbox firm export
+wbox firm export --out /path/to/firm.zip
+```
+
+### import
+
+Import a firm-archive zip into the local firm directory. `PATH_OR_URL` may be a local file path or an HTTP(S) URL:
+
+``` bash
+wbox firm import firm.zip
+wbox firm import https://example.com/firm.zip
+wbox firm import firm.zip --mode merge            # write only new files; skip existing
+wbox firm import firm.zip --mode abort-on-conflict  # refuse if any file would be replaced
+wbox firm import firm.zip --yes                   # skip overwrite confirmation
+```
+
+### diff
+
+Show a unified diff of a firm-archive zip against the local firm directory. Nothing is written to disk. Exits `0` when local matches the archive, non-zero when there are differences:
+
+``` bash
+wbox firm diff firm.zip
+wbox firm diff firm.zip || echo "drift detected"
+```
+
+------------------------------------------------------------------------
+
+## Self
+
+Manage the `wbox` CLI binary itself.
+
+### upgrade
+
+Upgrade `wbox` to the latest GitHub release:
+
+``` bash
+wbox self upgrade
+```
+
+On Windows the replacement is deferred to the next launch (the running binary cannot replace itself). The outcome is reported on the following invocation.
+
+------------------------------------------------------------------------
+
+## Scripting Notes
+
+### WBOX_BRIEF
+
+Set `WBOX_BRIEF=1` (or pass `--brief` at the top level) to strip `*_html` fields from all output. Wealthbox duplicates every rich-text field as an HTML variant that is 3–5× larger; agents and pipelines almost never want it:
+
+``` bash
+# Linux/macOS
+WBOX_BRIEF=1 wbox contacts get 123
+
+# PowerShell
+$env:WBOX_BRIEF="1"; wbox contacts list
+
+# Inline flag (applies to all subcommands in the invocation)
+wbox --brief contacts list --format table
+```
+
+### Internals (hidden)
+
+`wbox internals` is a hidden sub-app for repo-maintenance tasks not intended for end users. It is accessible via `wbox internals --help` but is omitted from the top-level `wbox --help` listing. Currently it exposes `regen-skill-refs`, which regenerates flag tables in skill reference markdown files from the live Typer command tree.
