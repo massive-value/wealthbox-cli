@@ -58,6 +58,7 @@ Changelog = "https://github.com/massive-value/wealthbox-cli/blob/main/CHANGELOG.
 dev = [
     "pytest>=8.0",
     "pytest-asyncio>=0.23",
+    "pytest-cov>=5.0",
     "respx>=0.21",
     "ruff>=0.4",
     "mypy>=1.10",
