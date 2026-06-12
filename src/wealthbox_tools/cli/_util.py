@@ -8,8 +8,9 @@ import os
 from collections.abc import Awaitable, Callable
 from enum import StrEnum
 from functools import wraps
-from typing import Any
+from typing import Any, ParamSpec, TypeVar
 
+import click
 import typer
 from pydantic import ValidationError
 from typer.core import TyperGroup
@@ -21,7 +22,9 @@ from wealthbox_tools.models import CategoryListQuery, CategoryType, LinkedToRef,
 class _GetShortcutGroup(TyperGroup):
     """Typer Group that routes numeric first arguments to the ``get`` subcommand."""
 
-    def resolve_command(self, ctx: typer.Context, args: list[str]) -> tuple:  # type: ignore[type-arg]
+    def resolve_command(
+        self, ctx: click.Context, args: list[str]
+    ) -> tuple[str | None, click.Command | None, list[str]]:
         if args and args[0].isdigit() and args[0] not in self.commands:
             args.insert(0, "get")
         return super().resolve_command(ctx, args)
@@ -248,17 +251,17 @@ def _flatten_value(value: Any) -> Any:
     return value
 
 
-def _flatten_record(record: dict) -> dict:  # type: ignore[type-arg]
+def _flatten_record(record: dict[str, Any]) -> dict[str, Any]:
     return {k: _flatten_value(v) for k, v in record.items()}
 
 
-def _extract_collection(data: Any) -> tuple[list[dict] | None, int | None]:  # type: ignore[type-arg]
+def _extract_collection(data: Any) -> tuple[list[dict[str, Any]] | None, int | None]:
     """Return (rows, total_count) or (None, None) for a single-object response."""
     if isinstance(data, list):
         return data, None
     if isinstance(data, dict):
         if "meta" in data:
-            rows: list[dict] = []  # type: ignore[type-arg]
+            rows: list[dict[str, Any]] = []
             for k, v in data.items():
                 if k != "meta" and isinstance(v, list):
                     rows = v
@@ -275,7 +278,7 @@ def _extract_collection(data: Any) -> tuple[list[dict] | None, int | None]:  # t
     return None, None
 
 
-def _render_table(rows: list[dict], headers: list[str], total_count: int | None) -> tuple[str, str | None]:  # type: ignore[type-arg]
+def _render_table(rows: list[dict[str, Any]], headers: list[str], total_count: int | None) -> tuple[str, str | None]:
     from tabulate import tabulate
     table_data = [[row.get(h, "") for h in headers] for row in rows]
     rendered = tabulate(table_data, headers=headers, tablefmt="grid")
@@ -283,12 +286,12 @@ def _render_table(rows: list[dict], headers: list[str], total_count: int | None)
     return rendered, footer
 
 
-def _render_kv_table(record: dict) -> str:  # type: ignore[type-arg]
+def _render_kv_table(record: dict[str, Any]) -> str:
     from tabulate import tabulate
     return tabulate(list(record.items()), headers=["Field", "Value"], tablefmt="grid")
 
 
-def _render_dsv(rows: list[dict], headers: list[str], sep: str) -> str:  # type: ignore[type-arg]
+def _render_dsv(rows: list[dict[str, Any]], headers: list[str], sep: str) -> str:
     buf = io.StringIO()
     writer = csv.writer(buf, delimiter=sep)
     writer.writerow(headers)
@@ -343,9 +346,13 @@ def output_result(data: Any, fmt: OutputFormat = OutputFormat.JSON, fields: list
             typer.echo(_render_dsv(flat_rows, headers, sep), nl=False)
 
 
-def handle_errors(func):  # type: ignore[no-untyped-def]
+_P = ParamSpec("_P")
+_R = TypeVar("_R")
+
+
+def handle_errors(func: Callable[_P, _R]) -> Callable[_P, _R]:
     @wraps(func)
-    def wrapper(*args, **kwargs):  # type: ignore[no-untyped-def]
+    def wrapper(*args: _P.args, **kwargs: _P.kwargs) -> _R:
         try:
             return func(*args, **kwargs)
 
@@ -542,7 +549,7 @@ def parse_more_fields(more_fields: str, reserved: set[str]) -> dict[str, Any]:
     return extra
 
 
-def make_category_command(category_type: CategoryType):  # type: ignore[no-untyped-def]
+def make_category_command(category_type: CategoryType) -> Callable[..., None]:
     """Factory that returns a Typer command function for listing a category type."""
     @handle_errors
     def cmd(

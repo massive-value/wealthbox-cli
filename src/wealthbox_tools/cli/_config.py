@@ -50,7 +50,8 @@ def load_config() -> dict[str, Any]:
     if not path.exists():
         return {}
     try:
-        return json.loads(path.read_text())
+        data: dict[str, Any] = json.loads(path.read_text())
+        return data
     except (json.JSONDecodeError, OSError):
         return {}
 

@@ -31,6 +31,7 @@ import time
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import Any
 
 import httpx
 
@@ -193,7 +194,7 @@ def _parse_version(tag_or_version: str) -> tuple[int, ...]:
     return tuple(parts)
 
 
-def _select_asset(assets: list[dict], wanted_name: str) -> dict | None:
+def _select_asset(assets: list[dict[str, Any]], wanted_name: str) -> dict[str, Any] | None:
     for asset in assets:
         if asset.get("name") == wanted_name:
             return asset
@@ -327,7 +328,7 @@ def _invoke_skills_upgrade(binary_path: Path) -> int:
         return 1
 
 
-def _read_and_clear_upgrade_status(install_root: Path) -> dict | None:
+def _read_and_clear_upgrade_status(install_root: Path) -> dict[str, Any] | None:
     """Read + clear the upgrade status file written by the Windows helper.
 
     Called on every CLI startup. Returns the parsed JSON dict if a status

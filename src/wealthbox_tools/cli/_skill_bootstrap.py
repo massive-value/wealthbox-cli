@@ -383,7 +383,12 @@ def bootstrap_firm(
     target = firm_dir()
     target.mkdir(parents=True, exist_ok=True)
 
-    async def _run() -> tuple[dict, dict, list, dict]:
+    async def _run() -> tuple[
+        dict[str, list[dict[str, Any]]],
+        dict[str, list[dict[str, Any]]],
+        list[dict[str, Any]],
+        dict[str, Any],
+    ]:
         async with get_client(token) as client:
             return await _fetch_all(client)
 

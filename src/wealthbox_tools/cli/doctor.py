@@ -11,6 +11,7 @@ import shutil
 import sys
 from datetime import datetime, timezone
 from importlib.metadata import version as _pkg_version
+from pathlib import Path
 
 import typer
 
@@ -240,7 +241,7 @@ def run_doctor(token: str | None = None) -> int:
     return 1
 
 
-def _ensure_firm_migrated():
+def _ensure_firm_migrated() -> Path | None:
     """Migrate legacy firm/ data on first read (idempotent)."""
     installed = [skill_dir(p) for p in detect_platforms() if is_installed(p)]
     return migrate_legacy_firm(installed)

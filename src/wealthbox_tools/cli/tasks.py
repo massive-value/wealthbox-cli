@@ -4,6 +4,7 @@ from typing import Any
 
 import typer
 
+from wealthbox_tools.client import WealthboxClient
 from wealthbox_tools.models import (
     CategoryType,
     TaskCreateInput,
@@ -197,7 +198,7 @@ def add_task(
     if more_fields:
         payload.update(parse_more_fields(more_fields, _TASK_CREATE_RESERVED))
 
-    async def _create(client):  # type: ignore[no-untyped-def]
+    async def _create(client: WealthboxClient) -> dict[str, Any]:
         if category is not None:
             payload["category"] = await resolve_category_id(client, CategoryType.TASK_CATEGORIES, category)
         # Strip None before model construction (due_date XOR frame validator needs clean input)
@@ -247,7 +248,7 @@ def update_task(
     if linked is not None:
         payload["linked_to"] = linked
 
-    async def _update(client):  # type: ignore[no-untyped-def]
+    async def _update(client: WealthboxClient) -> dict[str, Any]:
         if category is not None:
             payload["category"] = await resolve_category_id(client, CategoryType.TASK_CATEGORIES, category)
         return await client.update_task(task_id, TaskUpdateInput(**payload))
