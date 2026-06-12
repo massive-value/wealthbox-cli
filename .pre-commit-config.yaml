@@ -1,0 +1,22 @@
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.15.12
+    hooks:
+      - id: ruff
+        files: ^(src|tests)/
+
+  - repo: local
+    hooks:
+      - id: mypy
+        name: mypy (strict)
+        language: system
+        entry: uv run mypy src/
+        pass_filenames: false
+        types: [python]
+
+      - id: skill-ref-drift
+        name: skill-ref drift check
+        language: system
+        entry: bash -c 'uv run wbox internals regen-skill-refs && git diff --exit-code -- src/wealthbox_tools/skills/wealthbox-crm/references/'
+        pass_filenames: false
+        always_run: true

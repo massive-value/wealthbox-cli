@@ -42,6 +42,30 @@ uv run wbox config set-token
 
 ---
 
+## Pre-commit hooks
+
+The repo ships a `.pre-commit-config.yaml` with three hooks: ruff lint, mypy strict, and a skill-ref drift check. Install them once after cloning:
+
+```bash
+# uv
+uv tool install pre-commit
+pre-commit install
+
+# or pip
+pip install pre-commit
+pre-commit install
+```
+
+Run all hooks manually at any time:
+
+```bash
+pre-commit run --all-files
+# or without a local install:
+uv tool run pre-commit run --all-files
+```
+
+---
+
 ## Running Tests
 
 ```bash
@@ -50,6 +74,14 @@ uv run pytest
 
 Tests use [respx](https://lundberg.github.io/respx/) to mock HTTP at the transport layer — no real API calls are made.
 
+### Coverage gate
+
+CI enforces `--cov-fail-under=92` on the ubuntu test leg. Run locally with:
+
+```bash
+uv run pytest --cov=src/wealthbox_tools --cov-report=term
+```
+
 ## Code Style
 
 ```bash
@@ -57,7 +89,7 @@ uv run ruff check src/ tests/
 ```
 
 - **ruff** for linting (E, F, I rules; 120-char line length)
-- **mypy** in strict mode
+- **mypy** in strict mode (`uv run mypy src/` must exit 0)
 
 ---
 
@@ -87,14 +119,57 @@ Three layers under `src/wealthbox_tools/`:
 
 ---
 
+## Skill reference files
+
+Any change to CLI command signatures or help text **must** regenerate the skill reference files before committing:
+
+```bash
+uv run wbox internals regen-skill-refs
+git add src/wealthbox_tools/skills/wealthbox-crm/references/
+```
+
+The generated files live under `src/wealthbox_tools/skills/wealthbox-crm/references/` and are checked in. The `skill-ref-drift` CI job and the pre-commit hook both fail on stale refs.
+
+---
+
+## Standing verification
+
+Run all of these before opening a PR (CI enforces each):
+
+```bash
+uv run ruff check src/ tests/
+uv run pytest
+uv run mypy src/
+uv run wbox internals regen-skill-refs && git diff --exit-code -- src/wealthbox_tools/skills/wealthbox-crm/references/
+```
+
+---
+
+## Releasing
+
+Releases follow semantic versioning. Bump patch for fixes, minor for features, major for breaking changes.
+
+1. Bump `version` in `pyproject.toml`.
+2. Add a `## [X.Y.Z]` entry at the top of `CHANGELOG.md` (CI enforces that the changelog version matches `pyproject.toml` before publishing to PyPI).
+3. Verify locally: `uv run ruff check src/ tests/ && uv run pytest && uv run mypy src/`
+4. Commit: `vX.Y.Z: <description>`
+5. Tag: `git tag vX.Y.Z`
+6. Push: `git push origin main --tags`
+
+CI builds and publishes to PyPI automatically on `v*` tags once lint, tests, typecheck, and skill-ref-drift all pass.
+
+---
+
 ## CI
 
 Pull requests and pushes to `main` run GitHub Actions CI:
 
 - **Lint:** `ruff check src/ tests/`
-- **Test:** `pytest` across Python 3.11, 3.12, 3.13
+- **Test:** `pytest` across Python 3.11, 3.12, 3.13 (ubuntu) + 3.12 (windows); coverage gate `--cov-fail-under=92` on ubuntu
+- **Typecheck:** `mypy src/` (strict)
+- **Skill-ref drift:** regenerates refs and asserts no git diff
 
-Both must pass before merging.
+All four jobs must pass before merging.
 
 ---
 
