@@ -74,6 +74,16 @@ jobs:
       - uses: astral-sh/setup-uv@v8.1.0
         with:
           python-version: "3.12"
+      - name: Check changelog matches version
+        run: |
+          python - <<'PY'
+          import re, pathlib, sys
+          ver = re.search(r'^version\s*=\s*"([^"]+)"', pathlib.Path("pyproject.toml").read_text(encoding="utf-8"), re.M).group(1)
+          m = re.search(r'^##\s*\[([0-9]+\.[0-9]+\.[0-9]+)\]', pathlib.Path("CHANGELOG.md").read_text(encoding="utf-8"), re.M)
+          top = m.group(1) if m else None
+          print(f"pyproject={ver} changelog={top}")
+          sys.exit(0 if top == ver else 1)
+          PY
       - run: uv build
       - uses: pypa/gh-action-pypi-publish@release/v1
         with:
