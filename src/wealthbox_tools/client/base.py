@@ -155,7 +155,7 @@ class _WealthboxBase:
             try:
                 retry_after = float(raw_retry)
             except ValueError:
-                log.warning("Malformed Retry-After header %r, defaulting to 5s", raw_retry)
+                log.warning("Malformed Retry-After header %r, defaulting to 5s", raw_retry[:100])
                 retry_after = 5.0
 
             await asyncio.sleep(max(retry_after, 0.0))
