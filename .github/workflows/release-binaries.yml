@@ -140,7 +140,7 @@ jobs:
           Get-Content "${{ matrix.binary }}.sha256"
 
       - name: Upload build artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: wbox-${{ matrix.target }}
           path: |
@@ -185,7 +185,7 @@ jobs:
           sha256sum -c SHA256SUMS.txt
 
       - name: Upload combined manifest artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: SHA256SUMS
           path: release/SHA256SUMS.txt
