@@ -15,16 +15,15 @@ from wealthbox_tools.models import (
 )
 
 from ._util import (
-    COMMENT_RESOURCE_TYPES,
     OutputFormat,
+    ResourceSpec,
     build_linked_to,
+    create_resource_commands,
     handle_errors,
     make_category_command,
     make_resource_app,
-    output_get_result,
     output_result,
     run_client,
-    run_client_with_comments,
 )
 
 app = make_resource_app(help="Manage Wealthbox events.")
@@ -36,7 +35,6 @@ _DEFAULT_FIELDS = [
 ]
 
 
-@app.command("list", help="List events with optional filters.")
 @handle_errors
 def list_events(
     resource_id: int | None = typer.Option(None, "--resource-id", help="Filter by resource ID"),
@@ -77,23 +75,6 @@ def list_events(
     output_result(run_client(token, lambda c: c.list_events(query)), fmt, fields=None if verbose else _DEFAULT_FIELDS)
 
 
-@app.command("get", help="Get a single event by ID.")
-@handle_errors
-def get_event(
-    event_id: int = typer.Argument(..., help="Event ID"),
-    no_comments: bool = typer.Option(False, "--no-comments", help="Omit comments from output"),
-    verbose: bool = typer.Option(False, "--verbose", "-v", help="Show all fields"),
-    token: str | None = typer.Option(None, envvar="WEALTHBOX_TOKEN", hidden=True),
-    fmt: OutputFormat = typer.Option(OutputFormat.JSON, "--format"),
-) -> None:
-    result = run_client_with_comments(
-        token, lambda c: c.get_event(event_id),
-        COMMENT_RESOURCE_TYPES["events"], event_id, include_comments=not no_comments,
-    )
-    output_get_result(result, fmt, fields=None if verbose else _DEFAULT_FIELDS)
-
-
-@app.command("add", help="Create a new event.")
 @handle_errors
 def add_event(
     title: str = typer.Argument(..., help="Event title"),
@@ -130,7 +111,6 @@ def add_event(
     output_result(run_client(token, lambda c: c.create_event(input_model)), fmt)
 
 
-@app.command("update", help="Update an existing event. Pass only the fields you want to change.")
 @handle_errors
 def update_event(
     event_id: int = typer.Argument(..., help="Event ID"),
@@ -173,11 +153,26 @@ def update_event(
     output_result(run_client(token, lambda c: c.update_event(event_id, input_model)), fmt)
 
 
-@app.command("delete", help="Delete an existing event.")
-@handle_errors
-def delete_event(
-    event_id: int = typer.Argument(..., help="Event ID"),
-    token: str | None = typer.Option(None, envvar="WEALTHBOX_TOKEN", hidden=True),
-) -> None:
-    run_client(token, lambda c: c.delete_event(event_id))
-    typer.echo(f"Event {event_id} deleted.")
+create_resource_commands(
+    app,
+    ResourceSpec(
+        name="events",
+        get_func_name="get_event",
+        id_arg_name="event_id",
+        id_help="Event ID",
+        get_client_method="get_event",
+        list_help="List events with optional filters.",
+        get_help="Get a single event by ID.",
+        add_help="Create a new event.",
+        update_help="Update an existing event. Pass only the fields you want to change.",
+        delete_help="Delete an existing event.",
+        get_supports_verbose=True,
+        get_default_fields=_DEFAULT_FIELDS,
+        list_hook=list_events,
+        add_hook=add_event,
+        update_hook=update_event,
+        delete_client_method="delete_event",
+        delete_label="Event",
+        operations=frozenset({"list", "get", "add", "update", "delete"}),
+    ),
+)

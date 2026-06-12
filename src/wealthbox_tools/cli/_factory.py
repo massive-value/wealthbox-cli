@@ -126,6 +126,7 @@ class ResourceSpec:
     delete_help: str = ""
     # ``get`` knobs (ignored when ``get_hook`` is supplied).
     get_supports_verbose: bool = False
+    get_verbose_help: str = "Show all fields"
     get_default_fields: list[str] | None = None
     comment_resource_type: str | None = None
     # Per-resource command builders.
@@ -159,7 +160,7 @@ def _build_get_command(spec: ResourceSpec) -> CommandHook:
     def get_cmd_verbose(
         record_id: int = typer.Argument(..., help=spec.id_help),
         no_comments: bool = typer.Option(False, "--no-comments", help="Omit comments from output"),
-        verbose: bool = typer.Option(False, "--verbose", "-v", help="Show all fields"),
+        verbose: bool = typer.Option(False, "--verbose", "-v", help=spec.get_verbose_help),
         token: str | None = typer.Option(None, envvar="WEALTHBOX_TOKEN", hidden=True),
         fmt: OutputFormat = typer.Option(OutputFormat.JSON, "--format"),
     ) -> None:

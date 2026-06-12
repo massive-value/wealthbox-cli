@@ -14,16 +14,15 @@ from wealthbox_tools.models import (
 )
 
 from ._util import (
-    COMMENT_RESOURCE_TYPES,
     OutputFormat,
+    ResourceSpec,
     build_linked_to,
+    create_resource_commands,
     handle_errors,
     make_resource_app,
-    output_get_result,
     output_result,
     parse_more_fields,
     run_client,
-    run_client_with_comments,
 )
 
 app = make_resource_app(help="Manage Wealthbox opportunities.")
@@ -54,7 +53,6 @@ def _build_amounts(
     return amounts or None
 
 
-@app.command("list", help="List opportunities with optional filters.")
 @handle_errors
 def list_opportunities(
     resource_id: int | None = typer.Option(
@@ -90,22 +88,6 @@ def list_opportunities(
     )
 
 
-@app.command("get", help="Get a single opportunity by ID.")
-@handle_errors
-def get_opportunity(
-    opportunity_id: int = typer.Argument(..., help="Opportunity ID"),
-    no_comments: bool = typer.Option(False, "--no-comments", help="Omit comments from output"),
-    token: str | None = typer.Option(None, envvar="WEALTHBOX_TOKEN", hidden=True),
-    fmt: OutputFormat = typer.Option(OutputFormat.JSON, "--format"),
-) -> None:
-    result = run_client_with_comments(
-        token, lambda c: c.get_opportunity(opportunity_id),
-        COMMENT_RESOURCE_TYPES["opportunities"], opportunity_id, include_comments=not no_comments,
-    )
-    output_get_result(result, fmt)
-
-
-@app.command("add", help="Create a new opportunity.")
 @handle_errors
 def add_opportunity(
     name: str = typer.Argument(..., help="Opportunity name"),
@@ -147,7 +129,6 @@ def add_opportunity(
     output_result(run_client(token, lambda c: c.create_opportunity(input_model)), fmt)
 
 
-@app.command("update", help="Update an existing opportunity. Pass only the fields you want to change.")
 @handle_errors
 def update_opportunity(
     opportunity_id: int = typer.Argument(..., help="Opportunity ID"),
@@ -196,11 +177,24 @@ def update_opportunity(
     output_result(run_client(token, lambda c: c.update_opportunity(opportunity_id, input_model)), fmt)
 
 
-@app.command("delete", help="Delete an opportunity by ID.")
-@handle_errors
-def delete_opportunity(
-    opportunity_id: int = typer.Argument(..., help="Opportunity ID"),
-    token: str | None = typer.Option(None, envvar="WEALTHBOX_TOKEN", hidden=True),
-) -> None:
-    run_client(token, lambda c: c.delete_opportunity(opportunity_id))
-    typer.echo(f"Opportunity {opportunity_id} deleted.")
+create_resource_commands(
+    app,
+    ResourceSpec(
+        name="opportunities",
+        get_func_name="get_opportunity",
+        id_arg_name="opportunity_id",
+        id_help="Opportunity ID",
+        get_client_method="get_opportunity",
+        list_help="List opportunities with optional filters.",
+        get_help="Get a single opportunity by ID.",
+        add_help="Create a new opportunity.",
+        update_help="Update an existing opportunity. Pass only the fields you want to change.",
+        delete_help="Delete an opportunity by ID.",
+        list_hook=list_opportunities,
+        add_hook=add_opportunity,
+        update_hook=update_opportunity,
+        delete_client_method="delete_opportunity",
+        delete_label="Opportunity",
+        operations=frozenset({"list", "get", "add", "update", "delete"}),
+    ),
+)

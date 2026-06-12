@@ -18,9 +18,11 @@ from wealthbox_tools.models import (
 from ._util import (
     COMMENT_RESOURCE_TYPES,
     OutputFormat,
+    ResourceSpec,
     build_linked_to,
     build_resource_filter,
     clean_comments,
+    create_resource_commands,
     handle_errors,
     make_category_command,
     make_resource_app,
@@ -80,13 +82,6 @@ _FRAME_HELP = (
 )
 
 
-@app.command(
-    "list",
-    help=(
-        "List tasks with optional filters. By default only outstanding tasks are returned; "
-        "use --include-completed to include completed tasks"
-    ),
-)
 @handle_errors
 def list_tasks(
     contact: int | None = typer.Option(None, "--contact", help="Filter tasks linked to a Contact (by ID)"),
@@ -126,7 +121,6 @@ def list_tasks(
     output_result(run_client(token, lambda c: c.list_tasks(query)), fmt, fields=None if verbose else _DEFAULT_FIELDS)
 
 
-@app.command("get", help="Get a single task by ID.")
 @handle_errors
 def get_task(
     task_id: int = typer.Argument(..., help="Task ID"),
@@ -151,7 +145,6 @@ def get_task(
     output_result(result, fmt, fields=None if (verbose or fmt == OutputFormat.JSON) else _GET_FIELDS)
 
 
-@app.command("add", help="Create a new task. Required: name, and either due_date or frame.")
 @handle_errors
 def add_task(
     name: str = typer.Argument(..., help="Task title/name"),
@@ -208,7 +201,6 @@ def add_task(
     output_result(run_client(token, _create), fmt)
 
 
-@app.command("update", help="Update an existing task. Pass only the fields you want to change.")
 @handle_errors
 def update_task(
     task_id: int = typer.Argument(..., help="Task ID"),
@@ -256,11 +248,28 @@ def update_task(
     output_result(run_client(token, _update), fmt)
 
 
-@app.command("delete", help="Delete a task by ID.")
-@handle_errors
-def delete_task(
-    task_id: int = typer.Argument(..., help="Task ID"),
-    token: str | None = typer.Option(None, envvar="WEALTHBOX_TOKEN", hidden=True),
-) -> None:
-    run_client(token, lambda c: c.delete_task(task_id))
-    typer.echo(f"Task {task_id} deleted.")
+create_resource_commands(
+    app,
+    ResourceSpec(
+        name="tasks",
+        get_func_name="get_task",
+        id_arg_name="task_id",
+        id_help="Task ID",
+        get_client_method="get_task",
+        list_help=(
+            "List tasks with optional filters. By default only outstanding tasks are returned; "
+            "use --include-completed to include completed tasks"
+        ),
+        get_help="Get a single task by ID.",
+        add_help="Create a new task. Required: name, and either due_date or frame.",
+        update_help="Update an existing task. Pass only the fields you want to change.",
+        delete_help="Delete a task by ID.",
+        list_hook=list_tasks,
+        get_hook=get_task,
+        add_hook=add_task,
+        update_hook=update_task,
+        delete_client_method="delete_task",
+        delete_label="Task",
+        operations=frozenset({"list", "get", "add", "update", "delete"}),
+    ),
+)

@@ -15,16 +15,15 @@ from wealthbox_tools.models import (
 )
 
 from ._util import (
-    COMMENT_RESOURCE_TYPES,
     OutputFormat,
+    ResourceSpec,
     build_linked_to,
+    create_resource_commands,
     handle_errors,
     make_resource_app,
-    output_get_result,
     output_result,
     parse_more_fields,
     run_client,
-    run_client_with_comments,
 )
 
 app = make_resource_app(help="Manage Wealthbox workflows.")
@@ -44,7 +43,6 @@ _GET_DEFAULT_FIELDS = [
 _TEMPLATE_DEFAULT_FIELDS = ["id", "name", "description", "status"]
 
 
-@app.command("list", help="List workflows with optional filters.")
 @handle_errors
 def list_workflows(
     resource_id: int | None = typer.Option(
@@ -76,23 +74,6 @@ def list_workflows(
     )
 
 
-@app.command("get", help="Get a single workflow by ID.")
-@handle_errors
-def get_workflow(
-    workflow_id: int = typer.Argument(..., help="Workflow ID"),
-    no_comments: bool = typer.Option(False, "--no-comments", help="Omit comments from output"),
-    verbose: bool = typer.Option(False, "--verbose", "-v", help="Show all fields including the full template"),
-    token: str | None = typer.Option(None, envvar="WEALTHBOX_TOKEN", hidden=True),
-    fmt: OutputFormat = typer.Option(OutputFormat.JSON, "--format"),
-) -> None:
-    result = run_client_with_comments(
-        token, lambda c: c.get_workflow(workflow_id),
-        COMMENT_RESOURCE_TYPES["workflows"], workflow_id, include_comments=not no_comments,
-    )
-    output_get_result(result, fmt, fields=None if verbose else _GET_DEFAULT_FIELDS)
-
-
-@app.command("add", help="Create a new workflow from a template.")
 @handle_errors
 def add_workflow(
     template: int = typer.Option(..., "--template", help="Workflow template ID — see: wbox workflows templates list"),
@@ -122,6 +103,27 @@ def add_workflow(
 
     input_model = WorkflowCreateInput(**{k: v for k, v in payload.items() if v is not None})
     output_result(run_client(token, lambda c: c.create_workflow(input_model)), fmt)
+
+
+create_resource_commands(
+    app,
+    ResourceSpec(
+        name="workflows",
+        get_func_name="get_workflow",
+        id_arg_name="workflow_id",
+        id_help="Workflow ID",
+        get_client_method="get_workflow",
+        list_help="List workflows with optional filters.",
+        get_help="Get a single workflow by ID.",
+        add_help="Create a new workflow from a template.",
+        get_supports_verbose=True,
+        get_verbose_help="Show all fields including the full template",
+        get_default_fields=_GET_DEFAULT_FIELDS,
+        list_hook=list_workflows,
+        add_hook=add_workflow,
+        operations=frozenset({"list", "get", "add"}),
+    ),
+)
 
 
 @app.command("next", help="Show the active step (or completion status) of a workflow.")
