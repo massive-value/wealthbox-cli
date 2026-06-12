@@ -4,7 +4,15 @@ All notable changes to `wealthbox-cli` are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [2.4.0] - 2026-06-12
+
+The notable user-facing change in this release is **differentiated CLI exit
+codes** — scripts that branch on a specific non-zero code should read the note
+below. Beyond that, 2.4.0 is largely an internal hardening release: `src/` is
+now `mypy --strict` clean and gated in CI, the test matrix gained a Windows leg
+and a coverage floor, and the CLI command layer was refactored onto a shared
+resource-command factory. Command syntax, options, help text, and output are
+unchanged.
 
 ### Changed
 - **Differentiated CLI exit codes (behavior change).** Previously every error
@@ -21,6 +29,35 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   `WBOX_DEBUG=1`) to print the full Python traceback to stderr alongside the
   friendly one-line error message. The mapped exit code is unchanged, so it is
   safe to enable in scripts.
+- Documented the existing `WBOX_BRIEF` / `--brief` output mode (strips `*_html`
+  duplicate fields to cut response size) in the README and CLI reference.
+
+### Security
+- Token config file (`config.json`) and the rate-limit state file are now
+  written with `0600` permissions on POSIX so other local users cannot read a
+  stored token.
+- Malformed `Retry-After` response header values are truncated to 100
+  characters before being logged, bounding a hostile/oversized header.
+
+### Internal
+- **Typing:** `src/` is now `mypy --strict` clean (zero errors, zero
+  `type: ignore`). Client mixins share a typed request protocol and
+  `fetch_all_pages` returns a typed pagination envelope. A new `typecheck` CI
+  job runs `mypy src/` and gates publishing.
+- **CI:** added a `windows-latest` test leg (Python 3.12), a coverage floor
+  (`--cov-fail-under=91` on the Ubuntu leg), a publish-time check that the top
+  CHANGELOG version matches `pyproject.toml`, a weekly Dependabot config, and a
+  `.pre-commit-config.yaml` (ruff, mypy, skill-ref drift).
+- **Refactor:** `cli/_util.py` was split into `_client`, `_format`, `_resolve`,
+  and `_factory` modules (with `_util` kept as a re-export shim). The `notes`,
+  `projects`, `tasks`, `events`, `opportunities`, and `workflows` command
+  groups now generate their commands from a shared resource-command factory;
+  `contacts` remains hand-written. No change to the CLI surface.
+- **Tests:** added coverage for delete commands, project/workflow updates,
+  contacts list filters, HTTP base-client edge cases (missing/malformed
+  `Retry-After`, `5xx`, missing collection key), exit codes, and an
+  update-model contract meta-test (every `*UpdateInput` rejects an empty
+  payload).
 
 ## [2.3.1] - 2026-06-01
 

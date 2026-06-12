@@ -76,7 +76,7 @@ Tests use [respx](https://lundberg.github.io/respx/) to mock HTTP at the transpo
 
 ### Coverage gate
 
-CI enforces `--cov-fail-under=92` on the ubuntu test leg. Run locally with:
+CI enforces `--cov-fail-under=91` on the ubuntu test leg. Run locally with:
 
 ```bash
 uv run pytest --cov=src/wealthbox_tools --cov-report=term
@@ -165,7 +165,7 @@ CI builds and publishes to PyPI automatically on `v*` tags once lint, tests, typ
 Pull requests and pushes to `main` run GitHub Actions CI:
 
 - **Lint:** `ruff check src/ tests/`
-- **Test:** `pytest` across Python 3.11, 3.12, 3.13 (ubuntu) + 3.12 (windows); coverage gate `--cov-fail-under=92` on ubuntu
+- **Test:** `pytest` across Python 3.11, 3.12, 3.13 (ubuntu) + 3.12 (windows); coverage gate `--cov-fail-under=91` on ubuntu
 - **Typecheck:** `mypy src/` (strict)
 - **Skill-ref drift:** regenerates refs and asserts no git diff
 
