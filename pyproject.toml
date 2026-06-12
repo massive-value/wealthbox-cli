@@ -83,6 +83,7 @@ exclude = [
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+# auto mode: all 12 async tests already carry @pytest.mark.asyncio; "auto" avoids breakage if new async tests are added without decorators
 asyncio_mode = "auto"
 
 [tool.ruff]
