@@ -60,6 +60,8 @@ def save_config(config: dict[str, Any]) -> None:
     path = _config_path()
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(config, indent=2) + "\n")
+    if platform.system() != "Windows":
+        path.chmod(0o600)
 
 
 def get_stored_token() -> str | None:

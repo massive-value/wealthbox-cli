@@ -6,6 +6,7 @@ import json
 import logging
 import os
 import pathlib
+import platform
 import time
 from collections.abc import Callable
 from typing import Any
@@ -80,6 +81,8 @@ class RateLimiter:
             wall_ts = [ts + offset for ts in self._timestamps if (ts + offset) > cutoff]
             tmp = self._state_file.with_suffix(".tmp")
             tmp.write_text(json.dumps({"timestamps": wall_ts}))
+            if platform.system() != "Windows":
+                tmp.chmod(0o600)
             os.replace(tmp, self._state_file)  # atomic swap
         except OSError:
             pass   # never crash CLI over a cache file

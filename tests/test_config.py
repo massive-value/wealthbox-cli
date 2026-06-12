@@ -1,6 +1,9 @@
 from __future__ import annotations
 
 import json
+import platform
+
+import pytest
 
 from wealthbox_tools.cli.main import app
 
@@ -67,3 +70,21 @@ def test_config_clear_nonexistent(tmp_path, monkeypatch, runner):
     result = runner.invoke(app, ["config", "clear"])
     assert result.exit_code == 0
     assert "No configuration to clear" in result.output
+
+
+@pytest.mark.skipif(platform.system() == "Windows", reason="POSIX-only file mode")
+def test_save_config_file_mode(tmp_path, monkeypatch):
+    """save_config restricts the config file to 0o600 on POSIX."""
+    from wealthbox_tools.cli._config import save_config
+
+    config_dir = tmp_path / "wbox"
+    monkeypatch.setattr(
+        "wealthbox_tools.cli._config._config_dir",
+        lambda: config_dir,
+    )
+
+    save_config({"token": "test-token"})
+
+    config_file = config_dir / "config.json"
+    assert config_file.exists()
+    assert oct(config_file.stat().st_mode & 0o777) == oct(0o600)
