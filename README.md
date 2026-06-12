@@ -112,6 +112,17 @@ wbox notes add "Discussed retirement plan" --contact 12345
 ```
 
 Full command reference: [CLI Reference](https://massive-value.github.io/wealthbox-cli/cli-reference/). Output formats: `json` (default), `table`, `csv`, `tsv`. Date format: ISO 8601 (`2026-05-01T10:00:00-07:00`). See [Getting Started](https://massive-value.github.io/wealthbox-cli/getting-started/) for pipx, env-var auth, and project-scoped installs.
+
+**Exit codes** — `wbox` returns differentiated exit codes so scripts can branch on the failure class:
+
+| Code | Meaning |
+| ---- | ------- |
+| `0`  | Success |
+| `1`  | Validation / user error (bad input, a non-auth `4xx` from the API such as `404`/`422`) |
+| `2`  | Authentication error (API `401`/`403`) |
+| `3`  | Server error (API `5xx`) |
+
+Note: Click also exits `2` for usage errors (an unknown flag or a missing required argument); that overlap with the auth code is pre-existing and acceptable, since usage errors are caught by the parser before the command runs. Set `WBOX_DEBUG=1` to print the full Python traceback to stderr alongside the friendly message (the exit code is unchanged) — handy when reporting bugs.
 </details>
 
 <details>

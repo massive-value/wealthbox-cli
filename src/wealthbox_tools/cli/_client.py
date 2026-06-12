@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import json
 import os
+import traceback
 from collections.abc import Awaitable, Callable
 from functools import wraps
 from typing import Any, ParamSpec, TypeVar
@@ -61,6 +62,38 @@ def run_client_with_comments(
 _P = ParamSpec("_P")
 _R = TypeVar("_R")
 
+# Exit-code scheme (see README / docs/cli-reference.md):
+#   0 — success
+#   1 — validation / user error (pydantic ValidationError, 4xx that isn't auth,
+#       bad JSON, ValueError, and any other unexpected exception)
+#   2 — auth error (WealthboxAPIError 401/403). NOTE: Click/Typer also uses 2
+#       for usage errors (bad/missing CLI args), which are raised by the parser
+#       BEFORE handle_errors runs. That overlap is pre-existing and acceptable.
+#   3 — server error (WealthboxAPIError >= 500)
+_EXIT_VALIDATION = 1
+_EXIT_AUTH = 2
+_EXIT_SERVER = 3
+
+
+def _exit_code_for_api_error(status_code: int) -> int:
+    """Map a WealthboxAPIError HTTP status to a differentiated exit code."""
+    if status_code in (401, 403):
+        return _EXIT_AUTH
+    if status_code >= 500:
+        return _EXIT_SERVER
+    # All other statuses (4xx that isn't auth, plus the synthetic 0 used for
+    # transport-level failures) are treated as user/validation errors.
+    return _EXIT_VALIDATION
+
+
+def _debug_enabled() -> bool:
+    """True when WBOX_DEBUG is set to any non-empty value.
+
+    Matches the repo's existing env-flag idiom (see WBOX_BRIEF in cli/_format.py):
+    any non-empty value is truthy.
+    """
+    return bool(os.environ.get("WBOX_DEBUG"))
+
 
 def handle_errors(func: Callable[_P, _R]) -> Callable[_P, _R]:
     @wraps(func)
@@ -70,7 +103,9 @@ def handle_errors(func: Callable[_P, _R]) -> Callable[_P, _R]:
 
         except WealthboxAPIError as e:
             typer.echo(f"API Error ({e.status_code}): {e.detail}", err=True)
-            raise typer.Exit(code=1)
+            if _debug_enabled():
+                typer.echo(traceback.format_exc(), err=True)
+            raise typer.Exit(code=_exit_code_for_api_error(e.status_code))
 
         except ValidationError as e:
             typer.echo("Validation Error:", err=True)
@@ -78,18 +113,26 @@ def handle_errors(func: Callable[_P, _R]) -> Callable[_P, _R]:
                 loc = " -> ".join(str(x) for x in err_item["loc"])
                 msg = err_item["msg"]
                 typer.echo(f"  {loc}: {msg}", err=True)
-            raise typer.Exit(code=1)
+            if _debug_enabled():
+                typer.echo(traceback.format_exc(), err=True)
+            raise typer.Exit(code=_EXIT_VALIDATION)
 
         except json.JSONDecodeError as e:
             typer.echo(f"Invalid JSON: {e}", err=True)
-            raise typer.Exit(code=1)
+            if _debug_enabled():
+                typer.echo(traceback.format_exc(), err=True)
+            raise typer.Exit(code=_EXIT_VALIDATION)
 
         except ValueError as e:
             typer.echo(f"Error: {e}", err=True)
-            raise typer.Exit(code=1)
+            if _debug_enabled():
+                typer.echo(traceback.format_exc(), err=True)
+            raise typer.Exit(code=_EXIT_VALIDATION)
 
         except Exception as e:
             typer.echo(f"Unexpected error: {e}", err=True)
-            raise typer.Exit(code=1)
+            if _debug_enabled():
+                typer.echo(traceback.format_exc(), err=True)
+            raise typer.Exit(code=_EXIT_VALIDATION)
 
     return wrapper

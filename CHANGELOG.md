@@ -4,6 +4,24 @@ All notable changes to `wealthbox-cli` are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed
+- **Differentiated CLI exit codes (behavior change).** Previously every error
+  exited with code `1`. `wbox` now distinguishes failure classes: validation /
+  user errors and non-auth `4xx` responses (e.g. `404`, `422`) still exit `1`,
+  authentication errors (`401`/`403`) now exit **`2`**, and server errors
+  (`5xx`) now exit **`3`**. Scripts that branched on a specific non-zero code
+  for auth or server failures must be updated. (Click usage errors — unknown
+  flags, missing arguments — continue to exit `2` as before; that overlap is
+  pre-existing.)
+
+### Added
+- `WBOX_DEBUG` environment variable: set it to any non-empty value (e.g.
+  `WBOX_DEBUG=1`) to print the full Python traceback to stderr alongside the
+  friendly one-line error message. The mapped exit code is unchanged, so it is
+  safe to enable in scripts.
+
 ## [2.3.1] - 2026-06-01
 
 Patch release fixing a startup crash introduced in 2.3.0. `wbox` crashed on

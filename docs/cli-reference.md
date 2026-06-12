@@ -59,6 +59,31 @@ Use `--verbose` with tabular formats to include all fields (same as JSON verbose
 
 ------------------------------------------------------------------------
 
+## Exit Codes
+
+`wbox` returns differentiated exit codes so scripts can branch on the failure class rather than just success/failure:
+
+| Code | Meaning |
+|---|---|
+| `0` | Success |
+| `1` | Validation / user error — invalid input rejected by the input models, or a non-auth `4xx` from the API (e.g. `404 Not Found`, `422 Unprocessable Entity`) |
+| `2` | Authentication error — API returned `401 Unauthorized` or `403 Forbidden` (e.g. a missing, invalid, or insufficiently-scoped token) |
+| `3` | Server error — API returned a `5xx` status (e.g. `500`, `503`) |
+
+Click (the underlying CLI parser) also exits with code `2` for **usage errors** — an unknown flag, a bad option value, or a missing required argument. These are raised by the parser before the command body runs, so they never reach the API. The overlap with the authentication code is pre-existing and acceptable; in practice a usage error prints a Click `Usage:` message while an auth error prints `API Error (401): ...`.
+
+**Debugging:** set `WBOX_DEBUG=1` (any non-empty value) to print the full Python traceback to stderr in addition to the friendly one-line error. The mapped exit code is unchanged, so `WBOX_DEBUG=1` is safe to leave on in scripts that branch on exit status.
+
+``` bash
+# Linux/macOS
+WBOX_DEBUG=1 wbox contacts get 999999
+
+# PowerShell
+$env:WBOX_DEBUG="1"; wbox contacts get 999999
+```
+
+------------------------------------------------------------------------
+
 ## Contacts
 
 ### List
