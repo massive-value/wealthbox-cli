@@ -147,7 +147,7 @@ jobs:
             dist/${{ matrix.binary }}
             dist/${{ matrix.binary }}.sha256
           if-no-files-found: error
-          retention-days: 7
+          retention-days: 1
 
   manifest-and-release:
     name: Combine manifest and upload to release
@@ -190,6 +190,7 @@ jobs:
           name: SHA256SUMS
           path: release/SHA256SUMS.txt
           if-no-files-found: error
+          retention-days: 1
 
       - name: Upload assets to GitHub Release
         if: startsWith(github.ref, 'refs/tags/')
