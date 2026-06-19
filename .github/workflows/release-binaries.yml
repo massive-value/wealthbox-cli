@@ -59,7 +59,7 @@ jobs:
             binary: wbox-windows-x64.exe
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Set up Python
         uses: actions/setup-python@v6
