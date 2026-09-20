@@ -10,11 +10,18 @@ from urllib.parse import parse_qs, urlparse
 
 import httpx
 import respx
+import typer.main
 
 from wealthbox_tools.cli.main import app
 
 _TASKS_URL = "https://api.crmworkspace.com/v1/tasks"
 _WORKFLOWS_URL = "https://api.crmworkspace.com/v1/workflows"
+
+
+def _list_command_params() -> list:
+    """Return the Click params registered on `wbox tasks list`."""
+    root = typer.main.get_command(app)
+    return list(root.commands["tasks"].commands["list"].params)
 
 
 def _params(call) -> dict[str, str]:
@@ -80,11 +87,17 @@ def test_include_completed_is_a_hidden_alias_for_all(runner) -> None:
     assert [_params(c)["completed"] for c in respx.calls] == ["false", "true"]
 
 
-def test_include_completed_is_hidden_from_help(runner) -> None:
-    result = runner.invoke(app, ["tasks", "list", "--help"])
-    assert result.exit_code == 0
-    assert "--include-completed" not in result.stdout
-    assert "--status" in result.stdout
+def test_include_completed_is_hidden_but_status_is_not() -> None:
+    """Assert against the Click command, not rendered help text.
+
+    Scraping `--help` output couples the test to Rich's wrapping, which differs
+    between a developer console and CI. The command tree is what actually
+    decides whether a flag is advertised, and it is also what the skill-ref
+    generator reads (it skips `param.hidden`), so checking it covers both.
+    """
+    params = {p.name: p for p in _list_command_params()}
+    assert params["include_completed"].hidden is True
+    assert params["status"].hidden is False
 
 
 # --- workflows -------------------------------------------------------------
