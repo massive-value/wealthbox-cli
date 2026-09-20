@@ -31,9 +31,11 @@ from .enums import (
     TaskFrame,
     TaskPriority,
     TaskResourceType,
+    TaskStatusFilter,
     TaskType,
     WorkflowResourceType,
     WorkflowStatus,
+    WorkflowStatusFilter,
 )
 from .events import EventCreateInput, EventListQuery, EventUpdateInput
 from .households import HouseholdMemberInput
@@ -70,10 +72,12 @@ __all__ = [
     "TaskFrame",
     "TaskPriority",
     "TaskResourceType",
+    "TaskStatusFilter",
     "TaskType",
     "EventsState",
     "WorkflowResourceType",
     "WorkflowStatus",
+    "WorkflowStatusFilter",
 
     # Activity
     "ActivityListQuery",

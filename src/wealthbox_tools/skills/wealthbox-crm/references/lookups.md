@@ -1,6 +1,7 @@
 # Lookups
 
-Read-only resources: categories, users, activity feed, and current user info.
+Read-only resources: categories, users, teams, user groups, the activity feed, and
+current user info.
 
 ## Current User
 
@@ -42,6 +43,27 @@ wbox users list [--verbose] [--format json|table|csv|tsv]
 ```
 
 Lists all users in the workspace. Use to find user IDs for `--assigned-to` flags.
+
+## Teams
+
+```bash
+wbox teams list [--verbose] [--format json|table|csv|tsv]
+```
+
+Returns `id`, `name`, and `member_count` per team. The IDs are what
+`wbox tasks list --assigned-to-team` expects; there is no other way to look one
+up. Pass `--verbose` for each member's id, name, email, and status.
+
+## User groups
+
+```bash
+wbox users groups [--verbose] [--format json|table|csv|tsv]
+```
+
+Returns `id`, `name`, and `member_count` per group. Group IDs are what the
+`visible_to` field accepts in place of `Everyone` or `Private`. Every workspace
+has an "Everyone" group and a per-user "Only Me" group. Pass `--verbose` for the
+member user IDs.
 
 ## Activity Feed
 
@@ -97,6 +119,9 @@ wbox me --format table
 
 # Find a user ID for assignment
 wbox users list --format table
+
+# Find a team ID for --assigned-to-team
+wbox teams list --format table
 
 # Check recent activity for a contact
 wbox activity list --contact 12345 --format table

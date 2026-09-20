@@ -2,6 +2,23 @@
 
 Template-based process tracking. Created from templates, progressed by completing/reverting steps.
 
+## The default hides completed workflows
+
+`GET /workflows` returns **active workflows only** when no `status` is given,
+and it accepts one status at a time. In a firm with 1,865 workflows, 1,769 of
+them completed, the default shows 5% of the record set.
+
+| `--status` | What you get | API calls |
+|------------|--------------|-----------|
+| `active` (default) | Running workflows. Matches Wealthbox's own default. | 1 |
+| `completed` | Finished workflows. | 1 |
+| `scheduled` | Workflows with a future start date. | 1 |
+| `all` | Every status, merged by `id`. | 3 |
+
+`all` runs its three calls in sequence, not in parallel. The token allows 300
+requests per 5 minutes, so a loop that runs `--status all` per contact will hit
+that wall.
+
 ## List Workflows
 
 ```bash
@@ -12,7 +29,7 @@ wbox workflows list [OPTIONS]
 |------|------|-------------|
 | `--resource-id` | INT | Filter by linked resource ID |
 | `--resource-type` | Contact\|Project | Type of linked resource |
-| `--status` | active\|completed\|scheduled | Filter by status |
+| `--status` | active\|completed\|scheduled\|all | Which workflows to return. Default `active`. |
 | `--updated-since` | ISO datetime | Modified after |
 | `--updated-before` | ISO datetime | Modified before |
 | `--page` | INT | Page number |
@@ -40,6 +57,19 @@ wbox workflows next <ID>
 Returns the active step (or `{"completed": true, "completed_at": ...}` if the
 workflow is done). Cheaper than parsing the full `get` response when you only
 need to know "what's next."
+
+**Run this before `complete-step`.** When the active step offers outcomes, `next`
+lists each one's `id`, `name`, `action`, and `go_to_step_id` in the JSON, and
+prints them to stderr as well so they stay readable under `--format table`.
+Those IDs appear nowhere else in the CLI, and a step with outcomes will not
+branch the way you expect without the right `--outcome-id`.
+
+```
+$ wbox workflows next 3522997
+Outcomes for this step (pass one to `complete-step --outcome-id`):
+  22393807  Provide Auto Trade Details [Go to Step] -> step 33410596
+  22393808  Skip Enrollment [Complete Workflow]
+```
 
 ## Create Workflow
 
@@ -69,7 +99,7 @@ wbox workflows complete-step <WORKFLOW_ID> <STEP_ID> [OPTIONS]
 
 | Flag | Type | Description |
 |------|------|-------------|
-| `--outcome-id` | INT | Outcome selection |
+| `--outcome-id` | INT | Which outcome to select. Run `wbox workflows next <ID>` first to list them. |
 | `--due-date` | STR | For restarting a step |
 | `--due-date-set` | flag | Whether restarted step has due date |
 | `--no-advance-hint` | flag | Skip the post-complete workflow fetch + stderr summary |
@@ -135,7 +165,7 @@ Mark a workflow step as complete.
 | `--due-date-set` | `BOOLEAN` | `false` | Whether the restarted step has a due date |
 | `--format` | `CHOICE` | `json` |  |
 | `--no-advance-hint` | `BOOLEAN` | `false` | Skip the follow-up GET that summarizes the new active step (saves one API call). |
-| `--outcome-id` | `INTEGER` | `-` | Workflow outcome ID (if step has multiple outcomes) |
+| `--outcome-id` | `INTEGER` | `-` | Workflow outcome ID (if the step offers outcomes) — run `wbox workflows next ID` to list them |
 
 **Choices for `--format`:**
 
@@ -163,7 +193,7 @@ Get a single workflow by ID.
 
 ### `wbox workflows list`
 
-List workflows with optional filters.
+List workflows with optional filters. Wealthbox returns active workflows only by default; use --status completed/scheduled/all to see the rest
 
 | Flag | Type | Default | Description |
 |------|------|---------|-------------|
@@ -172,7 +202,7 @@ List workflows with optional filters.
 | `--per-page` | `INTEGER` | `-` | Results per page (max 100) |
 | `--resource-id` | `INTEGER` | `-` | Filter by linked resource ID (requires --resource-type) |
 | `--resource-type` | `CHOICE` | `-` | Filter by linked resource type: Contact, Project |
-| `--status` | `CHOICE` | `-` | active, completed, or scheduled |
+| `--status` | `CHOICE` | `active` | Which workflows to return: active (Wealthbox's own default), completed, scheduled, or all. 'all' issues one API call per status and merges them. |
 | `--updated-before` | `TEXT` | `-` |  |
 | `--updated-since` | `TEXT` | `-` |  |
 | `--verbose` / `-v` | `BOOLEAN` | `false` | Show all fields |
@@ -192,12 +222,13 @@ List workflows with optional filters.
 **Choices for `--status`:**
 
 - `active`
+- `all`
 - `completed`
 - `scheduled`
 
 ### `wbox workflows next`
 
-Show the active step (or completion status) of a workflow.
+Show the active step of a workflow, including the outcome IDs it offers (or completion status).
 
 | Flag | Type | Default | Description |
 |------|------|---------|-------------|
@@ -272,8 +303,11 @@ wbox workflows add --template 123 --contact 67890 --label "Smith Onboarding"
 # Complete a workflow step
 wbox workflows complete-step 111 222
 
-# Just tell me what's next
+# Just tell me what's next, and which outcomes the step offers
 wbox workflows next 111
+
+# Every workflow on a contact, running or finished
+wbox workflows list --resource-type Contact --resource-id 67890 --status all
 ```
 
 ## Quirks (verified against the live API)
@@ -305,6 +339,9 @@ wbox workflows next 111
   Wealthbox does not roll member workflows up to the household.
 - **Instance `name` is lower-cased relative to template `name`.** Template
   "Auto Trade Enrollment" becomes instance "Auto trade enrollment". Cosmetic.
+- **Milestones ride along on every workflow response.** `workflow_milestones`
+  holds `{id, name, milestone_date}` entries and shows up under
+  `wbox workflows get <ID> --verbose`. Most workflows have none.
 - **`workflow_template` is included on every workflow list/get response.** It's
   the full template (every step + html descriptions). The CLI strips it from
   default output to save tokens; pass `--verbose` to include it.

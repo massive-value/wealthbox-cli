@@ -11,6 +11,7 @@ from .common import (
     RequireAnyFieldModel,
     WealthboxModel,
 )
+from .custom_fields import CustomFieldValue
 from .enums import EmailInviteeType, EventsOrder, EventsState, TaskResourceType
 
 
@@ -43,7 +44,7 @@ class EventCreateInput(WealthboxModel):
     email_invitees: bool | None = None
     linked_to: list[LinkedToRef] | None = None
     invitees: list[EmailInvitees] | None = None
-    # custom_fields: str | None = None
+    custom_fields: list[CustomFieldValue] | None = None
 
 
 class EventUpdateInput(RequireAnyFieldModel):
@@ -60,4 +61,4 @@ class EventUpdateInput(RequireAnyFieldModel):
     email_invitees: bool | None = None
     linked_to: list[LinkedToRef] | None = None
     invitees: list[EmailInvitees] | None = None
-    # custom_fields: str | None = None
+    custom_fields: list[CustomFieldValue] | None = None

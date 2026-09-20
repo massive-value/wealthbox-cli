@@ -4,8 +4,10 @@ from typing import Any
 
 import typer
 
+from wealthbox_tools.client import WealthboxClient
 from wealthbox_tools.models import (
     CategoryType,
+    DocumentType,
     EventCreateInput,
     EventListQuery,
     EventsOrder,
@@ -23,6 +25,7 @@ from ._util import (
     make_category_command,
     make_resource_app,
     output_result,
+    resolve_custom_fields,
     run_client,
 )
 
@@ -94,21 +97,32 @@ def add_event(
     contact: int | None = typer.Option(None, "--contact", help="Link to a Contact by ID"),
     project: int | None = typer.Option(None, "--project", help="Link to a Project by ID"),
     opportunity: int | None = typer.Option(None, "--opportunity", help="Link to an Opportunity by ID"),
+    custom_field: list[str] = typer.Option(
+        [], "--custom-field",
+        help=(
+            'Set a custom field as NAME=VALUE (repeatable). Name or numeric ID; '
+            'see: wbox categories custom-fields --document-type Event'
+        ),
+    ),
     token: str | None = typer.Option(None, envvar="WEALTHBOX_TOKEN", hidden=True),
     fmt: OutputFormat = typer.Option(OutputFormat.JSON, "--format"),
 ) -> None:
-    input_model = EventCreateInput(
-        title=title,
-        starts_at=starts_at,
-        ends_at=ends_at,
-        location=location,
-        state=state,
-        all_day=all_day,
-        description=description,
-        event_category=event_category,
-        linked_to=build_linked_to(contact, project, opportunity),
-    )
-    output_result(run_client(token, lambda c: c.create_event(input_model)), fmt)
+    async def _create(client: WealthboxClient) -> dict[str, Any]:
+        input_model = EventCreateInput(
+            title=title,
+            starts_at=starts_at,
+            ends_at=ends_at,
+            location=location,
+            state=state,
+            all_day=all_day,
+            description=description,
+            event_category=event_category,
+            linked_to=build_linked_to(contact, project, opportunity),
+            custom_fields=await resolve_custom_fields(client, DocumentType.EVENT, custom_field),
+        )
+        return await client.create_event(input_model)
+
+    output_result(run_client(token, _create), fmt)
 
 
 @handle_errors
@@ -131,6 +145,13 @@ def update_event(
     contact: int | None = typer.Option(None, "--contact", help="Replace linked Contact (by ID)"),
     project: int | None = typer.Option(None, "--project", help="Replace linked Project (by ID)"),
     opportunity: int | None = typer.Option(None, "--opportunity", help="Replace linked Opportunity (by ID)"),
+    custom_field: list[str] = typer.Option(
+        [], "--custom-field",
+        help=(
+            'Set a custom field as NAME=VALUE (repeatable). Name or numeric ID; '
+            'see: wbox categories custom-fields --document-type Event'
+        ),
+    ),
     token: str | None = typer.Option(None, envvar="WEALTHBOX_TOKEN", hidden=True),
     fmt: OutputFormat = typer.Option(OutputFormat.JSON, "--format"),
 ) -> None:
@@ -148,9 +169,13 @@ def update_event(
     linked = build_linked_to(contact, project, opportunity)
     if linked is not None:
         payload["linked_to"] = linked
-    input_model = EventUpdateInput(**payload)
+    async def _update(client: WealthboxClient) -> dict[str, Any]:
+        fields = await resolve_custom_fields(client, DocumentType.EVENT, custom_field)
+        if fields is not None:
+            payload["custom_fields"] = fields
+        return await client.update_event(event_id, EventUpdateInput(**payload))
 
-    output_result(run_client(token, lambda c: c.update_event(event_id, input_model)), fmt)
+    output_result(run_client(token, _update), fmt)
 
 
 create_resource_commands(

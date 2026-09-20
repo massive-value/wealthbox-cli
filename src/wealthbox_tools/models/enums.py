@@ -170,6 +170,20 @@ class WorkflowResourceType(StrEnum):
     PROJECT = "Project"
 
 
+class TaskStatusFilter(StrEnum):
+    """CLI-facing values for ``wbox tasks list --status``.
+
+    Wealthbox's ``completed`` param is a two-way switch, not an "include":
+    absent/``false`` returns open tasks only, ``true`` returns completed only.
+    ``ALL`` therefore has no single API value — the client issues both calls
+    and merges (see ``TasksMixin.list_tasks_all_statuses``).
+    """
+
+    OPEN = "open"
+    COMPLETED = "completed"
+    ALL = "all"
+
+
 class TaskType(StrEnum):
     ALL = "all"
     PARENTS = "parents"
@@ -214,3 +228,17 @@ class WorkflowStatus(StrEnum):
     ACTIVE = "active"
     COMPLETED = "completed"
     SCHEDULED = "scheduled"
+
+
+class WorkflowStatusFilter(StrEnum):
+    """CLI-facing values for ``wbox workflows list --status``.
+
+    Extends :class:`WorkflowStatus` with ``ALL``, which has no API value —
+    the client issues one call per real status and merges (see
+    ``WorkflowsMixin.list_workflows_all_statuses``).
+    """
+
+    ACTIVE = "active"
+    COMPLETED = "completed"
+    SCHEDULED = "scheduled"
+    ALL = "all"

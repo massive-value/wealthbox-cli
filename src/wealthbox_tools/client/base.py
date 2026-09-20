@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import collections
+import datetime
 import json
 import logging
 import os
@@ -56,6 +57,59 @@ class _RequestProtocol(Protocol):
         collection_key: str,
         on_progress: Callable[[int, int], None] | None = None,
     ) -> PaginatedResponse: ...
+
+
+# Wealthbox stamps records as "2025-05-24 10:00 AM -0400"; a few endpoints
+# return ISO 8601 instead. Neither sorts correctly as a plain string, so
+# ``_parse_timestamp`` normalises both before records are compared.
+_WEALTHBOX_TS_FORMAT = "%Y-%m-%d %I:%M %p %z"
+
+
+def _parse_timestamp(value: Any) -> datetime.datetime | None:
+    """Parse a Wealthbox timestamp, returning ``None`` when unparseable."""
+    if not isinstance(value, str) or not value.strip():
+        return None
+    for parse in (
+        lambda v: datetime.datetime.strptime(v, _WEALTHBOX_TS_FORMAT),
+        datetime.datetime.fromisoformat,
+    ):
+        try:
+            return parse(value.strip())
+        except ValueError:
+            continue
+    return None
+
+
+def merge_records_by_id(
+    batches: list[list[dict[str, Any]]],
+) -> list[dict[str, Any]]:
+    """Merge several record lists into one, de-duplicated by ``id``.
+
+    Used by the "all" list variants, where one logical query has to be split
+    across mutually-exclusive API filters (open vs completed tasks; active vs
+    completed vs scheduled workflows). Those filters are disjoint, but a
+    record whose state changes mid-walk can surface in two batches, so the
+    copy with the later ``updated_at`` wins. An unparseable or missing
+    ``updated_at`` never displaces a record that has one. Records without an
+    ``id`` are kept as-is; input order is otherwise preserved.
+    """
+    merged: dict[Any, dict[str, Any]] = {}
+    extras: list[dict[str, Any]] = []
+    for batch in batches:
+        for record in batch:
+            rid = record.get("id")
+            if rid is None:
+                extras.append(record)
+                continue
+            existing = merged.get(rid)
+            if existing is None:
+                merged[rid] = record
+                continue
+            new_ts = _parse_timestamp(record.get("updated_at"))
+            old_ts = _parse_timestamp(existing.get("updated_at"))
+            if new_ts is not None and (old_ts is None or new_ts > old_ts):
+                merged[rid] = record
+    return list(merged.values()) + extras
 
 
 class WealthboxAPIError(Exception):

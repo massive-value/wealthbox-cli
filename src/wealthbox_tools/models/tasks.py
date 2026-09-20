@@ -3,6 +3,7 @@ from __future__ import annotations
 from pydantic import Field, model_validator
 
 from .common import DateTimeField, LinkedToRef, PaginationQuery, RequireAnyFieldModel, WealthboxModel
+from .custom_fields import CustomFieldValue
 from .enums import TaskFrame, TaskPriority, TaskResourceType, TaskType
 
 
@@ -35,7 +36,7 @@ class TaskCreateInput(WealthboxModel):
     # visible_to: str | None = None
     # due_later: str | None = None
     # subtasks: SubTaskInput | None = None
-    # custom_fields: TaskCustomFieldInput | None = None
+    custom_fields: list[CustomFieldValue] | None = None
     assigned_to: int | None = Field(default=None, ge=1)
     assigned_to_team: int | None = Field(default=None, ge=1)
     description: str | None = None
@@ -65,7 +66,7 @@ class TaskUpdateInput(RequireAnyFieldModel):
     # visible_to: str | None = None
     # due_later: str | None = None
     # subtasks: SubTaskInput | None = None
-    # custom_fields: TaskCustomFieldInput | None = None
+    custom_fields: list[CustomFieldValue] | None = None
     assigned_to: int | None = Field(default=None, ge=1)
     assigned_to_team: int | None = Field(default=None, ge=1)
     description: str | None = None

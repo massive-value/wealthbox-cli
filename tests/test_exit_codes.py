@@ -109,3 +109,22 @@ def test_without_wbox_debug_no_traceback(runner) -> None:
     result = runner.invoke(app, ["contacts", "get", "999999"])
     assert result.exit_code == 3, result.output
     assert "Traceback (most recent call last)" not in result.output
+
+
+@respx.mock
+def test_bad_parameter_from_a_resolver_reads_as_a_user_error(runner) -> None:
+    """Resolvers (categories, contact roles, custom fields) raise BadParameter
+    from inside the command body, after Click's own parsing is done. Without
+    explicit handling a plain typo would print "Unexpected error"."""
+    respx.get("https://api.crmworkspace.com/v1/categories/custom_fields").mock(
+        return_value=httpx.Response(
+            200,
+            json={"custom_fields": [{"name": "Account Number", "id": 900}], "meta": {"total_count": 1}},
+        )
+    )
+    result = runner.invoke(
+        app, ["tasks", "add", "T", "--frame", "today", "--custom-field", "Typo=1"]
+    )
+    assert result.exit_code == 1
+    assert "Unexpected error" not in result.stderr
+    assert "Unknown custom field 'Typo'" in result.stderr
