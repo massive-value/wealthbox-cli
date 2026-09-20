@@ -64,9 +64,16 @@ defaults that were quietly returning a slice of the data.
 
 ### Not built
 
-- **`wbox comments add`.** Wealthbox's v1 API has no comment-write endpoint.
-  `POST /comments` returns 404, as does `POST /tasks/{id}/comments`, under
-  every request-body shape tried. Only `GET /comments` exists.
+- **`wbox comments add`.** The token-authenticated v1 REST API cannot write a
+  comment: `POST /v1/comments` returns a response byte-identical to a
+  nonexistent path, as does `POST /v1/tasks/{id}/comments`. The write route
+  lives on Wealthbox's session-authenticated web surface (`POST /comments`
+  without the `/v1` prefix answers 302 to `/users/login`), which the official
+  Wealthbox MCP reaches over OAuth via its `CreateComment` tool. Supporting it
+  from `wbox` would mean driving a logged-in web session with CSRF tokens, a
+  different auth model than the rest of the CLI. `references/comments.md`
+  documents the MCP-writes / `wbox`-reads split; a comment created through the
+  MCP is immediately readable by `wbox comments list`.
 - **`tasks add --parent`.** The API takes subtasks only as inline objects in a
   parent task's create payload, never as a `parent` reference on a child. The
   read side's `parent {id, type}` object has no write counterpart. Use

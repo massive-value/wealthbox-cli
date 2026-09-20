@@ -4,13 +4,25 @@ Comments are the conversation thread on a work record. In the Wealthbox UI they
 carry most of the back-and-forth on tasks and workflow steps, so they are often
 where the actual context lives.
 
-## Read-only
+## Read-only here, writable elsewhere
 
-Wealthbox's v1 API exposes `GET /comments` and nothing else. `POST /comments`
-returns 404, as does every nested route (`POST /tasks/{id}/comments`). There is
-no way to write a comment from the API, so `wbox` has no `comments add`. An
-agent that needs to record something durable should create a note
-(`wbox notes add`) or update the record's description instead.
+`wbox` has no `comments add`, because the REST API it speaks cannot write one.
+`POST /v1/comments` returns a response byte-identical to a nonexistent path, as
+does `POST /v1/tasks/{id}/comments`. The v1 API exposes `GET /comments` only.
+
+Comment writes do exist, on a different surface. `POST /comments` without the
+`/v1` prefix (and the same path on `app.crmworkspace.com`) returns 302 to
+`/users/login`: it is a session-authenticated web route, not a token one. The
+official Wealthbox MCP server at `mcp.crmworkspace.com` reaches it over OAuth
+and exposes a `CreateComment` tool. Two tells that it is a different API: it
+requires an `account_id`, which the v1 API has no concept of, and it accepts
+`Contact` as a `resource_type`, which `GET /v1/comments` rejects.
+
+So if you have the Wealthbox MCP available, write comments with its
+`CreateComment` and read them with `wbox` — a comment created through the MCP
+shows up immediately in `wbox comments list` and inline in `wbox tasks get`.
+With only an API token, the durable alternatives are a note (`wbox notes add`)
+or the record's description.
 
 ## Two ways to read them
 
