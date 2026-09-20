@@ -121,8 +121,11 @@ Verify with: `wbox me`
 | Projects | projects | `wbox projects {list\|get\|add\|update} ...` |
 | Workflows | workflows | `wbox workflows {list\|get\|next\|add\|complete-step\|revert-step} ...` |
 | Household members | households | `wbox households {add-member\|remove-member} ...` |
+| Comments on a record | comments | `wbox comments list --task\|--event\|--workflow\|... <ID>` |
 | Categories/tags | lookups | `wbox categories ...` or `wbox <resource> categories` |
 | Users | lookups | `wbox users list` |
+| Teams | lookups | `wbox teams list` |
+| User groups | lookups | `wbox users groups` |
 | Activity feed | lookups | `wbox activity list [filters]` |
 | Current user | lookups | `wbox me` |
 
@@ -194,6 +197,13 @@ The single-quoted heredoc (`<<'EOF'`) is the recommended default — it disables
 - **Dates:** use `YYYY-MM-DD` for dates, `YYYY-MM-DDTHH:MM:SS-07:00` for datetimes
 - **Relative due dates:** tasks accept `--frame today|tomorrow|this-week|next-week|this-month|next-month` instead of `--due-date` (mutually exclusive)
 - **Activity pagination:** uses `--cursor`, not `--page`
+- **List defaults hide most of the data.** `wbox tasks list` returns open tasks
+  only, `wbox workflows list` returns active workflows only, and
+  `wbox opportunities list` drops closed ones. These match how advisors think
+  about open work, so they are the right default, but they are wrong for
+  counting, auditing, or searching history. Reach for `--status all` (tasks,
+  workflows) and `--include-closed` (opportunities) there, and say which you
+  used when reporting a number.
 - **Don't infer flag names:** read `references/<resource>.md` before invoking — flags like `--name` (not `--search`), `--frame` (not `--due-in`) are easy to guess wrong
 - **Advisor / contact roles:** assign them with `wbox contacts add|update ... --advisor-role "Role:User"` (e.g. `"Associate Advisor:Greg Hyde"`). This covers a firm's "Second Advisor" / Partner assignments. See `references/contacts.md` → "Contact Roles".
 - **Before falling back to raw API, exhaust the CLI:** if a firm-required field has no obvious flag, check `references/<resource>.md`, run `wbox <resource> --help` / `wbox <resource> <sub> --help`, and look for a `wbox <resource> categories <type>` lookup that supplies the needed ids. Reach for raw `curl`/API only after these come up empty — and if they do, that's a CLI gap worth filing as an issue.

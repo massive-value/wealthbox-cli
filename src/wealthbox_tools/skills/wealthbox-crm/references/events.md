@@ -50,7 +50,22 @@ wbox events add <TITLE> [OPTIONS]
 | `--contact` | INT | Link to contact |
 | `--project` | INT | Link to project |
 | `--opportunity` | INT | Link to opportunity |
+| `--custom-field` | NAME=VALUE | Set a custom field. Repeatable. |
 | `--format` | json\|table\|csv\|tsv | Output format |
+
+## Custom fields
+
+`--custom-field "Room=Boardroom"` takes the field's name or its numeric ID, and
+repeats for more than one. Available on both `add` and `update`. List what the
+workspace defines with:
+
+```bash
+wbox categories custom-fields --document-type Event
+```
+
+An unknown name is an error that lists the valid ones. Wealthbox accepts a
+custom-field payload keyed by name with a 200 and then discards it, so the CLI
+resolves the name to an ID before writing.
 
 ## Update Event
 
@@ -88,6 +103,7 @@ Create a new event.
 | `--all-day` / `--no-all-day` | `BOOLEAN` | `-` |  |
 | `--category` | `INTEGER` | `-` | Event category ID |
 | `--contact` | `INTEGER` | `-` | Link to a Contact by ID |
+| `--custom-field` | `TEXT` | `-` | Set a custom field as NAME=VALUE (repeatable). Name or numeric ID; see: wbox categories custom-fields --document-type Event |
 | `--description` | `TEXT` | `-` |  |
 | `--ends-at` | `TEXT` | `-` | End datetime in ISO 8601, e.g. 2026-01-15T11:00:00-07:00 |
 | `--format` | `CHOICE` | `json` |  |
@@ -199,6 +215,7 @@ Update an existing event. Pass only the fields you want to change.
 | `--all-day` / `--no-all-day` | `BOOLEAN` | `-` |  |
 | `--category` | `INTEGER` | `-` | Event category ID |
 | `--contact` | `INTEGER` | `-` | Replace linked Contact (by ID) |
+| `--custom-field` | `TEXT` | `-` | Set a custom field as NAME=VALUE (repeatable). Name or numeric ID; see: wbox categories custom-fields --document-type Event |
 | `--description` | `TEXT` | `-` |  |
 | `--ends-at` | `TEXT` | `-` | End datetime in ISO 8601, e.g. 2026-01-15T11:00:00-07:00 |
 | `--format` | `CHOICE` | `json` |  |

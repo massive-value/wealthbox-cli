@@ -12,6 +12,7 @@ from .notes import NotesMixin
 from .opportunities import OpportunitiesMixin
 from .projects import ProjectsMixin
 from .tasks import TasksMixin
+from .teams import TeamsMixin
 from .users import UsersMixin
 from .workflows import WorkflowsMixin
 
@@ -28,6 +29,7 @@ class WealthboxClient(
     OpportunitiesMixin,
     ProjectsMixin,
     TasksMixin,
+    TeamsMixin,
     UsersMixin,
     WorkflowsMixin,
     _WealthboxBase,

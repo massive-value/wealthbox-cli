@@ -2,6 +2,13 @@
 
 Track potential revenue — fees, AUM, commissions. Linked to contacts and projects.
 
+## The default hides closed opportunities
+
+`GET /opportunities` drops closed records unless you pass `--include-closed`.
+In a firm with 117 opportunities, only 73 come back by default. Pass
+`--include-closed` whenever you are counting, reporting on a period, or looking
+for a deal that may already have closed.
+
 ## List Opportunities
 
 ```bash
@@ -131,12 +138,12 @@ Get a single opportunity by ID.
 
 ### `wbox opportunities list`
 
-List opportunities with optional filters.
+List opportunities with optional filters. Wealthbox omits closed opportunities by default; pass --include-closed to see them
 
 | Flag | Type | Default | Description |
 |------|------|---------|-------------|
 | `--format` | `CHOICE` | `json` |  |
-| `--include-closed` / `--no-include-closed` | `BOOLEAN` | `-` | Include closed opportunities |
+| `--include-closed` / `--no-include-closed` | `BOOLEAN` | `-` | Include closed opportunities (Wealthbox drops them by default) |
 | `--order` | `CHOICE` | `-` | Sort order: asc, desc, recent, created |
 | `--page` | `INTEGER` | `-` |  |
 | `--per-page` | `INTEGER` | `-` | Results per page (max 100) |

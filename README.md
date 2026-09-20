@@ -53,7 +53,7 @@ If you're new to Claude Code itself, [download it here](https://claude.ai/downlo
 
 ## What it covers
 
-Full read/write access for **contacts** (people, households, organizations, trusts), **tasks**, **events**, **notes**, **opportunities**, **projects**, and **workflows**. Read access for users, activity, and your firm's category lookups.
+Full read/write access for **contacts** (people, households, organizations, trusts), **tasks**, **events**, **notes**, **opportunities**, **projects**, and **workflows**. Read access for users, teams, user groups, comments, activity, and your firm's category lookups.
 
 Anything you can do in Wealthbox manually, the agent can do for you — usually in one sentence.
 

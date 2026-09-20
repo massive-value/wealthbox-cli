@@ -7,10 +7,12 @@ import typer
 from wealthbox_tools.client import WealthboxClient
 from wealthbox_tools.models import (
     CategoryType,
+    DocumentType,
     TaskCreateInput,
     TaskFrame,
     TaskListQuery,
     TaskPriority,
+    TaskStatusFilter,
     TaskType,
     TaskUpdateInput,
 )
@@ -29,6 +31,7 @@ from ._util import (
     output_result,
     parse_more_fields,
     resolve_category_id,
+    resolve_custom_fields,
     run_client,
     run_client_with_comments,
     slim_comments,
@@ -90,8 +93,16 @@ def list_tasks(
     assigned_to: int | None = typer.Option(None, "--assigned-to", help="Filter by assigned user ID"),
     assigned_to_team: int | None = typer.Option(None, "--assigned-to-team", help="Filter by assigned team ID"),
     created_by: int | None = typer.Option(None, "--created-by", help="Filter by creator user ID"),
+    status: TaskStatusFilter = typer.Option(
+        TaskStatusFilter.OPEN, "--status",
+        help=(
+            "Which tasks to return: open (Wealthbox's own default), completed, or all. "
+            "'all' issues two API calls and merges them — there is no single API value for both."
+        ),
+    ),
     include_completed: bool = typer.Option(
-        False, "--include-completed", help="Include completed tasks (default returns outstanding tasks only)"
+        False, "--include-completed", hidden=True,
+        help="Deprecated alias for --status all.",
     ),
     task_type: TaskType | None = typer.Option(None, "--type", help="all, parents, subtasks"),
     updated_since: str | None = typer.Option(None, "--updated-since"),
@@ -103,6 +114,10 @@ def list_tasks(
     fmt: OutputFormat = typer.Option(OutputFormat.JSON, "--format"),
 ) -> None:
     resource_id, resource_type = build_resource_filter(contact, project, opportunity)
+    # Legacy flag: it used to map to `completed=true`, which the API reads as
+    # "completed only" — the opposite of its name. It now means --status all.
+    if include_completed:
+        status = TaskStatusFilter.ALL
 
     query = TaskListQuery(
         resource_id=resource_id,
@@ -110,7 +125,7 @@ def list_tasks(
         assigned_to=assigned_to,
         assigned_to_team=assigned_to_team,
         created_by=created_by,
-        completed=True if include_completed else None,
+        completed=None if status is TaskStatusFilter.ALL else (status is TaskStatusFilter.COMPLETED),
         task_type=task_type,
         updated_since=updated_since,
         updated_before=updated_before,
@@ -118,7 +133,12 @@ def list_tasks(
         per_page=per_page,
     )
 
-    output_result(run_client(token, lambda c: c.list_tasks(query)), fmt, fields=None if verbose else _DEFAULT_FIELDS)
+    fetch = (
+        (lambda c: c.list_tasks_all_statuses(query))
+        if status is TaskStatusFilter.ALL
+        else (lambda c: c.list_tasks(query))
+    )
+    output_result(run_client(token, fetch), fmt, fields=None if verbose else _DEFAULT_FIELDS)
 
 
 @handle_errors
@@ -167,6 +187,13 @@ def add_task(
     contact: int | None = typer.Option(None, "--contact", help="Link to a Contact by ID"),
     project: int | None = typer.Option(None, "--project", help="Link to a Project by ID"),
     opportunity: int | None = typer.Option(None, "--opportunity", help="Link to an Opportunity by ID"),
+    custom_field: list[str] = typer.Option(
+        [], "--custom-field",
+        help=(
+            'Set a custom field as NAME=VALUE (repeatable). Name or numeric ID; '
+            'see: wbox categories custom-fields --document-type Task'
+        ),
+    ),
     more_fields: str | None = typer.Option(
         None, "--more-fields",
         help='JSON: {"complete": false, "assigned_to_team": 456}',
@@ -194,6 +221,7 @@ def add_task(
     async def _create(client: WealthboxClient) -> dict[str, Any]:
         if category is not None:
             payload["category"] = await resolve_category_id(client, CategoryType.TASK_CATEGORIES, category)
+        payload["custom_fields"] = await resolve_custom_fields(client, DocumentType.TASK, custom_field)
         # Strip None before model construction (due_date XOR frame validator needs clean input)
         clean = {k: v for k, v in payload.items() if v is not None}
         return await client.create_task(TaskCreateInput(**clean))
@@ -223,6 +251,13 @@ def update_task(
     contact: int | None = typer.Option(None, "--contact", help="Replace linked Contact (by ID)"),
     project: int | None = typer.Option(None, "--project", help="Replace linked Project (by ID)"),
     opportunity: int | None = typer.Option(None, "--opportunity", help="Replace linked Opportunity (by ID)"),
+    custom_field: list[str] = typer.Option(
+        [], "--custom-field",
+        help=(
+            'Set a custom field as NAME=VALUE (repeatable). Name or numeric ID; '
+            'see: wbox categories custom-fields --document-type Task'
+        ),
+    ),
     token: str | None = typer.Option(None, envvar="WEALTHBOX_TOKEN", hidden=True),
     fmt: OutputFormat = typer.Option(OutputFormat.JSON, "--format"),
 ) -> None:
@@ -243,6 +278,9 @@ def update_task(
     async def _update(client: WealthboxClient) -> dict[str, Any]:
         if category is not None:
             payload["category"] = await resolve_category_id(client, CategoryType.TASK_CATEGORIES, category)
+        fields = await resolve_custom_fields(client, DocumentType.TASK, custom_field)
+        if fields is not None:
+            payload["custom_fields"] = fields
         return await client.update_task(task_id, TaskUpdateInput(**payload))
 
     output_result(run_client(token, _update), fmt)
@@ -257,8 +295,8 @@ create_resource_commands(
         id_help="Task ID",
         get_client_method="get_task",
         list_help=(
-            "List tasks with optional filters. By default only outstanding tasks are returned; "
-            "use --include-completed to include completed tasks"
+            "List tasks with optional filters. Wealthbox returns open tasks only by default; "
+            "use --status completed or --status all to see completed ones"
         ),
         get_help="Get a single task by ID.",
         add_help="Create a new task. Required: name, and either due_date or frame.",

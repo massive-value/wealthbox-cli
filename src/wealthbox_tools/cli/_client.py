@@ -123,6 +123,19 @@ def handle_errors(func: Callable[_P, _R]) -> Callable[_P, _R]:
                 typer.echo(traceback.format_exc(), err=True)
             raise typer.Exit(code=_EXIT_VALIDATION)
 
+        except typer.BadParameter as e:
+            # Raised from inside a command body by the id/name resolvers
+            # (categories, contact roles, custom fields) once a client is in
+            # hand. Click only renders BadParameter it raises itself during
+            # parsing, so without this the generic handler below would label a
+            # plain user typo "Unexpected error". Exit 1, matching every other
+            # validation failure. (typer re-exports BadParameter, so this needs
+            # no runtime `import click` — see the 2.3.1/2.4.1 crashes.)
+            typer.echo(f"Error: {e.format_message()}", err=True)
+            if _debug_enabled():
+                typer.echo(traceback.format_exc(), err=True)
+            raise typer.Exit(code=_EXIT_VALIDATION)
+
         except ValueError as e:
             typer.echo(f"Error: {e}", err=True)
             if _debug_enabled():

@@ -4,7 +4,7 @@ from typing import Any
 
 from wealthbox_tools.models import TaskCreateInput, TaskListQuery, TaskUpdateInput
 
-from .base import _RequestMixinBase
+from .base import _RequestMixinBase, merge_records_by_id
 
 
 class TasksMixin(_RequestMixinBase):
@@ -15,6 +15,28 @@ class TasksMixin(_RequestMixinBase):
         resp = await self._request("GET", "/tasks", params=params)
         data: dict[str, Any] = resp.json()
         return data
+
+    async def list_tasks_all_statuses(self, query: TaskListQuery | None = None) -> dict[str, Any]:
+        """List tasks across both completion states.
+
+        ``GET /tasks`` treats ``completed`` as a two-way switch, not an
+        "include": omitted or ``false`` returns open tasks only, ``true``
+        returns completed only. There is no value that returns both, so this
+        issues the two calls **sequentially** (the token allows 300 requests
+        per 5 minutes; fanning out competes with any other walk in flight)
+        and merges the results by ``id``.
+
+        Any ``completed`` value on ``query`` is ignored. Pagination flags are
+        honoured per call, so ``--page 2`` means page 2 of each state.
+        """
+        batches = []
+        for completed in (False, True):
+            params = query.model_dump(exclude_none=True) if query else {}
+            params["completed"] = completed
+            resp = await self._request("GET", "/tasks", params=params)
+            batches.append(resp.json().get("tasks", []))
+        tasks = merge_records_by_id(batches)
+        return {"tasks": tasks, "meta": {"total_count": len(tasks)}}
 
     async def get_task(self, task_id: int) -> dict[str, Any]:
         resp = await self._request("GET", f"/tasks/{task_id}")

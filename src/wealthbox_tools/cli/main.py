@@ -9,6 +9,7 @@ from .. import self_upgrade
 from . import self_cmd
 from .activity import app as activity_app
 from .categories import app as categories_app
+from .comments import app as comments_app
 from .config import app as config_app
 from .contacts import app as contacts_app
 from .doctor import doctor_cmd as _doctor_cmd
@@ -24,6 +25,7 @@ from .projects import app as projects_app
 from .self_cmd import app as self_app
 from .skills import app as skills_app
 from .tasks import app as tasks_app
+from .teams import app as teams_app
 from .users import app as users_app
 from .workflows import app as workflows_app
 
@@ -116,6 +118,7 @@ app.command(
 
 app.add_typer(activity_app, name="activity")
 app.add_typer(categories_app, name="categories")
+app.add_typer(comments_app, name="comments")
 app.add_typer(config_app, name="config")
 app.add_typer(contacts_app, name="contacts")
 app.add_typer(events_app, name="events")
@@ -130,6 +133,7 @@ app.add_typer(projects_app, name="projects")
 app.add_typer(self_app, name="self")
 app.add_typer(skills_app, name="skills")
 app.add_typer(tasks_app, name="tasks")
+app.add_typer(teams_app, name="teams")
 app.add_typer(users_app, name="users")
 app.add_typer(workflows_app, name="workflows")
 

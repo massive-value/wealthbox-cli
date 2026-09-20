@@ -63,7 +63,8 @@ def list_opportunities(
     ),
     order: OpportunityOrder | None = typer.Option(None, "--order", help="Sort order: asc, desc, recent, created"),
     include_closed: bool | None = typer.Option(
-        None, "--include-closed/--no-include-closed", help="Include closed opportunities"
+        None, "--include-closed/--no-include-closed",
+        help="Include closed opportunities (Wealthbox drops them by default)",
     ),
     updated_since: str | None = typer.Option(None, "--updated-since"),
     updated_before: str | None = typer.Option(None, "--updated-before"),
@@ -185,7 +186,10 @@ create_resource_commands(
         id_arg_name="opportunity_id",
         id_help="Opportunity ID",
         get_client_method="get_opportunity",
-        list_help="List opportunities with optional filters.",
+        list_help=(
+            "List opportunities with optional filters. Wealthbox omits closed opportunities by "
+            "default; pass --include-closed to see them"
+        ),
         get_help="Get a single opportunity by ID.",
         add_help="Create a new opportunity.",
         update_help="Update an existing opportunity. Pass only the fields you want to change.",

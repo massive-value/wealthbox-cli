@@ -55,9 +55,11 @@ from ._resolve import (
     active_to_status,
     build_linked_to,
     build_resource_filter,
+    parse_custom_fields,
     parse_more_fields,
     resolve_category_id,
     resolve_contact_roles,
+    resolve_custom_fields,
 )
 
 __all__ = [
@@ -91,9 +93,11 @@ __all__ = [
     "make_resource_app",
     "output_get_result",
     "output_result",
+    "parse_custom_fields",
     "parse_more_fields",
     "resolve_category_id",
     "resolve_contact_roles",
+    "resolve_custom_fields",
     "run_client",
     "run_client_with_comments",
     "slim_comments",

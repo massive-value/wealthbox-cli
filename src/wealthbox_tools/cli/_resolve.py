@@ -6,7 +6,14 @@ from typing import Any
 import typer
 
 from wealthbox_tools.client import WealthboxClient
-from wealthbox_tools.models import CategoryType, LinkedToRef, TaskResourceType
+from wealthbox_tools.models import (
+    CategoryListQuery,
+    CategoryType,
+    CustomFieldValue,
+    DocumentType,
+    LinkedToRef,
+    TaskResourceType,
+)
 
 
 def active_to_status(active: bool | None) -> str | None:
@@ -173,3 +180,64 @@ def parse_more_fields(more_fields: str, reserved: set[str]) -> dict[str, Any]:
     if collision:
         raise typer.BadParameter(f"--more-fields cannot include {sorted(collision)}; use explicit CLI args instead.")
     return extra
+
+
+def parse_custom_fields(specs: list[str]) -> list[tuple[str, str]]:
+    """Split repeatable ``--custom-field NAME=VALUE`` specs into pairs.
+
+    The value is everything after the first ``=``, so values containing ``=``
+    need no escaping. Name resolution happens in :func:`resolve_custom_fields`,
+    which needs a client.
+    """
+    pairs: list[tuple[str, str]] = []
+    for spec in specs:
+        key, sep, value = spec.partition("=")
+        key = key.strip()
+        if not sep or not key:
+            raise typer.BadParameter(
+                f"--custom-field expects 'NAME=VALUE' (e.g. 'Risk Tolerance=High'); got '{spec}'."
+            )
+        pairs.append((key, value))
+    return pairs
+
+
+async def resolve_custom_fields(
+    client: WealthboxClient, document_type: DocumentType, specs: list[str]
+) -> list[CustomFieldValue] | None:
+    """Resolve ``NAME=VALUE`` specs to ``[{"id": field_id, "value": ...}]``.
+
+    Wealthbox only honours custom fields keyed by numeric ``id``; a payload
+    keyed by ``name`` is accepted with a 200 and silently discarded. So a
+    non-numeric name is looked up (case-insensitively) against
+    ``GET /categories/custom_fields?document_type=<type>`` and an unknown name
+    is a hard error listing what the workspace actually defines — far better
+    than a write that reports success and changes nothing.
+
+    Returns ``None`` for an empty spec list so callers can drop the key.
+    """
+    pairs = parse_custom_fields(specs)
+    if not pairs:
+        return None
+
+    resolved: list[CustomFieldValue] = []
+    by_name: dict[str, int] | None = None
+    available: list[str] = []
+    for key, value in pairs:
+        if key.isdigit():
+            resolved.append(CustomFieldValue(id=int(key), value=value))
+            continue
+        if by_name is None:
+            data = await client.list_all_categories(
+                CategoryType.CUSTOM_FIELDS, CategoryListQuery(document_type=document_type)
+            )
+            items = data.get("custom_fields", [])
+            by_name = {str(i["name"]).casefold(): int(i["id"]) for i in items if i.get("name")}
+            available = sorted(str(i["name"]) for i in items if i.get("name"))
+        field_id = by_name.get(key.casefold())
+        if field_id is None:
+            hint = ", ".join(available) if available else "(none configured for this record type)"
+            raise typer.BadParameter(
+                f"Unknown custom field '{key}' for {document_type.value}. Available: {hint}"
+            )
+        resolved.append(CustomFieldValue(id=field_id, value=value))
+    return resolved

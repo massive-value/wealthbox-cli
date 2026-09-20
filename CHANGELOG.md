@@ -4,6 +4,81 @@ All notable changes to `wealthbox-cli` are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.5.0] - 2026-09-20
+
+Fills in the work-record commands an AI agent needs, and corrects two list
+defaults that were quietly returning a slice of the data.
+
+### Fixed
+
+- **`wbox tasks list --include-completed` returned completed tasks *only*.**
+  Wealthbox's `completed` parameter is a two-way switch, not an "include":
+  omitted or `false` means open only, `true` means completed only. The flag
+  mapped to `completed=true`, so it did the opposite of its name. It is now a
+  hidden alias for `--status all` and keeps working in existing prompts.
+- **A bad `--category`, `--advisor-role`, or `--custom-field` value printed
+  "Unexpected error".** These resolvers raise `BadParameter` from inside the
+  command body, after Click's own parsing is finished, so the generic handler
+  caught them. `handle_errors` now renders them as the user errors they are.
+  The exit code was already 1 and has not changed.
+
+### Added
+
+- **`wbox tasks list --status open|completed|all`** (default `open`). `all`
+  issues both calls in sequence and merges by `id`, keeping the copy with the
+  later `updated_at`. In a firm with 5,174 tasks, 4,994 of them complete, the
+  default was showing 3% of the record set without saying so.
+- **`wbox workflows list --status all`**, alongside the existing `active`,
+  `completed`, and `scheduled`. The default is now an explicit `active`, which
+  is what the API did all along when given no status. `all` runs three
+  sequential calls and merges by `id`.
+- **`wbox teams list`** and **`wbox users groups`**. Team IDs are what
+  `--assigned-to-team` expects and there was no way to look one up; group IDs
+  are what `visible_to` accepts. Both render `id`, `name`, and `member_count`,
+  with the full member list under `--verbose`.
+- **`wbox comments list`**, filtered by `--task`, `--event`, `--note`,
+  `--opportunity`, `--project`, or `--workflow`, or by an
+  `--updated-since`/`--updated-before` window. An unfiltered call exits 1 with
+  a one-line reason: `GET /comments` costs about 8.5 seconds per page of 100
+  unfiltered, against about 1.5 seconds inside a one-month window.
+- **`wbox workflows next` now lists the active step's outcomes** (`id`, `name`,
+  `action`, `go_to_step_id`) in JSON and on stderr, so they stay readable in
+  every `--format`. `complete-step --outcome-id` is the only way to branch such
+  a step and the IDs appeared nowhere else in the CLI. `complete-step`'s own
+  advance hint lists them too.
+- **`--custom-field NAME=VALUE` on `tasks add|update` and `events add|update`**
+  (repeatable, accepts a name or a numeric ID). Names are resolved against
+  `wbox categories custom-fields --document-type Task|Event` and an unknown
+  name is a hard error listing the valid ones. That check is load-bearing:
+  Wealthbox accepts a custom-field payload keyed by name with a 200 and then
+  silently discards it.
+
+### Changed
+
+- Help text on `wbox opportunities list` and `--include-closed` now says that
+  closed opportunities are dropped by default (117 records in the firm, 73
+  returned). No behavior change.
+- New `references/comments.md`; the tasks, workflows, opportunities, events,
+  and lookups references document the defaults, the new flags, and the
+  teams/user-group lookups.
+
+### Not built
+
+- **`wbox comments add`.** The token-authenticated v1 REST API cannot write a
+  comment: `POST /v1/comments` returns a response byte-identical to a
+  nonexistent path, as does `POST /v1/tasks/{id}/comments`. The write route
+  lives on Wealthbox's session-authenticated web surface (`POST /comments`
+  without the `/v1` prefix answers 302 to `/users/login`), which the official
+  Wealthbox MCP reaches over OAuth via its `CreateComment` tool. Supporting it
+  from `wbox` would mean driving a logged-in web session with CSRF tokens, a
+  different auth model than the rest of the CLI. `references/comments.md`
+  documents the MCP-writes / `wbox`-reads split; a comment created through the
+  MCP is immediately readable by `wbox comments list`.
+- **`tasks add --parent`.** The API takes subtasks only as inline objects in a
+  parent task's create payload, never as a `parent` reference on a child. The
+  read side's `parent {id, type}` object has no write counterpart. Use
+  `--more-fields '{"subtasks": [...]}'`.
+
 ## [2.4.1] - 2026-06-12
 
 Patch release fixing a startup crash in 2.4.0. The `cli/_factory.py` module

@@ -72,6 +72,7 @@ class ChangeSet:
 #: is one block per file. The orphan scan in :func:`regenerate_all` warns
 #: about it on every run so the discrepancy stays visible.
 RESOURCE_REFERENCE_MAP: dict[str, str] = {
+    "comments": "comments.md",
     "contacts": "contacts.md",
     "events": "events.md",
     "households": "households.md",
